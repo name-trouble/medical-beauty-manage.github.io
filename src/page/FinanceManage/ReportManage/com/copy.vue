@@ -1,0 +1,1102 @@
+<template>
+    <div class="reportManage selCommon">
+        <div>
+            <div style="overflow-y:auto;">
+                <p style="font-size:16px;font-weight:bold;line-height:36px">项目信息</p>
+                <div class="flex-box">
+                    <div class="flex-item">
+                        <el-form label-position="right" label-width="120px" :model="formData" ref="formAdd1">
+                            <el-form-item label="订单日期：" prop="OrderDate" :rules="[ { required: true, message: '不能为空'}]"
+                                          class=" form_item_mt0">
+                                <el-date-picker v-model="OrderDate" type="date" placeholder="选择日期" style="width:220px;">
+                                </el-date-picker>
+                            </el-form-item>
+
+                            <el-form-item label="类型：" prop="ConsumeTypeId"
+                                          :rules="[ { required: true, message: '不能为空'}]" class=" form_item_mt0">
+                                <el-select v-model="formData.ConsumeTypeId" style="width:220px;">
+                                    <el-option v-for="(item,$index) in consumeList" :key="$index" :label="item.DataName"
+                                               :value="item.DataCode"></el-option>
+                                </el-select>
+                            </el-form-item>
+
+                            <el-form-item label="客户：" prop="customerId" :rules="[ { required: true, message: '不能为空'}]"
+                                          class=" form_item_mt0">
+                                <el-autocomplete v-model="customer"
+                                                 :fetch-suggestions="queryCus" placeholder="请输入内容"
+                                                 :trigger-on-focus="false" @select="selectCus"
+                                                 style="width:220px;color:red">
+                                    <template v-slot="{item}">
+                                        <my-item-Copymember :item="item"></my-item-Copymember>
+                                    </template>
+                                </el-autocomplete>
+                                <div>
+                                    电话：{{mesShow.cusPhoneNumber}}卡号：{{mesShow.cusCardNO}}<span style="color:red"> {{isFrozen}}</span>
+                                </div>
+                            </el-form-item>
+
+                            <el-form-item label="项目：" prop="projectId" :rules="[ { required: true, message: '不能为空'}]"
+                                          class=" form_item_mt0">
+                                <el-autocomplete v-model="formData.projectName" :fetch-suggestions="queryPro"
+                                                 placeholder="请输入内容"
+                                                 style="width:220px;float:left" custom-item="my-item-reportPro"
+                                                 :trigger-on-focus="false" @select="selectPro"></el-autocomplete>
+                            </el-form-item>
+
+
+                            <el-form-item label="总疗程：" class=" form_item_mt0">
+                                <el-input-number v-model="formData.course" :controls="false"
+                                                 style="width:220px;float:left"></el-input-number>
+                            </el-form-item>
+
+                            <el-form-item label="疗程：" prop="refrenceBranchCode" class=" form_item_mt0">
+                                <span>{{ baseCourse }}</span>
+                            </el-form-item>
+
+
+                            <el-form-item label="医院：" prop="hospitalName" class=" form_item_mt0">
+                                <span>{{ formData.hospitalName }}</span>
+                            </el-form-item>
+
+                            <el-form-item label="设计师助理：" class=" form_item_mt0">
+                                <el-select v-model="formData.designerAssist" style="width:220px;">
+                                    <el-option label="空" value=""></el-option>
+                                    <el-option v-for="(item,$index) in desginerAssists" :key="$index" :label="item.text"
+                                               :value="item.code"></el-option>
+                                </el-select>
+                            </el-form-item>
+
+                            <el-form-item label="实际价格：" class=" form_item_mt0">
+                                <el-input v-model="formData.RealPrice" style="width:220px;color:red">
+                                    <template slot="prepend">￥</template>
+                                </el-input>
+                            </el-form-item>
+                            <el-form-item label="专家费：">
+                                <el-input v-model="formData.serviceFare" style="width:220px;color:red"
+                                          placeholder="请填写专家费">
+                                    <template slot="prepend">￥</template>
+                                </el-input>
+                            </el-form-item>
+                        </el-form>
+                    </div>
+
+                    <div class="flex-item">
+                        <el-form label-position="right" label-width="120px" :model="formData" ref="formAdd2">
+                            <el-form-item label="纸质单号：" prop="formNO" class=" form_item_mt0">
+                                <el-input v-model="formData.formNO" style="width:220px;"></el-input>
+                            </el-form-item>
+
+                            <el-form-item label="积分：" class=" form_item_mt0" style="">
+                                <span style="line-height:36px">医院积分：{{jifen}}，纹绣积分：{{wxjf}}，app积分：{{jifenOnline}}</span>
+                            </el-form-item>
+
+                            <el-form-item label="推荐人：" class=" form_item_mt0">
+                                <span v-show="formData.refrenceBranchCode!==''">{{ formData.refrenceBranchName +'[' + formData.refrenceBranchCode +']' }}</span>
+                                <div>
+                                    电话：{{mesShow.refPhoneNumber}}卡号：{{mesShow.refCardNO}}医院：{{mesShow.hospitalName}}
+                                </div>
+                            </el-form-item>
+
+                            <el-form-item label="规格：" prop="goodsUnitId" :rules="[{ required: true, message: '不能为空'}]"
+                                          class=" form_item_mt0">
+                                <el-select v-model="formData.goodsUnitId" @change="unitChange" style="width:220px;">
+                                    <el-option v-for="(item,$index) in goodsUnit" :key="$index" :label="item.UnitName"
+                                               :value="item.UnitCode"></el-option>
+                                </el-select>
+                            </el-form-item>
+
+                            <el-form-item label="项目类型：" class=" form_item_mt0" prop="ProjectType" :rules="[{ required: true, message: '不能为空',trigger:'change'}]">
+                                    <el-select v-model="formData.ProjectType" style="width:220px;">
+                                        <el-option label="年卡/疗程" value="0"></el-option>
+                                        <el-option label="单次" value="1"></el-option>
+                                    </el-select>
+                                </el-form-item>
+                            <el-form-item label="原价：" class=" form_item_mt0">
+                                <span v-show="formData.price!=''">
+                                    <span style="font-size:15px;color:black">￥</span>{{ formData.price }}</span>
+                            </el-form-item>
+
+                            <el-form-item label="数量：" class=" form_item_mt0">
+                                <!-- <el-input v-model="formData.mount"></el-input> -->
+                                <el-input-number v-model="formData.Quantity" :min="1" :controls="false"
+                                                 style="width:220px;float:left"></el-input-number>
+                            </el-form-item>
+
+                            <el-form-item label="咨询师：" class=" form_item_mt0">
+                                <el-select v-model="formData.MarketConsultantCode" value-key="Id" style="width:220px;">
+                                    <el-option label="空" value=""></el-option>
+                                    <el-option v-for="(item,$index) in consultList" :key="$index" :label="item.text"
+                                               :value="item.code"></el-option>
+                                </el-select>
+                            </el-form-item>
+
+                            <el-form-item label="设计师：" class=" form_item_mt0">
+                                <el-select v-model="formData.designer" value-key="Id" style="width:220px;">
+                                    <el-option label="空" value=""></el-option>
+                                    <el-option v-for="(item,$index) in designers" :key="$index" :label="item.text"
+                                               :value="item.code"></el-option>
+                                </el-select>
+                            </el-form-item>
+                            <el-form-item label="订单来源" class=" form_item_mt0" >
+                                    <el-select v-model="formData.orderType"  style="width:220px;">
+                                        <el-option label="app订单" value="1"></el-option>
+                                        <el-option label="线下订单" value="2"></el-option>
+                                    </el-select>
+                                </el-form-item>
+                        </el-form>
+                    </div>
+                </div>
+                <div class="flex-box" style="margin-top:-30px">
+                    <div class="flex-item" style="margin:10px 0px 0 30px;padding-left:30px;flex:0 100%">
+                        <el-table :data="attachList" border min-width="500">
+                            <el-table-column type="index" label="序号" width="65">
+                            </el-table-column>
+
+                            <el-table-column prop="ProofDesc" label="附加项名称" min-width="110">
+                            </el-table-column>
+
+                            <el-table-column prop="TypeName" label="费用类型" min-width="110">
+                            </el-table-column>
+
+                            <el-table-column prop="Amount" label="单价">
+                                ￥{{ formData.Amount }}
+                            </el-table-column>
+
+                            <el-table-column prop="Quantity" label="数量">
+                            </el-table-column>
+
+                            <el-table-column prop="SubTotal" label="总额">
+                                ￥{{ formData.SubTotal }}
+                            </el-table-column>
+
+                            <el-table-column prop="IsEffective" label="是否提成">
+                                <template slot-scope="scope">
+                                    <span v-if="scope.row.IsEffective== true||scope.row.IsEffective =='true'">是</span>
+                                    <span v-else>否</span>
+                                </template>
+                            </el-table-column>
+
+                            <el-table-column prop="IsEffective" label="操作">
+                                <template slot-scope="scope">
+                                    <el-button type="warning" size="mini" icon="delete"
+                                               @click="delAttach(scope.$index)">删除
+                                    </el-button>
+                                </template>
+                            </el-table-column>
+                        </el-table>
+
+                        <el-button type="success" icon="plus" size="mini" @click="ispopAttach=true"
+                                   :disabled="formData.price==''" style="margin:5px">附加信息
+                        </el-button>
+                        <div style="margin: 5px">
+                            订单金额：{{orderPrice}}元
+                        </div>
+                    </div>
+                </div>
+                <p style="font-size:16px;font-weight:bold;line-height:36px">支付信息</p>
+                <div class="flex-box">
+                    <div class="flex-item" style="margin:10px 0px 0 30px;padding-left:30px;flex:0 100%">
+                        <el-table :data="payInfoList" border min-width="500">
+                            <el-table-column type="index" label="序号" width="65">
+                            </el-table-column>
+                            <el-table-column prop="OnlineOrderCode" label="app订单号" min-width="80">
+                              <template slot-scope="scope">
+                                <span v-if="scope.row.OnlineOrderCode">{{scope.row.OnlineOrderCode}}</span>
+                              </template>
+                            </el-table-column>
+                            <el-table-column prop="PayTypeName" label="支付方式" width="110">
+                                <template slot-scope="scope">
+                                    <span>{{scope.row.PayTypeName}}</span>
+                                    <span v-if="scope.row.PayType == '009'">{{scope.row.TypeId|filterTypeId}}</span>
+                                </template>
+                            </el-table-column>
+
+                            <el-table-column prop="TicketsCode" label="券号" width="110"></el-table-column>
+
+                            <el-table-column prop="SalePrice" label="购券价" width="110"></el-table-column>
+
+                            <el-table-column prop="RealAmount" label="支付金额" width="120">
+                                <template slot-scope="scope">
+                                    {{scope.row.RealAmount.toQFW()}}
+                                </template>
+                            </el-table-column>
+
+
+                            <el-table-column prop="ReceiveAccount" label="收款账户"></el-table-column>
+                            <el-table-column prop="Memo" label="备注"></el-table-column>
+                            <el-table-column prop="PayDate" label="支付时间" width="110">
+                                <template slot-scope="scope">
+                                 <span v-if="scope.row.PayDate">
+                                   {{scope.row.PayDate.substring(0,10)}}
+                                 </span>
+                                </template>
+                            </el-table-column>
+
+                            <el-table-column prop="IsEffective" label="操作" width="80">
+                                <template slot-scope="scope">
+                                    <el-button type="warning" size="mini" v-show="scope.row.isNew" icon="delete"
+                                               @click="payInfoList.splice(scope.$index, 1)">删除
+                                    </el-button>
+                                </template>
+                            </el-table-column>
+                        </el-table>
+
+                        <el-button type="success" icon="plus" size="mini" :disabled="ope" @click="ispopPay=true"
+                                   style="margin:5px">支付信息
+                        </el-button>
+                        <div style="margin: 5px">
+                            <div class='priceMes'>尾款金额：{{Retainage}}</div>
+                            <div class='priceMes' v-show="formData.orderType=='1'">,最高抵扣App积分：{{formData.LimitPoints}}</div>
+                        </div>
+                    </div>
+                </div>
+                <p style="font-size:16px;font-weight:bold;line-height:36px">其它信息</p>
+                <div class="foot-div">
+                    <el-form label-position="right" label-width="120px" :model="formData" ref="formAdd3">
+                        <el-form-item label="备注：">
+                            <el-input v-model="formData.Memo" type="textarea" :rows="2"></el-input>
+                        </el-form-item>
+                        <!-- <el-form-item label="图片：">
+                            <span style="color:red">(请上传 800*800px以上图片, 最多5张)</span>
+                            <div class="flex-box img-box">
+                                <el-upload class="upload-box" :accept="acceptImage" :on-change="imgChange" :action="uploadUrl" list-type="picture-card" :file-list="fileList" :before-upload="beforeUpload">
+                                    <i class="el-icon-plus"></i>
+                                </el-upload>
+                            </div>
+                        </el-form-item> -->
+                    </el-form>
+                </div>
+            </div>
+            <!-- </div> -->
+        </div>
+        <div style="text-align:center;margin-top:20px">
+            <el-button type="info" style="width:100px" @click="submit" :loading="loading">保存</el-button>
+            <el-button style="width:100px" @click="reset">取消</el-button>
+        </div>
+
+        <el-dialog ref="attach" title="附加信息" :modal='false' :visible.sync="ispopAttach" top="35%"
+                   @close="ispopAttach=false" :lock-scroll="false" size="">
+            <pop-attach @popClose="getAttach" style="width:500px;" :proPrice="formData.price" v-if="ispopAttach"></pop-attach>
+        </el-dialog>
+
+         <el-dialog ref="pay" title="支付信息" :modal='false' :visible.sync="ispopPay" top="30%" @close="ispopPay=false" :lock-scroll="false" size="">
+            <pop-pay @popClose="getPayInfo"
+            :project-code="formData.projectId"
+            :accountList="accountList"
+            :payMes="payMes"
+            :stagePay="stagePay"
+            :jfType="formData.ConsumeTypeId"
+            :cusPhoneNumber="mesShow.cusPhoneNumber"
+            :code="formData.customerId"
+            :price="this.formData.RealPrice"
+            :totalAmount="orderPrice"
+            style="width:500px"
+            :orderType='formData.orderType'
+            @getLimitMes ='getLimitMes'
+             v-if="ispopPay"></pop-pay>
+        </el-dialog>
+
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+    import Vue from "vue";
+    import { xmxUrl, baseImgPath } from "@/config/env";
+    import { imgApi, acceptImage } from '@/config/common'
+    let uploadUrl = xmxUrl + imgApi + "?op=prooforder";
+    import { AddProofOrder,getBaseDataByCode, getProofOrderDetail, GetHospitalAccountByCode,GetProofOrderErrorByFxCode,GetBranchByCode,GetPoints,
+        GetUserAllByKeywords,GetGoodsByKeywords,GetGoodsByCode,GetServiceManList,GetUserAccountByCode,AddProofOrderError} from "@/api/myData";
+    import { getCookie } from "@/config/mUtils";
+    import PopAttach from "./attachInfo";
+    import PopPay from "./payInfo";
+    import "@/style/selfCommon.less";
+    Vue.component('my-item-Copymember', {
+        functional: true,
+        render: function (h, ctx) {
+            var item = ctx.props.item;
+            return h('div', ctx.data, [
+                h('p', {attrs: {class: 'select_name' + item.Type, title: item.name}}, ['名字：' + item.name]),
+                h('p', {attrs: {class: 'select_name' + item.Type, title: item.name}}, ['编号：' + item.Code]),
+                h('p', {attrs: {class: 'select_name' + item.Type, title: item.name}}, ['手机号：' + item.PhoneNumber]),
+                h('p', {attrs: {class: 'select_name' + item.Type, title: item.name}}, ['卡号：' + item.CardNO]),
+            ]);
+        },
+        props: {
+            item: {type: Object, required: true}
+        }
+    });
+    export default {
+        components: {PopPay, PopAttach},
+        props: {
+            data: Object,
+            ope: Boolean
+        },
+        watch: {
+            "formData.ConsumeTypeId": {
+                handler(curVal, oldVal) {
+                    ;
+                },
+                deep: true
+            },
+            'formData.Quantity': {
+                handler(curVal, oldVal){
+
+                    this.$set(this.formData, "RealPrice", Number(this.formData.price).mul(curVal))
+                    if (this.baseCourse > 0) {
+                        this.$set(this.formData, "course", Number(this.baseCourse).mul(curVal))
+                    }
+                }
+            }
+        },
+        data() {
+            return {
+                stagePay:{
+                    orderType:0,
+                    course:0,//期数
+                    currentC:0,//当前期数
+                    satgeM:0,//分期金额
+                    fxCode:'',
+                },
+                payMes: {},
+                jifen: "0",
+                jifenOnline:0,
+                wxjf:0,
+                isFrozen:'',
+                loading: false,
+                accountList: [],
+                fileList: [],
+                OrderDate: "",
+                customer: "",
+                formData: {
+                    ProjectType:"",
+                    isBranch: "",
+                    OrderDate: new Date(), //订单日期
+                    formNO: "", //单号
+
+                    customerId: "",
+                    customerName: "",
+
+                    refrenceBranchCode: "", //推荐人 branchCode
+                    refrenceBranchName: "",
+
+                    projectId: "",
+                    projectName: "",
+
+                    goodsUnitId: "", //商品规格
+                    goodsUnitName: "",
+
+                    hospitalId: "", //医院信息
+                    hospitalName: "",
+
+                    serviceManId: "", //服务者信息
+                    serviceManName: "",
+
+                    designer: "", //设计师
+                    designerName: "",
+
+                    designerAssist: "", //设计师助理
+                    designerAssistName: "",
+
+                    doctorAssist: "", //医生助理
+                    doctorAssistName: "",
+
+                    price: "", //项目价格
+                    course: "", //项目疗程
+
+                    //currentCourse: 1, //当前疗程
+                    serviceFare: "", //专家费比例
+                    Memo: "", //	备注
+
+                    RealAmount: "", //  实际支付金额 = 项目金额 + 医生服务费 + 附加费用
+
+                    ConsumeTypeId: "", //  提成类型
+
+                    RealPrice: "", //真实价格
+
+                    ImgUrl1: "", //图片信息
+                    ImgUrl2: "",
+                    ImgUrl3: "",
+                    ImgUrl4: "",
+                    ImgUrl5: "",
+
+                    ExtFeeList: "", //附加信息  JSON 转string
+                    PayFeeList: "", //支付信息  JSON 转string
+                    Quantity: 1,
+                    orderType:'2',
+                    LimitPoints:0,
+                },
+                form: {},
+                baseCourse: '',
+                uploadUrl,
+                baseImgPath, //配置文件读取路径
+                acceptImage,
+
+                ispopAttach: false,
+                ispopPay: false,
+
+                error: false,
+                errorMes: "",
+                addErrorMes: "",
+                attachList: [], //附加信息 列表
+                payInfoList: [], //支付信息列表
+                imgList: [], //图片列表,
+                consumeList: [], //提成类型列表,
+                goodsUnit: [], //项目规格
+                consultList: [], //设计师列表
+
+                serciceManList: [], //所有医生信息
+
+                doctorAssits: [], //医生助理列表
+                desginerAssists: [], //设计师列表
+                designers: [], //设计师助理列表
+                nurseList: [], //护士列表
+                consultList: [], //咨询师
+                time: 0,
+                mesShow: {
+                    cusPhoneNumber: "",
+                    cusCardNO: "",
+                    refPhoneNumber: "",
+                    refCardNO: "",
+                    hospitalName:"",
+                },
+                time: 0,
+            };
+        },
+
+        computed: {
+            orderPrice() {
+                let num;
+                num = Number(this.formData.RealPrice).add(
+                    Number(this.formData.serviceFare)
+                );
+                if (this.attachList.length > 0) {
+                    this.attachList.forEach(row => {
+                        num = Number(row.SubTotal).add(Number(num));
+                    });
+                }
+                return num;
+            },
+            Retainage() {
+                let num = this.orderPrice;
+                if (this.payInfoList.length > 0) {
+                    this.payInfoList.forEach(row => {
+                        ;
+                        num = Number(row.RealAmount).red(Number(num));
+                    });
+                }
+                return num;
+            }
+        },
+
+        filterTypeId: function (value) {
+            switch(value){
+                case 2: return '医院积分';
+                case 3: return '纹绣积分';
+                case 4: return '皮肤科积分';
+            }
+        },
+
+        mounted() {
+            this.initAll();
+        },
+
+        methods: {
+            getLimitMes(val){
+                this.formData.LimitPoints = val.LimitPoints
+            },
+            async GetBranchByCode(code, type){
+                let mes = await GetUserAllByKeywords({ keywords:code})
+                let res = mes[0]
+                if (type == "cus") {//客户信息
+                    this.mesShow.cusPhoneNumber = res.PhoneNumber ? res.PhoneNumber : ""
+                    this.mesShow.cusCardNO = res.CardNO ? res.CardNO : ""
+                    this.GetUserAccountByCode(this.data.CustomerId);
+                } else {//推荐人信息
+                    this.mesShow.refPhoneNumber = res.PhoneNumber ? res.PhoneNumber : ""
+                    this.mesShow.refCardNO = res.CardNO ? res.CardNO : ""
+                    this.mesShow.hospitalName = res.HospitalName?res.HospitalName:""
+                }
+            },
+
+            async GetGoodsByCode(params) {
+                let ser = await GetServiceManList();
+                this.serciceManList = ser.data
+                let res = await GetGoodsByCode(params);
+                this.goodsUnit = res.GUList;
+                this.filterDoctor(this.formData.hospitalId);
+                ;
+            },
+
+            //获取 医生，设计师，助理  选择列表
+            filterDoctor(hospitalCode) {
+                // hospitalCode = "1014"
+                this.doctorAssits = []; //医生助理列表  005
+                this.desginerAssists = []; //设计师列表   002
+                this.designers = []; //设计师助理列表  006
+                this.consultList = [];
+                ;
+                for (let item of this.serciceManList) {
+                    let hosCodes = item.hospitalCode.split(",")
+                    if(hosCodes.indexOf(hospitalCode)>=0){
+                        if (item.serTypeCode === "002") {//设计师
+                            this.designers.push({
+                                code: item["code"],
+                                name: item["serviceName"],
+                                text: item["serviceName"] + "(" + item["code"] + ")"
+                            });
+                        }
+                        if (item.serTypeCode === "005") {//医生助理
+                            this.doctorAssits.push({
+                                code: item["code"],
+                                name: item["serviceName"],
+                                text: item["serviceName"] + "(" + item["code"] + ")"
+                            });
+                        }
+                        if (item.serTypeCode === "006") {//设计师助理
+                            this.desginerAssists.push({
+                                code: item["code"],
+                                name: item["serviceName"],
+                                text: item["serviceName"] + "(" + item["code"] + ")"
+                            });
+                        }
+                        if (item.serTypeCode === "003") {
+                            this.nurseList.push({
+                                code: item["code"],
+                                name: item["serviceName"],
+                                text: item["serviceName"] + "(" + item["code"] + ")"
+                            });
+                        }
+                    }
+                    if (item.serTypeCode === "004") {
+                            this.consultList.push({
+                                code: item["code"],
+                                name: item["serviceName"],
+                                text: item["serviceName"] + "(" + item["code"] + ")"
+                            });
+                        }
+                }
+                // 在初次打开时调用
+                if (this.time == 0) {
+                    this.getPayWay();
+                    this.time = 1
+                }
+            },
+
+            //规格下拉框 改变 规格名称  和  疗程
+            unitChange() {
+                ;
+                for (let item of this.goodsUnit) {
+                    ;
+                    if (this.formData.goodsUnitId == item.UnitCode) {
+                        this.formData.goodsUnitName = item.UnitName;
+                        this.formData.course = item.Course;
+                        this.baseCourse = item.Course;
+                        this.formData.realPrice = item.Price;
+                        this.formData.serviceFare = item.ServiceFare ? item.ServiceFare : 0;
+                        break;
+                    }
+                }
+            },
+            async GetHospitalAccountByCode(id) {
+                ;
+                let res = await GetHospitalAccountByCode({
+                    hospitalCode: id
+                });
+
+                this.accountList = res.data;
+                ;
+            },
+
+            getProject(res) {
+                // let res = await GetGoodsByKeywords({keywords: str.removeSP(), isMall: 0});
+                let arr = [];
+                if (res instanceof Array && res.length > 0) {
+                    for (let item of res) {
+                        arr.push({
+                            value: "(" +
+                            item["GoodsEntity"]["Code"] +
+                            ")" +
+                            item["GoodsEntity"]["GoodsAlias"],
+                            code: item["GoodsEntity"]["Code"],
+                            Name: item["GoodsEntity"]["Name"],
+                            GoodsCode: item["GoodsEntity"]["GoodsCode"],
+                            GoodsAlias: item["GoodsEntity"]["GoodsAlias"],
+                            ServiceMan: item["GoodsEntity"]["ServiceMan"],
+                            ServiceManName: item["GoodsEntity"]["ServiceManName"],
+
+                            price: item["GoodsEntity"]["PriceSale"],
+                            priceRange: item["PriceRange"],
+                            FarePercent: item["GoodsEntity"]["FarePercent"],
+
+                            SupplierCode: item["GoodsEntity"]["SupplierCode"],
+                            SupplierName: item["GoodsEntity"]["SupplierName"],
+                            GUList: item["GUList"]
+                        });
+                    }
+                }
+                this.projectList = arr;
+            },
+
+            //查找项目  下拉补全
+            async queryPro(queryString, cb) {
+                this.projectList = [];
+                this.initProject();
+                if (queryString !== "" && queryString != undefined) {
+                    let res = await GetGoodsByKeywords({keywords: queryString.removeSP(), isMall: 0});
+                    this.getProject(res);
+                }
+                let _this = this;
+                clearTimeout(this.timeout);
+                this.timeout = setTimeout(() => {
+                    cb(_this.projectList);
+                }, 100);
+            },
+            //初始化项目信息
+            initProject() {
+                this.formData.course = "";
+                this.baseCourse = ''
+                this.goodsUnit = [];
+                this.formData.hospitalId = "";
+                this.formData.hospitalName = "";
+                this.formData.serviceManId = "";
+                this.formData.serviceManName = "";
+                this.formData.price = 0;
+                this.formData.ServiceFare = "";
+                this.formData.goodsUnitId = "";
+                this.formData.RealAmount = "";
+
+                this.doctorAssits = []; //医生助理列表  005
+                this.desginerAssists = []; //设计师列表   002
+                this.designers = []; //设计师助理列表  006
+
+                this.formData.designer = ""; //设计师
+                this.formData.designerAssist = ""; //设计师助理
+                this.formData.doctorAssist = ""; //医生助理
+
+                this.attachList = []; //附加信息 列表
+                this.payInfoList = []; //支付信息列表
+            },
+            //点击获取 项目信息  Oject
+            selectPro(item) {
+                ;
+                this.formData.goodsUnitId = "";
+                this.formData.goodsUnitName = "";
+                this.formData.projectId = item.code;
+                this.formData.projectName = item.GoodsAlias;
+                this.formData.hospitalId = item.SupplierCode;
+                this.formData.hospitalName = item.SupplierName;
+                this.formData.serviceManId = item.ServiceMan;
+                this.formData.serviceManName = item.ServiceManName;
+                this.formData.price = Number(item.price);
+                this.formData.RealPrice = item.price;
+                this.goodsUnit = [];
+                this.goodsUnit = item["GUList"];
+                this.serviceFare = item.FarePercent + "";
+                this.filterDoctor(this.formData.hospitalId);
+                this.formData.ServiceFare =
+                    Number(this.formData.RealPrice) * Number(this.serviceFare) / 100;
+                // if( item.FarePercent)
+                this.formData.RealAmount = (item.price *
+                    (1 + item.FarePercent / 100)
+                ).toFixed(2); //保留两位小数，四舍五入
+                this.GetHospitalAccountByCode(item.SupplierCode);
+            },
+
+            getMember(res) {
+                // let res = await GetUserAllByKeywords({keywords: str.removeSP()});
+                if (res instanceof Array && res.length > 0) {
+                    for (let item of res) {
+                        let tagName = ""
+                        if(item["BranchTags"] != ''&&item["BranchTags"] != null&&item["BranchTags"] != undefined){
+                            tagName = '('+item["BranchTags"]+')'
+                        }
+                        this.customerList.push({
+                            BranchTags:item["BranchTags"]?item["BranchTags"]:"",
+                            value: "(" + item["Code"] + ")" + item["MemberName"]+tagName,
+                            PhoneNumber: item["PhoneNumber"],
+                            Code: item["Code"],
+                            name: item["MemberName"]+tagName,
+                            Name:item["MemberName"],
+                            referrerCode: item["ReferrerCode"],
+                            referrerName: item["ReferrerName"],
+                            Type: item.Type == 1 ? "black" : "red",
+                            CardNO: item["CardNO"] ? item["CardNO"] : ""
+                        });
+                    }
+                }
+            },
+
+            //检测图片  获取列表
+            imgChange(file, fileList) {
+                this.imgList = [];
+                for (let item of fileList) {
+                    if (item.response) this.imgList.push(item.response);
+                }
+            },
+
+            beforeUpload(file) {
+                if (this.imgList.length >= 5) {
+                    this.$message({type: "info", message: "最多上传五张！"});
+                    return false;
+                } else return true;
+            },
+            //获取收款账户信息
+            async GetHospitalAccountByCode(id) {
+                ;
+                let res = await GetHospitalAccountByCode({
+                    hospitalCode: id
+                });
+                this.accountList = res.data;
+                // this.GetUserAccountByCode(this.data.CustomerId);
+            },
+
+            // 获取弹出框的 附加信息  回调
+            getAttach(item) {
+                if (item !== "") {
+                    let data = JSON.parse(item);
+                    this.attachList.push(data);
+                    this.formData.RealAmount = parseFloat(this.formData.RealAmount) + parseFloat(data.SubTotal);
+                }
+                this.ispopAttach = false;
+            },
+
+            //删除 附加项，重新计算 总价格
+            delAttach(index) {
+                let data = this.attachList.splice(index, 1);
+                this.formData.RealAmount = parseFloat(this.formData.RealAmount) - parseFloat(data[0].SubTotal);
+            },
+
+            //查找会员 下拉补全
+            async queryCus(queryString, cb) {
+                this.customerList = [];
+                if (queryString !== "" && queryString != undefined) {
+                    let res = await GetUserAllByKeywords({keywords: queryString.removeSP()});
+                    this.getMember(res);
+                }
+
+                this.formData.refrenceBranchCode = "";
+                this.formData.refrenceBranchName = "";
+                let _this = this;
+
+                clearTimeout(this.timeout);
+                this.timeout = setTimeout(() => {
+                    cb(_this.customerList);
+                }, 100);
+            },
+
+            //点击获取 会员信息  Oject
+            selectCus(item) {
+                this.formData.BranchTags = item.BranchTags,
+                this.formData.customerId = item.Code;
+                this.formData.customerName = item.Name;
+                this.formData.refrenceBranchCode = item.referrerCode ? item.referrerCode : "";
+                this.formData.refrenceBranchName = item.referrerName ? item.referrerName : "";
+                this.formData.isBranch = item.Type == 'black' ? 1 : 0
+                this.mesShow.cusPhoneNumber = item.PhoneNumber
+                this.mesShow.cusCardNO = item.CardNO
+                this.GetUserAccountByCode(item.Code);
+                this.GetBranchByCode(item.referrerCode)
+            },
+            async GetUserAccountByCode(params) {//获取用户账户余额
+                let [res,res1] = await Promise.all([GetUserAccountByCode({branchcode:params}),GetPoints({mobile:this.mesShow.cusPhoneNumber})])
+                //  线上积分
+                this.jifen = res.RemainSystemPoints,
+                this.jifenOnline = res1.status?res1.data:0
+                this.wxjf = res.RemainGoldCoin
+                this.isFrozen = res.isFrozen?'(账户已冻结)':''
+            },
+
+            // 获取弹出框的  支付信息
+            getPayInfo(item) {
+                if (item !== "") {
+                    let row = JSON.parse(item);
+                    row.RealAmount = Number(row.RealAmount);
+                    // if (row.PayType == "011") {
+                    //     row.RealAmount = Number(this.formData.RealPrice);
+                    // }
+                    if (row.PayType == "009") {
+                        row.SalePrice = Number(row.RealAmount);
+                    }
+                    if (this.payInfoList.length == 0 || row.TicketsCode.length == 0) {
+                        this.payInfoList.push(row);
+                    } else {
+                        ;
+                        for (let i = 0; i < this.payInfoList.length; i++) {
+                            if (this.payInfoList[i].TicketsCode == row.TicketsCode) {
+                                this.$message.error("本券已在列表中");
+                                break;
+                            } else {
+                                if (i >= this.payInfoList.length - 1) {
+                                    this.payInfoList.push(row);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+                this.ispopPay = false;
+            },
+
+            submit() {
+                let okNum = 0;
+                for (let i = 1; i <= 3; i++) {
+                    // 3个 表单控件
+                    this.$refs["formAdd" + i].validate(valid => {
+                        if (valid) okNum++;
+                        else {
+                            this.$message({type: "info", message: "请填写完整信息!"});
+                            return false;
+                        }
+                    });
+                }
+                if (okNum == 3) this.addData();
+                else {
+                    this.$message({type: "info", message: "请填写完整信息!"});
+                }
+            },
+
+            async addData() {
+                let imgs = ["ImgUrl1", "ImgUrl2", "ImgUrl3", "ImgUrl4", "ImgUrl5"];
+
+                for (let i = 0; i < 5; i++) {
+                    this.formData[imgs[i]] =
+                        this.imgList[i] == undefined ? "" : this.imgList[i];
+                }
+
+                //过滤老数据
+                let attachList = [];
+                let payInfoList = [];
+                for (let i = 0; i < this.desginerAssists.length; i++) {
+                    if (this.formData.designerAssist == this.desginerAssists[i].code) {
+                        this.formData.designerAssistName = this.desginerAssists[i].name;
+                        break;
+                    }
+                }
+                for (let i = 0; i < this.designers.length; i++) {
+                    if (this.formData.designer == this.designers[i].code) {
+                        this.formData.designerName = this.designers[i].name;
+                        break;
+                    }
+                }
+                for (let i = 0; i < this.consultList.length; i++) {
+                    if (this.formData.MarketConsultantCode == this.consultList[i].code) {
+                        this.formData.MarketConsultantName = this.consultList[i].name;
+                        break;
+                    }
+                }
+
+                //只更改新数据
+
+                this.formData.ExtFeeList = JSON.stringify(this.attachList); //附加信息  JSON 转string
+                this.formData.PayFeeList = JSON.stringify(this.payInfoList); //支付信息  JSON 转string
+                this.formData.ModifiedUserId = getCookie("userId");
+                this.formData.ModifiedBy = getCookie("userName");
+                this.formData.OrderDate = this.OrderDate.formatDate(
+                    "yyyy-MM-dd hh:mm:ss"
+                );
+                this.formData.Memo = this.formData.Memo + "复制于" + this.fxCode
+                try {
+                    this.loading = true;
+                    let res = await AddProofOrder(this.formData);
+                    if (res && res.success && res.success >= 0) {
+                        this.$message({type: "success", message: "保存成功!"});
+                        this.$emit("popAddClose");
+                    } else this.$message({type: "warning", message: "操作失败!" + res.error});
+                    this.loading = false;
+                } catch (ex) {
+                    this.$message({type: "warning", message: JSON.stringify(ex)});
+                }
+            },
+            //提成类型
+            async getConsume(data) {
+                let res = await getBaseDataByCode("0017");
+                this.consumeList = res;
+                res.forEach(row => {
+                    if (data == row.DataCode) {
+                        this.$set(this.formData, "ConsumeTypeId", row.DataCode);
+                    }
+                });
+            },
+            //获取列表
+            async getDetail(fxCode, payTypes) {
+                let [res] = await Promise.all([getProofOrderDetail(fxCode)])
+                this.getConsume(res.ProofOrder.ConsumeTypeId + "" || "");
+                this.formData.RealPrice = res.ProofOrder.RealPrice;
+                if (res.ProofOrderExtList && res.ProofOrderExtList.length > 0) {
+                    this.attachList = res.ProofOrderExtList;// 附加费用信息 列表
+                }
+                if (res.ProofOrderPayList && res.ProofOrderPayList.length > 0) {
+                    for (let item of res.ProofOrderPayList) {//支付信息 列表
+                        for (let data of payTypes) {
+                            if (item.PayType === data.DataCode) {
+                                item.PayTypeName = data.DataName;
+                            }
+                        }
+                    }
+                    this.payInfoList = res.ProofOrderPayList;
+                    this.payInfoList.forEach(ele=>{//有app订单就取出限制积分份额
+                        if(ele.LimitPoints){
+                            this.formData.LimitPoints = ele.LimitPoints
+                        }
+                    })
+                }
+            },
+
+            async initAll() {
+                ;
+                let res = this.data;
+                this.GetHospitalAccountByCode(res.HospitalId);
+                for (var p in res) {
+                    if (
+                        res[p] == null ||
+                        res[p] == undefined ||
+                        res[p] == "null" ||
+                        res[p] == "undefined"
+                    ) {
+                        res[p] = "";
+                    }
+                }
+                let date = res.OrderDate;
+                this.OrderDate = new Date(
+                    date.substring(0, 4),
+                    Number(date.substring(5, 7)) - 1,
+                    date.substring(8, 10)
+                );
+                this.form = {
+                    recordName: res.CreateBy,
+                    fxCode: res.FxCode,
+                }
+
+                this.customer = "(" + res["CustomerId"] + ")" + res["CustomerName"];
+                this.baseCourse = Number(Number(res.Course)).div(res.Quantity)
+                this.fxCode = res.FxCode,
+                    this.formData = {
+                        ProjectType:res.ProjectType||res.ProjectType == 0?res.ProjectType+'':"",
+                        OrderDate: res.OrderDate, //订单日期
+                        formNO: res.FormNO, //单号
+                        customerId: res.CustomerId,
+                        customerName: res.CustomerName,
+
+                        refrenceBranchCode: res.RefrenceBranchCode
+                            ? res.RefrenceBranchCode
+                            : "", //推荐人 branchCode
+                        refrenceBranchName: res.RefrenceBranchName
+                            ? res.RefrenceBranchName
+                            : "",
+
+                        ConsumeTypeId: res.ConsumeTypeId,
+
+                        Quantity: res.Quantity,
+
+                        RealPrice: res.RealPrice,
+
+                        projectId: res.ProjectId,
+                        projectName: res.ProjectName,
+                        isBranch: res.IsBranch,
+                        hospitalId: res.HospitalId, //医院信息
+                        hospitalName: res.HospitalName,
+
+                        serviceManId: res.ServiceManId, //服务者信息
+                        serviceManName: res.ServiceManName,
+
+                        designer: res.Designer || "", //设计师
+                        designerName: res.DesignerName || "",
+
+                        designerAssist: res.DesignerAssist || "", //设计师助理
+                        designerAssistName: res.DesignerAssistName || "",
+
+                        doctorAssist: res.DoctorAssist || "", //医生助理
+                        doctorAssistName: res.DoctorAssistName || "",
+                        nurseId: res.NurseId || "",
+                        nurseName: res.NurseName || "",
+                        price: res.Price, //项目价格
+                        course: res.Course, //项目疗程
+                        goodsUnitId: res.GoodsUnitId + "", //商品规格
+                        goodsUnitName: res.GoodsUnitName, //商品规格
+                        //currentCourse: 1, //当前疗程
+                        serviceFare: res.ServiceFare + "", //专家费比例
+                        Memo: res.Memo || "", //	备注
+
+                        RealAmount: res.RealAmount, //  实际支付金额 = 项目金额 + 医生服务费 + 附加费用
+                        orderType:res.OrderType+'',
+                        ImgUrl1: res.ImgUrl1, //图片信息
+                        ImgUrl2: res.ImgUrl2,
+                        ImgUrl3: res.ImgUrl3,
+                        ImgUrl4: res.ImgUrl4,
+                        ImgUrl5: res.ImgUrl5,
+                        MarketConsultantName: res.MarketConsultantName,
+                        MarketConsultantCode: res.MarketConsultantCode
+                    };
+                this.GetBranchByCode(res.CustomerId, "cus")
+                this.GetBranchByCode(res.RefrenceBranchCode, "ref")
+                for (let i = 1; i <= 5; i++) {
+                    if (res["ImgUrl" + i] && res["ImgUrl" + i] !== "") {
+                        let obj = {
+                            name: "ImgUrl" + i,
+                            url: baseImgPath + res["ImgUrl" + i]
+                        };
+                        this.fileList.push(obj);
+                    }
+                }
+                this.GetGoodsByCode(res.ProjectId);
+            },
+
+            //获取支付信息
+            async getPayWay() {
+                let res = await getBaseDataByCode("0006");
+                this.getDetail(this.data.FxCode, res); //获取详情信息
+            },
+
+            reset() {
+                this.$emit("popAddClose");
+            },
+        }
+    };
+</script>
+
+<style scoped lang="less">
+    .flex-box {
+        display: flex;
+        flex-wrap: wrap;
+    // justify-content: center;
+        width: 100%;
+    // height: 220 px;
+        margin-bottom: 5px;
+    // padding-right: 30 px;
+        background: rgb(249, 249, 249);
+
+    .flex-item {
+        flex: 0 50%;
+        margin-top: 10px;
+    }
+
+    }
+
+    .img-box {
+    // justify-content: center;
+        margin: 0;
+        padding: 0;
+    }
+
+    .foot-div {
+        background: rgb(249, 249, 249);
+    }
+
+    .reportManage {
+        font-size: 12px;
+        position: relative;
+    // height: 800 px;
+        margin: 0;
+        padding: 0;
+        overflow: auto;
+    }
+
+    .form_footer {
+        margin-top: 10px;
+        text-align: center
+    }
+    .priceMes{
+        display: inline-block;
+    }
+</style>
+

@@ -1,0 +1,338 @@
+<template>
+    <div class="newActivity selCommon">
+        <el-form :model="form" class="dialog_form" :rules="rules" ref="form" :label-width="formLabelWidth">
+            <el-form-item label="外标题：" class="form_item_mt0" prop="outTitle">
+                <el-input v-model="form.outTitle" auto-complete="off"></el-input>
+            </el-form-item>
+            <el-form-item label="内标题：" class="form_item_mt0" prop="inTitle">
+                <el-input v-model="form.inTitle" auto-complete="off"></el-input>
+            </el-form-item>
+            <el-form-item label="作者：" class="form_item_mt0">
+                <el-input v-model="form.author" auto-complete="off"></el-input>
+            </el-form-item>
+            <el-form-item label="摘要：" class="form_item_mt0">
+                <el-input v-model="form.abstract" auto-complete="off"></el-input>
+            </el-form-item>
+            <el-form-item label="活动区域：" class="form_item_mt0" required>
+                <el-form-item label="" class="form_item_mt0" prop="province" style="float: left">
+                    <el-select v-model="form.province" placeholder="请选择活动区域" style="width: 130px">
+                        <el-option v-for="(item,index) in province " :label="item.name" :value="item.name" :key="index"></el-option>
+                    </el-select>
+                </el-form-item>
+                <el-form-item label="" class="form_item_mt0" prop="city" style="float: left">
+                    <el-select v-model="form.city" placeholder="请选择活动区域" style="width: 130px" prop="city">
+                        <el-option v-for="(item,index) in city " :label="item.name" :value="item.name" :key="index"></el-option>
+                    </el-select>
+                </el-form-item>
+                <el-form-item label="" class="form_item_mt0" prop="area" style="float: left">
+                    <el-select v-model="form.area" placeholder="请选择活动区域" style="width: 130px" prop="area">
+                        <el-option v-for="(item,index) in area " :label="item.name" :value="item.name" :key="index"></el-option>
+                    </el-select>
+                </el-form-item>
+            </el-form-item>
+            <el-form-item label="活动日期：" class="form_item_mt0">
+                <el-date-picker v-model="form.date" type="date" placeholder="选择日期" ></el-date-picker>
+            </el-form-item>
+            <el-form-item label="活动内容：" class="form_item_mt0" prop="mes" required>
+                <el-radio class="radio" v-model="form.radio" label="0">新建内容</el-radio>
+                <el-radio class="radio" v-model="form.radio" label="1">转跳外部链接</el-radio>
+                <div class="" v-if="form.radio == 0">
+                    <vue-editor v-model="content" useCustomImageHandler @image-added="handleImageAdded" style="height: 300px"></vue-editor>
+                </div>
+                <div class="" v-if="form.radio == 1">
+                    <el-form-item label="URL" class="form_item_mt0">
+                        <el-input v-model="form.url"></el-input>
+                    </el-form-item>
+                </div>
+            </el-form-item>
+            <el-form-item label="活动照片：" class="form_item_mt0" prop="imageUrl" required>
+                <span>(请上传800*800已上的图片，小于1M)</span>
+                <el-upload
+                    class="avatar-uploader"
+                    :accept="acceptImage"
+                    :action="action"
+                    :show-file-list="false"
+                    :on-success="handleAvatarSuccess"
+                    :before-upload="beforeAvatarUpload">
+                    <img v-if="imageUrl" :src="imageUrl" class="avatar">
+                    <i v-else class="el-icon-plus avatar-uploader-icon"></i>
+                </el-upload>
+            </el-form-item>
+        </el-form>
+        <div slot="footer" class="dialog-footer">
+            <el-button type="primary" @click="sure('form')" :loading="saveLoading">确 定</el-button>
+            <el-button @click="cancel('form')">取 消</el-button>
+        </div>
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+    import addr from '../../../../static/addresss.json'
+    import { getCookie, delCookie } from '@/config/mUtils'
+    import {CreateActive,DelImg} from "@/api/myData"
+    import { VueEditor } from 'vue2-editor'
+    import {baseImgPath} from "@/config/env"
+    import { acceptImage } from '@/config/common'
+    import axios from 'axios'
+    import "@/style/selfCommon.less"
+    export default {
+        // name:"newActivity",
+        data () {
+            var checkFile = (rule, value, callback) => {
+                if (this.form.imageUrl.length == 0) {
+                    return callback(new Error('请上传图片'));
+                }else{
+                    callback();
+                }
+            };
+            var checkMes = (rule, value, callback) => {
+                if (this.content==""&&this.form.url=="") {
+                    return callback(new Error('请填写活动内容'));
+                }else{
+                    callback();
+                }
+            };
+            return {
+                saveLoading:false,
+                acceptImage:"",
+                action:"",
+                content: "",
+                province:[],
+                city:[],
+                area:[],
+                dialogImageUrl: '',
+                dialogVisible: false,
+                formLabelWidth:"100px",
+                imageUrl:"",
+                form:{
+                    outTitle:"",
+                    inTitle:"",
+                    abstract:"",
+                    province:"",
+                    city:"",
+                    area:"",
+                    author:"",
+                    radio:"0",
+                    date:"",
+                    richText:"",
+                    url:"",
+                    fileList:[],
+                    imageUrl:"",
+                },
+                rules:{
+                    outTitle: [
+                        { required: true, message: '请填写外标题', trigger: 'blur' }
+                    ],
+                    inTitle: [
+                        { required: true, message: '请填写内标题', trigger: 'change' }
+                    ],
+                    province: [
+                        { required: true, message: '请选择省份', trigger: 'change' }
+                    ],
+                    city: [
+                        { required: true, message: '请选择城市', trigger: 'change' }
+                    ],
+                    mes:[
+                        { validator: checkMes,trigger: 'change'}
+                    ],
+                    imageUrl:[
+                        { validator: checkFile,trigger: 'change'}
+                    ]
+                }
+            }
+        },
+        watch:{
+            'form.province':{
+                handler(curVal,oldVal){
+
+                    this.city = []
+                    this.form.city = ""
+                    this.province.forEach(data=>{
+                        if(data.name == curVal){
+                            this.city = data.sub
+                        }
+                    })
+                },
+                deep:true
+            },
+            'form.city':{
+                handler(curVal,oldVal){
+                    this.form.area = ""
+                    this.area = []
+                    this.city.forEach(data=>{
+                        if(data.name == curVal){
+                            this.area = data.sub
+                        }
+                    })
+                },
+                deep:true
+            },
+            "form.radio":{
+                handler(curVal,oldVal){
+                   this.content = ""
+                    this.form.url = ""
+                },
+                deep:true
+            }
+        },
+        mounted(){
+            this.action = baseImgPath + "/api/Image/UploadImg?op=activity"
+            this.acceptImage = acceptImage
+            this.province = addr.area
+        },
+        methods:{
+            async createActive(params){
+                try{
+                    this.saveLoading = true
+                    let res = await CreateActive(params)
+                    if(res.status == true){
+                        this.$message({message: '创建成功', type: 'success'});
+                        this.$emit("closeAct",false)
+                    }else{
+                        this.$message.error('创建失败');
+                    }
+                    this.saveLoading = false
+                }catch(err){
+                    console.log(err)
+                }
+            },
+            beforeAvatarUpload(file) {
+                const isLt2M = file.size / 1024 / 1024 < 1;
+                if (!isLt2M) {
+                    this.$message.error('上传图片大小不能超过 1MB!');
+                }
+                return  isLt2M;
+            },
+            handleAvatarSuccess(res, file) {
+                
+                if(this.form.imageUrl!=''){
+                    this.DelImg(this.form.imageUrl)
+                }
+                this.imageUrl = baseImgPath+file.response
+                this.form.imageUrl = file.response
+            },
+
+            async DelImg(filepath){
+                let res = await DelImg({filepath:filepath})
+                if(!res.status){        
+                this.$message({message: '原图片删除失败！'+res.errorMessage,type: 'warning'});
+                }
+                
+            },
+
+            /*1.用正则HtmlUtil表达式实现html转码*/
+            htmlEncode (str) {
+                var s = "";
+                if (str.length == 0) return "";
+                s = str.replace(/&/g, "%26amp;");
+                s = s.replace(/</g, "%26lt;");
+                s = s.replace(/>/g, "%26gt;");
+                s = s.replace(/ /g, "%26nbsp;");
+                s = s.replace(/\'/g, "%26#39;");
+                s = s.replace(/\"/g, "%26quot;");
+                return s;
+            },
+            sure(formName){
+                this.$refs[formName].validate((valid) => {
+                    if (valid) {
+                        this.createActive({
+                            inTitle:this.form.outTitle,
+                            outTitle:this.form.inTitle,
+                            abstract:this.form.abstract,
+                            activeDate:String(this.form.date).length>0?this.form.date.formatDate("yyyy-MM-dd"):"",
+                            province:this.form.province,
+                            city:this.form.city,
+                            area:this.form.area,
+                            htmlContent:this.htmlEncode(this.content),
+                            htmlUrl:this.form.url,
+                            author:this.form.author,
+                            createUserId:getCookie("userId"),
+                            createBy:getCookie("userName"),
+                            status:1,
+                            pictureUrl: this.form.imageUrl,
+                            createDate:new Date().formatDate("yyyy-MM-dd")
+                        })
+                    } else {
+                        console.log('error submit!!');
+                        return false;
+                    }
+                });
+
+            },
+            cancel(formName){
+                this.$emit("closeAct",false)
+            },
+            submitForm(formName) {
+                this.$refs[formName].resetFields();
+                this.$refs[formName].validate((valid) => {
+                    if (valid) {
+                        alert('submit!');
+                    } else {
+                        console.log('error submit!!');
+                        return false;
+                    }
+                });
+            },
+            resetForm(formName) {
+                this.$refs[formName].resetFields();
+            },
+            handleImageAdded(file, Editor, cursorLocation) {
+                var formData = new FormData();
+                formData.append('image', file)
+
+                axios({
+                    url: baseImgPath + '/api/Image/UploadImg?op=supplier',
+                    method: 'POST',
+                    headers: {'Content-Type': 'multipart/form-data'},
+                    data: formData
+                }).then((result) => {
+
+                    let url = result.data
+                    Editor.insertEmbed(cursorLocation, 'image', baseImgPath + url);
+                }).catch((err) => {
+                    console.log(err);
+                })
+            },
+
+        },
+        components: {
+            VueEditor
+        }
+    }
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped lang="less">
+    .dialog-footer {
+      text-align: center;
+    }
+    .dialog_form{
+        height: 500px;
+        overflow-y: auto;
+    }
+    .avatar-uploader .el-upload {
+        border: 1px dashed #d9d9d9;
+        border-radius: 6px;
+        cursor: pointer;
+        position: relative;
+        overflow: hidden;
+    }
+    .avatar-uploader .el-upload:hover {
+        border-color: #20a0ff;
+    }
+    .avatar-uploader-icon {
+        font-size: 28px;
+        color: #8c939d;
+        width: 178px;
+        height: 178px;
+        line-height: 178px;
+        text-align: center;
+        background-color: #fbfdff;
+        border: 1px dashed #c0ccda;
+    }
+    .avatar {
+        width: 178px;
+        height: 178px;
+        display: block;
+    }
+</style>

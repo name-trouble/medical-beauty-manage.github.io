@@ -1,0 +1,161 @@
+<template>
+    <div class="selCommon editRegister">
+        <el-form :model="ruleForm" ref="ruleForm" :inline="true" label-width="85px" class="demo-ruleForm">
+            <el-form-item label="入库日期：" class="form_item_mt10" style="width:300px">
+                <span>{{ruleForm.ticketInDate.substring(0,10)}}</span>
+            </el-form-item>
+            <el-form-item label="医院：" class="form_item_mt10" style="width:300px" >
+                <span>{{ruleForm.hospitalName}}</span>
+            </el-form-item>
+            <el-form-item label="入库类别："  class="form_item_mt10" style="width:300px">
+                 <span>{{ruleForm.ticketInType}}</span>
+            </el-form-item>
+
+            <el-form-item label="入库仓库："  class="form_item_mt10" style="width:300px">
+                <span>{{ruleForm.warehouseName}}</span>
+            </el-form-item>
+
+            <el-form-item label="操作人："  class="form_item_mt10" style="width:300px">
+                <span>{{ruleForm.createBy}}</span>
+            </el-form-item>
+           
+            <el-form-item label=" "  class="" label-width="20px">
+                <el-table :data="tableData" border style="width: 950px;margin-top:15px;margin-bottom:10px;" max-height="400">
+                    <el-table-column prop="ticketName" label="券名称" min-width="100"></el-table-column>
+                    <!-- <el-table-column prop="HospitalName" label="适用医院" min-width="100" show-overflow-tooltip></el-table-column> -->
+                    <el-table-column prop="quantity" label="数量" min-width="70">
+                        <template scope="scope">
+                            <span >{{scope.row.quantity}}</span>
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="salePrice" label="售价" min-width="70">
+                        <template scope="scope">
+                            <span>{{scope.row.salePrice}}</span>
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="totalAmount" label="金额" min-width="70">
+                        <template scope="scope">
+                            <span>{{scope.row.totalAmount}}</span>
+                        </template>
+                    </el-table-column>
+                    
+                    <el-table-column prop="startNum" label="出券前缀" width="170">
+                        <template scope="scope">
+                            <span>{{scope.row.ticketPrefixCode}}</span>
+                        </template>
+                    </el-table-column>
+                   
+                    <el-table-column prop="numCount" label="流水号位数" min-width="70">
+                        <template scope="scope">
+                            <span>{{scope.row.numCount}}</span>
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="status" label="操作" width="150">
+                        <template scope="scope">
+                            <el-button @click="viewTicket(scope.row)" type="primary" size="small">查看券号</el-button>
+                        </template>
+                    </el-table-column>
+                </el-table>
+            </el-form-item>
+
+            <el-form-item label="备注：" class="form_item_mt1">
+                <el-input v-model="ruleForm.memo" type="textarea" :rows="4" style="width:500px" ></el-input>
+            </el-form-item>
+        </el-form>
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+    import { getCookie, delCookie } from '@/config/mUtils'
+    import {GetWarehouse,GetGoodsByKeywords2,GetUserAllByKeywords,GetTicketInDetail,getTicketsInfoByTicketCode,getAllTicket,GetStockTicketByKeywords,
+    GetDropDownPermission,getSupplierByPage,AddStockTicketIn,UpdatestockTicketIn} from "@/api/myData"
+    import Vue from "vue"
+    Vue.component('my-item-tickets', {
+        functional: true,
+        render: function(h, ctx) {
+            var item = ctx.props.item;
+            return h('li', ctx.data, [
+                h('p', { attrs: { class: 'name' } }, ["券名称："+item.TickName]),
+                h('p', { attrs: { class: 'name' } }, ["券号："+item.TickInfoCode]),
+                h('p', { attrs: { class: 'name' } }, ["券面值："+item.FaceValue]),
+                h('p', { attrs: { class: 'name' } }, ["券类型："+item.Type]),
+                h('p', { attrs: { class: 'name' } }, ["折扣："+item.discount]),
+            ]);
+        },
+        props: {
+            item: { type: Object, required: true }
+        }
+    });
+  
+    export default {
+        props:{
+            editMes:{},//编辑信息
+        },
+        data () {
+            return {
+                saveLoading:false,
+                dialogDet:false,
+                customer:"",
+                ruleForm: {},
+                tableData:[],
+                tickets:{},
+            }
+        },
+        mounted(){
+            this.GetBaseDataAll()
+        },
+        watch:{
+            'ruleForm.hospital':{
+                handler(curVal,oldVal){
+                    if(oldVal != ""){
+                        this.ruleForm.wareHouse = ""
+                    }
+                },
+                deep:true
+            },
+            'ruleForm.ticketInType':{
+                handler(curVal,oldVal){//退货类型切换后清空之前存下的信息
+                    if(!this.editMes.view){
+                        this.tableData = []
+                        this.customer = ''
+                    }
+                },
+                deep:true
+            }
+        },
+        methods: {
+
+            viewTicket(val){
+                debugger
+                let arr = []
+                val.rangeDetailInList.forEach(row => {
+                    arr = arr.concat(row.ticketCodes.split(","))
+                });
+                this.$emit("viewTicket",arr)
+            },
+
+            async GetTicketInDetail(id){
+                let res = await GetTicketInDetail({id:id})
+                this.tableData = res.data.stockTicketInDetailList
+            },
+
+            async GetBaseDataAll(){
+                try{
+                    let res = await GetTicketInDetail({id:this.editMes.id})
+                    this.tableData = res.data.stockTicketInDetailList
+                    this.ruleForm = res.data.stockTicketIn
+                }catch(err){
+                    console.log(err)
+                }
+            },
+        },
+        components: {
+
+        }
+    }
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+
+</style>

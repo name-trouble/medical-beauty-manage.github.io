@@ -1,0 +1,352 @@
+4<template>
+    <div class="selCommon AgentManage">
+        <!-- 查询信息 -->
+        <el-form :inline="true" :model="formInline" class="demo-form-inline  form_search" label-width="90px">
+            <el-form-item label="医院：" class="form_item_mt10">
+                <el-select v-model="formInline.hospital"  style='width:200px;' @change="onSubmit">
+                    <el-option v-for="(item,index) in hospitalList" :key="index" :label="item.supplierName" :value="item.code"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="关键字：" class="form_item_mt10">
+                <el-input v-model="formInline.branchName" placeholder="店家/联系电话" style="width: 200px;" v-on:keyup.enter.native="onSubmit"></el-input>
+            </el-form-item>
+            <el-form-item label="服务商：" class="form_item_mt10">
+                <el-input v-model="formInline.serviceName" placeholder="" style="width: 200px;" v-on:keyup.enter.native="onSubmit"></el-input>
+            </el-form-item>
+            <el-form-item label="销售公司："  class="form_item_mt10" >
+                <el-select style="width:200px" v-model="formInline.topBranch"  filterable placeholder="请选择">
+                    <el-option v-for="(item,index) in topBranchList" :label="item.branchName" :value="item.code" :key="index"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label=" " class="form_item_mt10">
+                <el-button type="primary" @click="onSubmit"  class="searchBtn">查询</el-button>
+            </el-form-item>
+        </el-form>
+        <!-- 查询信息 -->
+
+        <!-- 信息表 -->
+        <el-table :data="tableData" border style="width: 100%;margin-top:15px;margin-bottom:10px;" class="min_table smt" v-loading="loading"  max-height="660">
+            <el-table-column prop="branchName" label="店家名称" min-width="100"></el-table-column>
+            <el-table-column prop="phoneNumber" label="手机号码" min-width="100"></el-table-column>
+            <el-table-column prop="serviceName" label="所属服务商" min-width="100"></el-table-column>
+            <el-table-column prop="shopName" label="店铺名称" min-width="120"></el-table-column>
+            <el-table-column prop="businessTypeName" label="经营类型" min-width="90"></el-table-column>
+            <el-table-column prop="popularity" label="人气" min-width="90"></el-table-column>
+             <el-table-column prop="Code" label="地址" min-width="120" show-overflow-tooltip>
+                <template scope="scope">
+                    <span v-if="scope.row.province">{{scope.row.province}}</span>
+                    <span v-if="scope.row.city">{{scope.row.city}}</span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="hospitalName" label="医院" min-width="140" show-overflow-tooltip></el-table-column>
+            <el-table-column prop="grade" label="操作" width="180">
+                <template scope="scope">
+                  <el-button @click="openImgDialog(scope.row)" type="primary" size="small">上传图片</el-button>
+                </template>
+            </el-table-column>
+        </el-table>
+        <!-- 信息表 -->
+        <!-- 分页 -->
+        <div class="block">
+            <el-pagination
+                @size-change="handleSizeChange"
+                @current-change="handleCurrentChange"
+                :current-page="currentPage"
+                :page-sizes="[10, 20, 30, 40]"
+                :page-size="size"
+                layout="total, sizes, prev, pager, next, jumper"
+                :total="total">
+            </el-pagination>
+        </div>
+        <!-- 分页 -->
+
+        <el-dialog title="上传图片" :visible.sync="imgDialog" size='' :close-on-click-modal="false"  top="20%">
+            <el-form :model="form"  ref="ruleForm" label-width="80px" class="demo-ruleForm" style="width:600px;">
+                <el-form-item label="店家姓名："  class="form_item_mt10">
+                   <span>{{form.branchName}}</span>
+                </el-form-item>
+                <el-form-item label="手机号码："  class="form_item_mt10">
+                   <span>{{form.phoneNumber}}</span>
+                </el-form-item>
+                <el-form-item label="门头照片：" class="form_item_mt10">
+                   <el-upload
+                        :action="uploadUrl"
+                        :acceptImage="acceptImage"
+                        :file-list="fileList1"
+                        :multiple="true"
+                        list-type="picture-card"
+                        :on-success="onSuccess"
+                        :before-upload="beforeUpload"
+                        :on-preview="handlePictureCardPreview"
+                        :on-remove="handleRemove">
+                        <i class="el-icon-plus"></i>
+                    </el-upload>
+                </el-form-item>
+                <el-form-item label="大厅照片：" class="form_item_mt10">
+                   <el-upload
+                        :action="uploadUrl"
+                        :acceptImage="acceptImage"
+                        list-type="picture-card"
+                        :file-list="fileList2"
+                        :multiple="true"
+                        :on-success="onSuccess2"
+                        :before-upload="beforeUpload"
+                        :on-preview="handlePictureCardPreview"
+                        :on-remove="handleRemove">
+                        <i class="el-icon-plus"></i>
+                    </el-upload>
+                </el-form-item>
+                <el-form-item label="院内环境：" class="form_item_mt10">
+                   <el-upload
+                        :action="uploadUrl"
+                        :acceptImage="acceptImage"
+                        list-type="picture-card"
+                        :file-list="fileList3"
+                        :multiple="true"
+                        :before-upload="beforeUpload"
+                        :on-success="onSuccess3"
+                        :on-preview="handlePictureCardPreview"
+                        :on-remove="handleRemove">
+                        <i class="el-icon-plus"></i>
+                    </el-upload>
+                </el-form-item>
+            </el-form>
+            <div class="form_footer">
+                <el-button type="primary" @click="sure">确定</el-button>
+                <el-button  @click="cancel">取消</el-button>
+            </div>
+        </el-dialog>
+        <el-dialog v-model="dialogVisible" size="tiny">
+            <img width="100%" :src="dialogImageUrl" alt="">
+        </el-dialog>
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+    import { xmxUrl, baseImgPath } from '@/config/env'
+    import { imgApi, acceptImage } from '@/config/common'
+    let uploadUrl = xmxUrl + imgApi + '?op=branchshop'
+    import "@/style/selfCommon.less"
+    import '@/page/FinanceManage/ReportManage/lib/report.less';
+    import {GetDropDownPermission,GetBranchShopList,DelImg,AddBaseCommonPhoto,GetBaseCommonPhoto} from "@/api/myData"
+    import { getCookie } from '../../../config/mUtils';
+    export default {
+        data() {
+            return {
+                uploadUrl,acceptImage,baseImgPath,
+                userId:getCookie("userId"),
+                consult:'',
+                hospitalList:"",
+                imgDialog:false,
+                loading:false,
+                dialogVisible:false,
+                currentPage: 1,
+                dialogImageUrl:'',
+                form: {},
+                total: 0,
+                size: 10,
+                formInline: {
+                    branchName:'',
+                    IsEnable:"",
+                    hospital:'',
+                    topBranch:'',
+                    serviceName:'',
+                    
+                },
+                topBranchList:[],
+                fileList1:[],
+                fileList2:[],
+                fileList3:[],
+                tableData: [],
+            }
+        },
+        computed: {
+          
+        },
+        mounted: function () {
+           this.getBranchGradeAll()
+        },
+        watch:{
+          
+        },
+        methods: {
+
+            onSuccess(response, file, fileList){
+                this.fileList1 = fileList
+            },
+
+            onSuccess2(response, file, fileList){
+                this.fileList2 = fileList
+            },
+
+            onSuccess3(response, file, fileList){
+                this.fileList3 = fileList
+            },
+
+            beforeUpload(file) {
+                const isLt2M = file.size / 1024 / 1024 < 2;
+                if (!isLt2M) {
+                this.$message.error('上传图片大小不能超过 2MB!');
+                }
+                return isLt2M;
+            },
+
+            async AddBaseCommonPhoto(params){
+                let res = await AddBaseCommonPhoto(params)
+                if(res.status){
+                    this.$message({message: '保存成功', type: 'success'});
+                    this.imgDialog = false
+                }else{
+                    this.$message.error('保存失败'+res.errorMessage);
+                }
+            },
+
+            async GetBaseCommonPhoto(params){
+                let res = await GetBaseCommonPhoto(params)
+                res.data.forEach(row=>{
+                    if(row.photoDesc == 1){
+                        this.fileList1.push({
+                            url:this.baseImgPath+row.imgUrl,
+                            response:row.imgUrl,
+                        })
+                    }else if(row.photoDesc == 2){
+                        this.fileList2.push({
+                            url:this.baseImgPath+row.imgUrl,
+                            response:row.imgUrl,
+                        })
+                    } else if(row.photoDesc == 3){
+                        this.fileList3.push({
+                            url:this.baseImgPath+row.imgUrl,
+                            response:row.imgUrl,
+                        })
+                    }
+                })
+            },
+          
+            handleRemove(file, fileList) {
+                this.DelImg(file.response)
+                console.log(file, fileList);
+            },
+            // 删除原图片/视频
+            async DelImg(filepath){
+                let res = await DelImg({filepath:filepath})
+                if(!res.status){        
+                    this.$message({message: '原图片删除失败！'+res.errorMessage,type: 'warning'});
+                }
+            },
+            handlePictureCardPreview(file) {
+                this.dialogImageUrl = file.url;
+                this.dialogVisible = true;
+            },
+            
+            sure(){
+                this.AddBaseCommonPhoto({
+                    jsonStr:this.getImgMes(),
+                    code:this.form.code
+                })
+            },
+            cancel(){
+
+            },
+
+            getImgMes(){
+                debugger
+                let arr = []
+                this.fileList1.forEach(row=>{
+                    row.index = 1
+                })
+                this.fileList2.forEach(row=>{
+                    row.index = 2
+                })
+                this.fileList3.forEach(row=>{
+                    row.index = 3
+                })
+                let data = this.fileList1.concat(this.fileList2).concat(this.fileList3)
+                data.forEach(ele=>{
+                    arr.push({
+                        typeId:2,
+                        refCode:this.form.code,
+                        PhotoDesc:ele.index,//用來标识图片所属类型
+                        imgUrl:ele.response,
+                        createBy:getCookie("userName"),
+                        createUserId:getCookie("userId"),
+                    })
+                })
+                debugger
+                return JSON.stringify(arr)
+            },
+            openImgDialog(data){
+                this.GetBaseCommonPhoto({
+                    RefCode:data.code
+                })
+                this.form = data
+                this.imgDialog = true
+            },
+            async getBranchGradeAll(){
+                try{
+                    let [res1,branchList] = await Promise.all([GetDropDownPermission({typeId: 1}),GetDropDownPermission({typeId:"2"})])
+                    this.topBranchList = branchList.data
+                    this.formInline.topBranch = branchList.data[0].code
+                    this.hospitalList = res1.data
+                    this.formInline.hospital = this.hospitalList[0].code
+                }catch(err){
+                    console.log(err)
+                }
+            },
+                //  条件查询
+            async GetBranchShopList(params){
+                try{
+                    let res = await GetBranchShopList(params)
+                    this.tableData = res.data
+                    this.loading = false
+                    this.total = res.count
+                }catch(err){
+                    console.log(err)
+                }
+            },
+            // 条件查询
+            onSubmit() {
+                console.log('submit!');
+                this.currentPage = 1
+                this.getTableDate()
+            },
+
+            // 分页页面展示数据条数改变触发事件
+            handleSizeChange(val) {
+                console.log(`每页 ${val} 条`);
+                this.size = val
+                this.getTableDate()
+            },
+
+            // 分页当前页码改变触发事件
+            handleCurrentChange(val) {
+                console.log(`当前页: ${val}`);
+                this.currentPage = val
+                this.getTableDate()
+            },
+
+            getTableDate(index){
+                this.loading = true
+                this.GetBranchShopList({
+                    Keywords: this.formInline.branchName.removeSP(),
+                    pageIndex: this.currentPage,
+                    pageSize: this.size,
+                    IsEnabled:this.formInline.IsEnable,
+                    hospitalCode:this.formInline.hospital,
+                    TopBranchCode:this.formInline.topBranch,
+                    serviceName:this.formInline.serviceName
+                })
+            },
+        },
+        components: {
+           
+        }
+    }
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+.form_footer{
+    margin-top: 10px;
+}
+</style>

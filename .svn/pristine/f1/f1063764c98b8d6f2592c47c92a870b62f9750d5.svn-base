@@ -1,0 +1,27 @@
+/**
+ * 配置编译环境和线上环境之间的切换
+ *
+ * baseUrl: 域名地址
+ * routerMode: 路由模式
+ * baseImgPath: 图片存放地址
+ *
+ */
+let xmxUrl,baseImgPath
+if (process.env.NODE_ENV == 'development') {
+    // xmxUrl = 'http://192.168.0.37:8081/api';
+    // baseImgPath = 'http://192.168.0.37:8081';
+    // xmxUrl = 'http://192.168.0.188:8081/api';
+    // baseImgPath = 'http://192.168.0.188:8081';
+    xmxUrl = 'https://api.51xinmeimei.com/api';
+    baseImgPath = 'https://api.51xinmeimei.com';
+} else {
+    // xmxUrl = 'http://192.168.0.188:8081/api';
+    // baseImgPath = 'http://192.168.0.188:8081';
+    xmxUrl = 'https://api.51xinmeimei.com/api';
+    baseImgPath = 'https://api.51xinmeimei.com';
+}
+export {
+    baseImgPath,
+    xmxUrl,
+}
+

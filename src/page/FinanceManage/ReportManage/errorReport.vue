@@ -1,0 +1,236 @@
+<template>
+    <div class="selCommon">
+
+         <el-form :inline="true" :model="formInline" class="demo-form-inline form_search" label-width="80px"    >
+            <!-- <el-form-item label="时间范围：" class="form_item_mt10 ">
+                <el-date-picker v-model="formInline.date" @change="dateChange" type="daterange" placeholder="选择日期范围"
+                                class="wt200"></el-date-picker>
+            </el-form-item> -->
+            <el-form-item label="关键字：" class="form_item_mt10 ">
+                <el-input v-model="formInline.keyWords" type="daterange" placeholder="录单人/单据编号" class="wt200"></el-input>
+            </el-form-item>
+             <!-- <el-form-item label="医院:" class="form_item_mt10">
+                <el-select v-model="formInline.hospital"  style='width:200px;'>
+                    <el-option v-for="(item,index) in hospitalList" :key="index" :label="item.supplierName" :value="item.code"></el-option>
+                </el-select>
+            </el-form-item> -->
+            <el-form-item label="" class="form_item_mt10 form_item_wh280">
+                <el-button type="primary" @click="submit" class="searchBtn">查询</el-button>
+                <Export ref="port" :tHeader="tHeader" :filterVal='filterVal' :tableData1='reportData' :name='name'></Export>
+            </el-form-item>
+        </el-form>
+        <!-- 信息表 -->
+        <el-table :data="tableData" border style="width: 100%;margin-top:15px;margin-bottom:10px;" class="smt min_table"
+         max-height="660" v-loading="loading">
+            <el-table-column prop="createOn" min-width="120" label="日期">
+                <template slot-scope="scope">
+                    <span v-if="scope.row.createOn">
+                        {{scope.row.createOn.substring(0,10)}}
+                    </span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="recordName" label="录单人" min-width="100"></el-table-column>
+            <el-table-column prop="fxCode" min-width="120" label="单据编号">
+                <template slot-scope="scope">
+                    <span class="table_btn" @click="read(scope.$index)" type="text" size="small" >{{scope.row.fxCode}}</span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="errorReason" label="错误原因" min-width="120"></el-table-column>
+            <el-table-column prop="approverName" label="审核人" min-width="120"></el-table-column>
+            <el-table-column prop="approverDate" label="审核日期" min-width="120">
+                 <template slot-scope="scope">
+                    <span v-if="scope.row.approverDate">
+                        {{scope.row.approverDate.substring(0,10)}}
+                    </span>
+                </template>
+            </el-table-column>
+        </el-table>
+        <!-- 信息表 -->
+
+        <!-- 分页 -->
+        <div class="block">
+            <el-pagination
+                @size-change="handleSizeChange"
+                @current-change="handleCurrentChange"
+                :current-page="currentPage"
+                :page-sizes="[10, 20, 30, 40]"
+                :page-size="size"
+                layout="total, sizes, prev, pager, next, jumper"
+                :total="total">
+            </el-pagination>
+        </div>
+        <!-- 分页 -->
+
+        <el-dialog ref="pay" title="查看详情" :visible.sync="ispopRead" top="5%" @close="ispopRead=false" size="">
+            <pop-read v-if="ispopRead" :data="selectData" style="width:950px"></pop-read>
+        </el-dialog>
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+    import "@/style/selfCommon.less"
+     import Export from '@/components/export'
+    import reportSearch from "./com/reportSeach.vue"
+    import PopRead from './com/reportRead.vue'
+    import {GetProofOrderErrorAll,CancelOrRejectOrder,getBaseDataByCode,GetDropDownPermission} from "@/api/myData"
+    var _this
+    export default {
+        data(){
+            return {
+                loading:false,
+                cusMes:{},
+                dialogView:false,
+                size: 10,
+                total: 0,
+                currentPage: 1,
+                allData:[],
+                tableData: [],
+                hospitalList:[],
+                formInline:{
+                    startDate:"",
+                    endDate:"",
+                    hospital:"",
+                    keyWords:"",
+                },
+                ispopRead: false,
+                consumeList:[],
+                medicalList:[],
+            }
+        },
+         computed: {
+            /* 导出报表参数 tHeader,filterVal,tableData1*/
+            tHeader(){
+                return ['日期', '录单人', '单据编号', '错误原因', '审核人',"审核日期"]
+            },
+            filterVal(){
+                return ['createOn', 'recordName', 'fxCode', 'errorReason', 'approverName','approverDate']
+            },
+            name(){
+                return '错误单'
+            },
+            reportData(){
+                let arr = JSON.parse(JSON.stringify(this.tableData))
+                return arr
+            }
+        },
+        filters:{
+            filFun(val){
+                let len = _this.consumeList.length
+                let list =  _this.consumeList
+                for(var i = 0;i<len;i++){
+                    if(val == list[i].DataCode){
+                        return list[i].DataName
+                    }
+                }
+            },
+            filFunM(val){
+                let len = _this.medicalList.length
+                let list =  _this.medicalList
+                for(var i = 0;i<len;i++){
+                    if(val == list[i].DataCode){
+                        return list[i].DataName
+                    }
+                }
+            },
+        },
+        mounted(){
+            _this = this
+             this.getType()
+        },
+        methods: {
+            dateChange(val){
+                 if(val){
+                    val = val.formatDates()
+                     this.formInline.startDate = val.substring(0,10)
+                    this.formInline.endDate = val.substring(13)
+                }else{
+                     this.formInline.startDate = ""
+                    this.formInline.endDate = ""
+                }
+            },
+            view(index,data){
+                this.cusMes = data[index]
+                this.dialogView = true
+            },
+            async getType(){
+                let res = await GetDropDownPermission({typeId: 1})
+                this.hospitalList = res.data
+                this.formInline.hospital = this.hospitalList[0].code
+                let [consumeList,medicalList] = await Promise.all([getBaseDataByCode("0017"),getBaseDataByCode("0022")])
+                this.consumeList = consumeList
+                this.medicalList = medicalList
+            },
+//            获取列表
+            async GetProofOrderErrorAll(params){
+                this.loading = true
+                try {
+                    let res = await GetProofOrderErrorAll(params)
+                    if(res.status){
+                        this.total = res.count
+                        this.allData = res.data
+                        this.pageChange()
+                    }else{
+                        this.$message({ type: 'error', message: '获取数据失败!'+res.errorMessage })
+                    }
+                    this.loading = false
+                } catch (err) {
+                    console.log(err)
+                }
+            },
+            dealData(data){
+                let arr = JSON.parse(JSON.stringify(this.tableData))
+                arr.forEach(row=>{
+                    row.OrderType = row.OrderType == '1'?'线上':'线下'
+                    row.reason="被驳回"
+                    if(row.ApproveState == 10){
+                        row.IsPayOff = "已关闭"
+                    }else if(row.ApproveState == 6){
+                        row.IsPayOff = "已退款"
+                    }else{
+                        if(row.IsPayOff){
+                        row.IsPayOff = "已结清"
+                        }else{
+                            row.IsPayOff = "未结清"
+                        }
+                    }
+                })
+                return arr
+            },
+
+//            搜索获取条件
+            submit(val){
+//                调用搜索接口
+                this.GetProofOrderErrorAll({
+                    keywords:this.formInline.keyWords.removeSP()
+                })
+            },
+            handleSizeChange(val) {
+                console.log(`每页 ${val} 条`);
+                this.size = val
+                this.pageChange()
+            },
+            handleCurrentChange(val) {
+                console.log(`当前页: ${val}`);
+                this.currentPage = val
+                this.pageChange()
+            },
+             //            查看
+            read(index) {
+                this.selectData = this.tableData[index]
+                this.ispopRead = true
+            },
+            pageChange(){
+                this.tableData = this.allData.slice(this.size*(this.currentPage-1),this.size*this.currentPage)
+            }
+        },
+        components: {
+             PopRead,Export
+        }
+    }
+</script>
+
+<style  scoped>
+.block{
+    float: right
+}
+</style>

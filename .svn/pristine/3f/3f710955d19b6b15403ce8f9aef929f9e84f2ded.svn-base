@@ -1,0 +1,295 @@
+<template>
+    <div class="selCommon MemberManage">
+        <el-form :inline="true" :model="formInline" class="demo-form-inline form_search" label-width="85px">
+            <el-form-item label="注册时间：" class="form_item_mt10">
+                <el-date-picker
+                    v-model="date"
+                    type="daterange"
+                    class="form_sear_ipt"
+                    @change="dateSelect"
+                    placeholder="选择日期范围">
+                </el-date-picker>
+            </el-form-item>
+           
+            <el-form-item label="启用状态：" class="form_item_mt10">
+               <el-select v-model="formInline.isEnable"  class="form_sear_ipt" @change="onSubmit">
+                   <el-option label="全部" value=""></el-option>
+                   <el-option label="未启用" value="0"></el-option>
+                   <el-option label="已启用" value="1"></el-option>
+               </el-select>
+            </el-form-item>
+             <el-form-item label="支付状态：" class="form_item_mt10">
+               <el-select v-model="formInline.isPayOff"  class="form_sear_ipt" @change="onSubmit">
+                   <el-option label="全部" value=""></el-option>
+                   <el-option label="未付清" value="0"></el-option>
+                   <el-option label="已付清" value="1"></el-option>
+               </el-select>
+            </el-form-item>
+            <el-form-item label="医院：" class="form_item_mt10">
+                <el-select v-model="formInline.hospital" class="form_sear_ipt" @change="onSubmit">
+                    <el-option v-for="(item,index) in hospitalList" :key="index" :label="item.supplierName" :value="item.code"></el-option>
+                </el-select>
+            </el-form-item>
+             <el-form-item label="关键字：" class="form_item_mt10">
+                <el-input v-model="formInline.keywords" placeholder="" class="form_sear_ipt"  v-on:keyup.enter.native="onSubmit"></el-input>
+            </el-form-item><br/>
+            <el-form-item label=" " class="form_item_mt10">
+                <el-button type="primary" @click="onSubmit" class="searchBtn">查询</el-button>
+            </el-form-item>
+        </el-form>
+        <!-- 信息表 -->
+        <el-table :data="tableData" border style="width: 100%;margin-top:15px;margin-bottom:10px" class="smt min_table"  v-loading="loading">
+            <el-table-column prop="code" width="120" label="服务商编号" >
+                <template scope="scope">
+                    <el-button type="text" @click="det(scope.row)">{{scope.row.code}}</el-button>
+                </template>
+            </el-table-column>
+            <el-table-column prop="registDate" width="100" label="注册日期" >
+                <template scope="scope">
+                    <span v-if="scope.row.registDate">
+                        {{scope.row.registDate.substring(0,10)}}
+                    </span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="serviceInfoName" label="服务商" min-width="80"> </el-table-column>
+            <el-table-column prop="serviceGrade" label="等级" min-width="70">
+                <template scope="scope">
+                    <span v-if="scope.row.serviceGrade == 1">总监</span>
+                    <span v-if="scope.row.serviceGrade == 2">经理</span>
+                    <span v-if="scope.row.serviceGrade == 3">科长</span>
+                    <span v-if="scope.row.serviceGrade == 4">组长</span>
+                    <span v-if="scope.row.serviceGrade == 5">美导</span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="phoneNumber" label="手机号" min-width="120">
+                <template scope="scope">
+                    <span v-if="scope.row.phoneNumber">{{scope.row.phoneNumber.substring(0,3)+'****'+scope.row.phoneNumber.substring(7)}}</span>
+                </template>
+            </el-table-column>
+
+            <!-- <el-table-column prop="IDCard" label="身份证号" min-width="100"></el-table-column> -->
+            <el-table-column prop="birthday" label="生日" min-width="100"></el-table-column>
+            <el-table-column prop="sex" label="性别" min-width="70">
+                <template scope="scope">
+                    <span v-if="scope.row.sex == 1">男</span>
+                    <span v-if="scope.row.sex == 0">女</span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="referrerName" label="推荐人" min-width="180">
+                <template scope="scope">
+                    {{scope.row.referrerName}} [{{scope.row.referrerCode}}]
+                </template>
+            </el-table-column>
+            <el-table-column prop="hospitalName" label="医院" min-width="150"></el-table-column>
+            <el-table-column prop="IsAuth" label="支付状态" min-width="100">
+                <template scope="scope">
+                    <el-tag :type="scope.row.isPayOff==0?'danger':'success'" v-text="scope.row.isPayOff==0?'未付清':'已付清'"></el-tag>
+                </template>
+            </el-table-column>
+            <el-table-column prop="isEnable" label="启用状态" min-width="100">
+                <template scope="scope">
+                    <el-tag :type="scope.row.isEnable==2?'danger':'success'" v-text="scope.row.isEnable==2?'退会':'启用'"></el-tag>
+                </template>
+            </el-table-column>
+            <el-table-column prop="createBy" label="创建人" min-width="100"></el-table-column>
+            <el-table-column prop="IsAuth" label="操作" min-width="120" align="center">
+                <template scope="scope">
+                    <el-button @click="serviceObj(scope.row)" type="primary" size="small">查看服务店家</el-button>
+                </template>
+            </el-table-column>
+        </el-table>
+        <!-- 信息表 -->
+
+        <!-- 分页 -->
+        <div class="block">
+            <el-pagination
+                @size-change="handleSizeChange"
+                @current-change="handleCurrentChange"
+                :current-page="currentPage"
+                :page-sizes="[10, 20, 30, 40]"
+                :page-size="size"
+                layout="total, sizes, prev, pager, next, jumper"
+                :total="total">
+            </el-pagination>
+        </div>
+        <!-- 分页 -->
+
+        <el-dialog title="服务商详情" :visible.sync="dialogTableVisibleD" size="" :close-on-click-modal="false" top="20%">
+            <det style="width: 800px" v-if="dialogTableVisibleD" :mes="mes"></det>
+        </el-dialog>
+
+        <el-dialog title="服务店家" :visible.sync="selectDialog" size="" :close-on-click-modal="false" top="10%" >
+            <el-table :data="selectShopData" border style="width: 600px;margin-top:15px;margin-bottom:10px;" ref="multipleTable" class="min_table smt" max-height="600">
+                <el-table-column prop="branchName" label="消费商" min-width="80"></el-table-column>
+                <el-table-column prop="shopName" label="店铺名称" min-width="120"></el-table-column>
+                <el-table-column prop="shopName" label="地址" min-width="120">
+                    <template scope="scope">
+                        <span>{{scope.row.province+''+scope.row.city}}</span>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="shopTag" label="店家类型" min-width="80"></el-table-column>
+            </el-table>
+            <div class="block" style="padding-bottom:20px;">
+                <el-pagination
+                    @size-change="handleSizeChange1"
+                    @current-change="handleCurrentChange1"
+                    :current-page="currentPage1"
+                    :page-sizes="[10, 20, 30, 40]"
+                    :page-size="size1"
+                    layout="total, sizes, prev, pager, next, jumper"
+                    :total="total1">
+                </el-pagination>
+            </div>
+        </el-dialog>
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+    import  "../../../style/selfCommon.less"
+    import { xmxUrl } from '@/config/env'
+    import det from "./com/memberDet"
+    import {GetDropDownPermission,GetServiceInfo,GetServiceShop} from "@/api/myData"
+    import { getStore } from '@/config/mUtils';
+    export default {
+        data () {
+            return {
+                selectDialog:false,
+                xmxUrl,
+                loading:true,
+                mes:{},
+                dialogTableVisibleD:false,
+                total:10,
+                size:10,
+                currentPage:1,
+                total1:10,
+                size1:10,
+                currentPage1:1,
+                hospitalList:[],
+                date:"",
+                formInline:{
+                    date1:"",
+                    date2:"",
+                    hospital:'',
+                    keywords:'',
+                    isEnable:'',
+                    isPayOff:'',
+                },
+                tableData:[],
+                selectShopData:[],//已选择的商户
+                shopData:[],
+            }
+        },
+        computed: {
+           
+        },
+        
+        mounted(){
+           this.getHospital()
+        },
+        methods:{
+            async getHospital(params){
+                try {
+                    let [res1] = await Promise.all([GetDropDownPermission({typeId: 1})])
+                    this.hospitalList = res1.data
+                    this.formInline.hospital = this.hospitalList[0].code
+                    this.search()
+                } catch (err) {
+                    console.log(err)
+                }
+            },
+//            获取会员
+            async GetServiceInfo(params){
+                try {
+                    let res = await GetServiceInfo(params)
+                    this.loading = false
+                    this.total = res.count
+                    this.tableData = res.data
+                } catch (err) {
+                    console.log(err)
+                }
+            },
+
+            onSubmit(){
+                this.currentPage = 1
+                this.search()
+            },
+           
+            search(){
+                this.loading = true
+                this.GetServiceInfo({
+                    pageIndex:this.currentPage,
+                    pageSize:this.size,
+                    startDate:this.formInline.date1,
+                    endDate:this.formInline.date2,
+                    hospitalCode:this.formInline.hospital,
+                    "isEnable": this.formInline.isEnable,
+                    "isPayOff": this.formInline.isPayOff,
+                    "keywords": this.formInline.keywords,
+                })
+            },
+            dateSelect(val){
+                if(val){
+                    this.formInline.date1 = val.substring(0,10)
+                    this.formInline.date2 = val.substring(13)
+                }else{
+                    this.formInline.date1 = ""
+                    this.formInline.date2 = ""
+                }
+                this.onSubmit()
+            },
+       
+            handleSizeChange(val) {
+                this.size = val
+                this.search()
+            },
+            handleCurrentChange(val) {
+                this.currentPage = val
+                this.search()
+            },
+            handleSizeChange1(val) {
+                this.size1 = val
+                this.getPage()
+            },
+            handleCurrentChange1(val) {
+                this.currentPage1 = val
+                this.getPage()
+            },
+
+            getPage(){
+                this.selectShopData = this.shopData.slice((this.currentPage1-1)*this.size1,this.currentPage1*this.size1)
+            },
+            
+            det(data){
+                this.dialogTableVisibleD = true
+                this.mes = data
+            },
+            async serviceObj(data){
+                data.showMesOnly = true
+                this.mes = data
+                this.selectDialog = true
+                let res = await GetServiceShop({
+                    ServiceCode:data.code
+                })
+                
+                this.total1 = res.data.length
+                this.shopData = res.data
+                this.getPage()
+                
+            },
+            selectShopCallback(val){
+                if(val){
+                    this.search()
+                }
+                this.selectDialog = false
+            },
+        },
+        components: {
+            det,
+        }
+    }
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+
+</style>

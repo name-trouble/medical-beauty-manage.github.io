@@ -1,0 +1,441 @@
+<template>
+    <div class="index">
+        <div class="index-top">
+            <span class="index-top-tit">系统首页</span>
+        </div>
+        <ul class="nav-mes">
+            <li class="index-nav">
+                <span class="nav-tit">收益</span>
+                <span class="nav-account">￥--</span>
+            </li>
+            <li class="index-nav">
+                <span class="nav-tit">消费</span>
+                <span class="nav-account">￥--</span>
+            </li>
+            <li class="index-nav">
+                <span class="nav-tit">会员收益</span>
+                <span class="nav-account">￥--</span>
+            </li>
+            <li class="index-nav">
+                <span class="nav-tit">会员</span>
+                <span class="nav-account">￥--</span>
+            </li>
+        </ul>
+
+        <ul class="mes">
+            <!-- <li class="index-mes">
+                <div class="mes-tit">我的概况</div>
+                <ul>
+                    <li class="mes-list">
+                        <span class="mes-list-left">
+                            注册时间：---</span><span class="mes-list-right">
+                        推荐人：---</span>
+                    </li>
+                    <li class="mes-list">
+                        <span class="mes-list-left">
+                            张会编号：---</span><span class="mes-list-right">
+                        会员姓名：---</span>
+                    </li>
+                    <li class="mes-list">
+                        <span class="mes-list-left">
+                            一号钱包：---</span><span class="mes-list-right">
+                        二号钱包：---</span>
+                    </li>
+                </ul>
+            </li>
+            <li class="index-mes">
+                <div class="mes-tit">我的会员</div>
+                <ul>
+                    <li class="mes-list">
+                        <span class="mes-list-left">
+                            注册时间：---</span><span class="mes-list-right">
+                        推荐人：---</span>
+                    </li>
+                    <li class="mes-list">
+                        <span class="mes-list-left">
+                            张会编号：---</span><span class="mes-list-right">
+                        会员姓名：---</span>
+                    </li>
+                    <li class="mes-list">
+                        <span class="mes-list-left">
+                            一号钱包：---</span><span class="mes-list-right">
+                        二号钱包：---</span>
+                    </li>
+                </ul>
+            </li> -->
+            <li class="index-mes">
+
+                <div class="mes-tit">
+                    <div></div> 
+                    <div>
+                        <el-select placeholder="请选择" v-model="typeId" style="width:100px;" @change="Get98order">
+                            <el-option label="最近7天" value="1"></el-option>
+                            <el-option label="最近15天" value="2"></el-option>
+                            <el-option label="最近30天" value="3"></el-option>
+                        </el-select>
+                    </div>
+                </div>
+               <ECharts :options="polar1" class="chart" ref="chart" style="width: 100%;height:280px ;"></ECharts>
+            </li>
+            <li class="index-mes">
+                <div class="mes-tit">
+                    <div></div> 
+                    <el-select placeholder="请选择" v-model="typeId1" style="width:100px;" @change="Getapponlineorder">
+                            <el-option label="最近7天" value="1"></el-option>
+                            <el-option label="最近15天" value="2"></el-option>
+                            <el-option label="最近30天" value="3"></el-option>
+                        </el-select>
+                </div>
+               <ECharts :options="polar2" class="chart" ref="chart1" style="width: 100%;height:280px ;"></ECharts>
+            </li>
+            <!-- <li class="index-mes">
+                <div class="mes-tit">五月消费提成</div>
+                <ECharts :options="polar" ref="chart" class="chart" style="width: 100%;height: 280px;margin-top: -20px"></ECharts>
+            </li> -->
+        </ul>
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+    import ECharts from 'vue-echarts/components/ECharts.vue' //----体积较大，建议挪出去
+   import 'echarts/lib/chart/bar'
+    import 'echarts/lib/chart/line'
+    import 'echarts/lib/chart/pie'
+    import 'echarts/lib/component/tooltip'
+    import 'echarts/lib/component/polar'
+    import 'echarts/lib/component/legend'
+    import 'echarts/lib/component/title'
+    const colors= ['#5793f3', '#d14a61', '#675bba'];
+    import { Get98order ,Getapponlineorder} from "@/api/myData"
+    
+    export default {
+        name: 'index',
+        data () {
+            return {
+                typeId:'2',
+                typeId1:'2',
+                timer:false,
+                screenWidth:document.body.clientWidth,
+//                chart数据
+                polar: {
+                    baseOption:{
+                        title: {
+                            text: "五月消费提成"
+                        },
+                        tooltip: {
+                            trigger: 'item',
+                            formatter: "{a} <br/>{b}: {c} ({d}%)"
+                        },
+                        legend: {
+                            orient: 'horizontal',
+                            x: 'center',
+                            y: 'bottom',
+                            data:['消费者','普通会员','高级会员','分公司']
+                        },
+                        series: [
+                            {
+                                name: '消费提成',
+                                type: 'pie',
+                                radius: ['40%', '70%'],
+                                avoidLabelOverlap: false,
+                                label: {
+                                    normal: {
+                                        show: false,
+                                        position: 'center'
+                                    },
+                                    emphasis: {
+                                        show: true,
+                                        textStyle: {
+                                            fontSize: '12',
+                                            fontWeight: 'bold'
+                                        }
+                                    }
+                                },
+                                labelLine: {
+                                    normal: {
+                                        show: false
+                                    }
+                                },
+                                data: [
+                                    {value: 335, name: '消费者'},
+                                    {value: 310, name: '普通会员'},
+                                    {value: 234, name: '高级会员'},
+                                    {value: 135, name: '分公司'},
+                                ]
+                            }
+                        ],
+                        animationDuration: 2000
+                    },
+                    media:[
+                        {
+                            query: {
+                                minWidth: 200,
+                                maxHeight: 500,
+                                maxAspectRatio: 1           // 当长宽比小于1时。
+                            },
+                            option: {
+                                legend: {                   // legend 放在底部中间。
+                                    right: 'center',
+                                    bottom: 0,
+                                    orient: 'horizontal'    // legend 横向布局。
+                                },
+                                series: [                   // 两个饼图左右布局。
+                                    {
+                                        radius: [20, '50%'],
+                                        center: ['50%', '30%']
+                                    },
+                                    {
+                                        radius: [30, '50%'],
+                                        center: ['50%', '70%']
+                                    }
+                                ]
+                            }
+                        }
+                    ]
+                },
+                polar1:{
+                    tooltip: {
+                        trigger: 'axis'
+                    },
+                    title: {
+                        text: "98水光针订单数走势"
+                    },
+                    // legend: {
+                    //     data:['消费者','普通会员','高级会员','分公司']
+                    // },
+                    grid: {
+                        left: '3%',
+                        right: '4%',
+                        bottom: '3%',
+                        containLabel: true
+                    },
+                    toolbox: {
+                        feature: {
+                            saveAsImage: {}
+                        }
+                    },
+                    xAxis: {
+                        type: 'category',
+                        boundaryGap: false,
+                        data: []
+                    },
+                    yAxis: {
+                        type: 'value'
+                    },
+                    series: [
+                        {
+                            name:'水光针',
+                            type:'line',
+                            stack: '总量1',
+                            smooth: true,
+                            data:[]
+                        },
+                    ]
+                },
+                polar2:{
+                    tooltip: {
+                        trigger: 'axis'
+                    },
+                    title: {
+                        text: "线上客户开单业绩"
+                    },
+                    // legend: {
+                    //     data:['消费者','普通会员','高级会员','分公司']
+                    // },
+                    grid: {
+                        left: '3%',
+                        right: '4%',
+                        bottom: '3%',
+                        containLabel: true
+                    },
+                    toolbox: {
+                        feature: {
+                            saveAsImage: {}
+                        }
+                    },
+                    xAxis: {
+                        type: 'category',
+                        boundaryGap: false,
+                        data: []
+                    },
+                    yAxis: {
+                        type: 'value'
+                    },
+                    series: [
+                        {
+                            name:'金额',
+                            type:'line',
+                            stack: '总量1',
+                            smooth: true,
+                            data:[]
+                        },
+                    ]
+                },
+            }
+        },
+        watch: {
+            screenWidth (val) {
+                if (!this.timer) {
+                    this.screenWidth = val
+                    this.timer = true
+                    let that = this
+                    setTimeout(function () {
+                        that.$refs.chart.resize()
+                        that.$refs.chart1.resize()
+                        that.timer = false
+                    }, 200)
+                }
+            }
+        },
+        beforeRouteEnter(to, from, next) {
+            next(vm=>{
+                window.onresize =function () {
+                    return function () {
+                        vm.screenWidth = document.body.clientWidth;
+                    }()
+                }
+            })
+        },
+        beforeRouteLeave(to, from, next) {//离开首页 取消框口监听
+            window.onresize = ''
+            next()
+        },
+        mounted () {
+            this.Get98order()
+            this.Getapponlineorder()
+        },
+        methods:{
+            async Get98order(){
+                let res = await Get98order({
+                    typeId:this.typeId,
+                })
+                debugger
+                let dateArr=[],numArr = [],amountArr=[]
+                res.data.forEach(row=>{
+                    dateArr.push(row.createDate.substring(5))
+                    numArr.push(row.orderCount)
+                    amountArr.push(row.onlinePrice)
+                })
+                this.polar1.xAxis.data = dateArr
+                this.polar1.series[0].data = numArr
+            },
+            async Getapponlineorder(){
+                let res = await Getapponlineorder({
+                    typeId:this.typeId1,
+                })
+                let dateArr=[],numArr = []
+                res.data.forEach(row=>{
+                    dateArr.push(row.orderDate.substring(5))
+                    numArr.push(row.orderAmount)
+                })
+                this.polar2.xAxis.data = dateArr
+                this.polar2.series[0].data = numArr
+            }
+        },
+        components: {
+            ECharts
+        }
+    }
+</script>
+
+<style scoped>
+
+    .index-top {
+        width: 100%;
+        height: 40px;
+        border-bottom: 1px solid cornflowerblue;
+    }
+
+    .index-top-tit {
+        display: block;
+        height: 36px;
+        line-height: 36px;
+        font-size: 12px;
+        text-indent: 10px;
+        border-left: 2px solid cornflowerblue;
+    }
+
+    .nav-mes {
+        display: flex;
+        margin-top: 20px;
+        /* height: 78px; */
+        flex-flow:row wrap;
+        /* margin-bottom: 20px; */
+    }
+
+    .index-nav {
+        flex: 1;
+        max-width: 300px;
+        min-width: 150px;
+        color: #fff;
+        height: 78px;
+        padding:25px 20px 15px;
+        box-sizing: border-box;
+        margin-right: 20px;
+        line-height: 1;
+        margin-bottom: 20px
+    }
+
+    .index-nav:nth-child(1) {
+        background: #FE5722;
+    }
+
+    .index-nav:nth-child(2) {
+        background: #00BCD5;
+    }
+
+    .index-nav:nth-child(3) {
+        background: #FFCC66;
+    }
+
+    .index-nav:nth-child(4) {
+        background: #029688;
+    }
+
+    .nav-tit{
+        font-weight: 700;
+        font-size:16px;
+       float: left;
+
+    }
+    .nav-account{
+        font-weight: 700;
+        font-size:18px;
+        float: right;
+    }
+
+
+    .index-mes {
+        width: 40%;
+        margin-right: 20px;
+        max-width: 450px;
+        min-width: 300px;
+        height: 340px;
+        border: 1px solid #D8D8D8;
+        border-radius: 3px;
+        -webkit-box-shadow: 2px 2px 3px #D8D8D8;
+        -moz-box-shadow: 2px 2px 3px #D8D8D8;
+        box-shadow: 2px 2px 3px #D8D8D8;
+        padding:20px 20px 0;
+        display: inline-block;
+        margin-bottom: 20px;
+    }
+
+    .mes-list {
+        height: 26px;
+        line-height: 26px;
+        border-bottom: 1px solid #D8D8D8;
+    }
+
+    .mes-tit {
+        display: flex;
+        justify-content: space-between;
+        height: 36px;
+        line-height: 42px;
+        font-weight: bold;
+        z-index: 10;
+    }
+    .mes-list-left,.mes-list-right{
+        display: inline-block;width: 50%;
+    }
+</style>

@@ -1,0 +1,306 @@
+<template>
+   <div class="ord">
+            <el-form :model="Form"  ref="Form" :inline="true" label-width="100px" class="demo-ruleForm" style="width:680px">
+                <el-form-item label="产品：" prop="drugId"  :rules="[{ required: true, message: '不能为空'}]" class="form_item_mt0">
+                    <el-autocomplete v-model="drug" :fetch-suggestions="queryPro" placeholder="请输入内容" style="width:200px;float:left" :trigger-on-focus="false" @select="selectPro">
+                        <template v-slot="{item}">
+                            <my-item-ordonProRep :item="item"></my-item-ordonProRep>
+                        </template>
+                    </el-autocomplete>
+                </el-form-item>
+                <el-form-item label="规格：" class="form_item_mt0">
+                    <span>{{Form.unitName}}</span>
+                </el-form-item>
+
+                <el-form-item label="价格：" prop="price"  :rules="[{ required: true, message: '不能为空'}]" class="form_item_mt0">
+                    <el-input-number v-model="Form.price" style="width:200px" :controls="false"></el-input-number>
+                </el-form-item>
+
+                 <el-form-item label="数量：" prop="num"  :rules="[{ required: true, message: '不能为空'}]" class="form_item_mt0">
+                    <el-input-number v-model="Form.num" :max="Form.max" style="width:200px" :controls="false"></el-input-number>
+                </el-form-item>
+
+                <el-form-item label="单位："  class="form_item_mt0">
+                    <el-input v-model="Form.dwName" style="width:200px"></el-input>
+                </el-form-item>
+                <!-- <el-form-item label="用法：" class="form_item_mt0">
+                    <el-select v-model="Form.usage" style="width:200px" @change="usageChange">
+                        <el-option label="静脉滴注" value="静脉滴注"></el-option>
+                        <el-option label="静脉注射" value="静脉注射"></el-option>
+                        <el-option label="口服" value="口服"></el-option>
+                        <el-option label="外用" value="外用"></el-option>
+                        <el-option label="肌内注射" value="肌内注射"></el-option>
+                    </el-select>
+                </el-form-item>
+                <el-form-item label="频次："  class="form_item_mt0" v-if="Form.usage!='肌内注射'">
+                    <el-select v-model="Form.frequency" style="width:200px">
+                        <el-option label="qd" value="qd"></el-option>
+                        <el-option label="bid" value="bid"></el-option>
+                        <el-option label="qid" value="qid"></el-option>
+                        <el-option label="tid" value="tid"></el-option>
+                    </el-select>
+                </el-form-item>
+                <el-form-item label="每次用量："  class="form_item_mt0" v-if="Form.usage=='口服'">
+                    <el-input v-model="Form.counts" style="width:200px"></el-input>
+                </el-form-item>
+
+                <el-form-item label="组别：" class="form_item_mt0">
+                    <el-select v-model="Form.catalogId" style="width:200px">
+                        <el-option v-for="(item,index) in catalogList" :key="index" :label="item" :value="item"></el-option>
+                    </el-select>
+                </el-form-item>
+
+                <el-form-item label="天数："  class="form_item_mt0" v-if="Form.usage!='口服'">
+                    <el-input-number :controls="false" v-model="Form.days" style="width:200px"></el-input-number>
+                </el-form-item> -->
+
+                <el-form-item label="备注：" class="form_item_mt10" >
+                    <el-input type="textarea" v-model="Form.memo" :rows="2" style="width:450px"></el-input>
+                </el-form-item>
+
+            </el-form>
+            <div class="form_footer">
+                <el-button type="primary" @click="addDrugs('Form')">确定</el-button>
+                <el-button @click="cancel('Form')">取消</el-button>
+            </div>
+   </div>
+</template>
+
+<script>
+    import { getCookie } from "@/config/mUtils";
+    import {GetStockDrugByKeywords} from "@/api/myData"
+    import Vue from "vue"
+    import "../lib/ord.less"
+    Vue.component('my-item-ordonProRep', {
+        functional: true,
+        render: function(h, ctx) {
+            var item = ctx.props.item;
+            return h('div', ctx.data, [
+                h('p', { attrs: { class: 'select_name', title: item.Name } }, ['名称：' + item.Name]),
+                h('p', { attrs: { class: 'select_code', title: item.Name,  } }, ['批号：' + item.batchNumber]),
+                h('p', { attrs: { class: 'select_code', title: item.Name, } }, ['仓库：' + item.warehouseName+item.ManuF]),
+                h('p', { attrs: { class: 'select_code', title: item.Name, } }, ['价格：' + item.salePrice]),
+                h('p', { attrs: { class: 'select_code', title: item.Name, } }, ['规格：' + item.unitName]),
+                h('p', { attrs: { class: 'select_code', title: item.Name, } }, ['库存：' + item.remainingCount]),
+                h('p', { attrs: { class: 'select_code', title: item.Name, } }, ['冻结：' + item.frozenQuantity])
+            ]);
+        },
+        props: {
+            item: { type: Object, required: true }
+        }
+    });
+    export default {
+        data() {
+        return {
+            customer:"",
+            projectList:[],
+            catalogList:[1,2,3,4,5,6],
+            rules: {
+
+            },
+            Form:{
+                id:"",
+                drugName:"",
+                drugId:"",
+                num:1,
+                unitId:"",
+                unitName:"",//规格
+                price:0,
+                memo:"",
+                dwName:"",//单位
+                useMethod:"",
+                frequency:"",
+                catalogId:"1",
+                days:1,
+                frequency:"",
+                usage:"",
+                max:0,
+                counts:""
+            },
+            drugList:[],
+            drug:"",
+            whList:[],
+        };
+    },
+    props:{
+        mes:{
+
+        }
+    },
+    computed:{
+
+    },
+    mounted(){
+
+    },
+    methods: {
+        usageChange(){
+            this.Form.frequency = ""
+            this.Form.counts = ""
+            this.Form.days = 1
+        },
+            // 查找药品
+            async getPro(str) {
+                let res = await GetStockDrugByKeywords({
+                    "warehouseId": this.mes.warehouseId,
+                    "hospitalCode": this.mes.hospitalCode,
+                    "pageIndex": 1,
+                    "pageSize": 10,
+                    "keywords": str,
+                    'IsFrozen':0,
+                    'goodsType':4,
+                })
+                let arr = []
+                if (res.data instanceof Array && res.data.length > 0) {
+                    for (let item of res.data) {
+                        // 库存数大于0
+                        if(item.remainingCount>0){
+                            let ManuF = ''
+                            if(item.manufacturer){
+                                ManuF = item.manufacturer.length>9?'('+item.manufacturer.substring(0,9)+'...)':'('+item.manufacturer+')'
+                            }
+                            arr.push({
+                                warehouseName:item["warehouseName"],
+                                warehouseId:item['warehouseId'],
+                                dwName:item["dwName"],
+                                value: item["drugName"],
+                                code: item["drugId"],
+                                GoodsCode:item["drugId"],
+                                Name: item["drugName"],
+                                unitName:item["unitName"],
+                                approvalNumber:item['approvalNumber'],
+                                batchNumber:item["batchNumber"],
+                                manufacture:item["manufacturer"],
+                                ManuF:ManuF,
+                                effectiveDate:item["effectiveDate"]?item["effectiveDate"]:'',
+                                productionDate:item["productionDate"]?item["productionDate"]:'',
+                                originAddress:item["originAddress"],
+                                realPrice:item["realPrice"],
+                                salePrice:item["salePrice"],
+                                jiType:item["jiType"],
+                                unitId:item["unitId"],
+                                remainingCount:item["remainingCount"],
+                                frozenQuantity:item.frozenQuantity,
+                                goodsType:item["goodsType"],
+                            })
+                        }
+                    }
+                }
+                console.log(arr)
+                this.drugList = arr
+            },
+
+            //点击获取 项目信息  Oject
+            selectPro(item) {
+
+                this.Form.id = item.code
+                this.Form.drugName = item.Name
+                this.Form.drugId = item.code
+                this.Form.dwName = item.dwName
+                this.Form.price = item.salePrice
+                this.Form.unitName = item.unitName
+                this.Form.unitId = item.unitId
+
+                this.Form.jiType = item.jiType//剂型
+                this.Form.productionDate = item.productionDate//生产日期
+                this.Form.manufacture = item.manufacture//生产厂商
+                this.Form.originAddress = item.originAddress//产地
+                this.Form.realPrice = item.realPrice//采购价
+
+                // this.Form.price = item.realPrice//基础进价
+                this.Form.effectiveDate = item.effectiveDate?item.effectiveDate.substring(0,10):''
+                this.Form.salePrice = item.salePrice//售价
+                this.Form.batchNumber = item.batchNumber//批号
+                this.Form.warehouseId = item.warehouseId//仓库
+                this.Form.goodsType = item.goodsType
+                this.Form.approvalNumber = item.approvalNumber
+                this.Form.warehouseName = item.warehouseName
+                this.Form.max = item.remainingCount
+            },
+            initPro(){
+                this.Form.drugName = ""
+                this.Form.drugId = ""
+            },
+
+            //查找项目  下拉补全
+            queryPro(queryString, cb) {
+                this.drugList = []
+                this.initPro()
+                if (queryString !== '' && queryString != undefined) {
+                    this.getPro(queryString)
+                }
+
+                let _this = this
+                clearTimeout(this.timeout)
+                this.timeout = setTimeout(() => {
+                    cb(_this.drugList)
+                }, 1000)
+            },
+
+        addDrugs(formName){
+            this.$refs[formName].validate((valid) => {
+                if (valid) {
+                        if(this.Form.days*this.Form.num>this.Form.max){
+                            this.$message({ type: 'warning', message: '药品数量超出库存!'})
+                            return false
+                        }
+                        let obj = {
+                            productId:this.Form.drugId,
+                            drugId:this.Form.id,
+                            productName:this.Form.drugName,
+                            unitId:this.Form.unitId,
+                            unitName:this.Form.unitName,
+                            price:this.Form.price,
+                            quantity:this.Form.num,
+                            realAmount:Number(this.Form.price)*Number(this.Form.num),
+                            memo:this.Form.memo,
+                            dwName:this.Form.dwName,
+                            usage:this.Form.usage,
+                            frequency:this.Form.frequency,
+                            catalogId:this.Form.catalogId,
+                            days:1,
+                            max:this.Form.max,
+                            jiType:this.Form.jiType,
+                            drugName:this.Form.drugName,
+                            productionDate:this.Form.productionDate,
+                            manufacture:this.Form.manufacture,
+                            originAddress:this.Form.originAddress,
+                            realPrice:this.Form.realPrice,
+                            effectiveDate:this.Form.effectiveDate,
+                            salePrice:this.Form.price,
+                            batchNumber:this.Form.batchNumber,
+                            warehouseId:this.Form.warehouseId,
+                            warehouseName:this.Form.warehouseName,
+                            goodsType:this.Form.goodsType,
+                            approvalNumber:this.Form.approvalNumber,
+                            counts:this.Form.counts,
+                            totalQuantity:this.Form.num
+                        }
+                        this.$emit("addDrug",true,obj)
+                }
+            });
+        },
+        cancel(formName){
+            this.$emit("addDrug",false)
+        },
+    }
+  }
+</script>
+
+<style scoped>
+.demo-ruleForm{
+    width: 300px;
+}
+.form_footer{
+    text-align: center;
+    padding: 10px 0;
+}
+.form_item_ipt153{
+    width: 260px;
+}
+.form_item_wt255{
+    width: 400px;
+}
+
+</style>
+

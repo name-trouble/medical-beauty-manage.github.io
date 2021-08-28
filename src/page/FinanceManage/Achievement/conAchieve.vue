@@ -1,0 +1,414 @@
+<template>
+    <div class="conAchieve selCommon">
+        <el-form :inline="true" :model="formInline" class="demo-form-inline form_search" label-width="80px"  >
+            <el-form-item label="执行时间："  class="form_item_mt10 form_item_wh280">
+                <el-date-picker
+                    v-model="formInline.date"
+                    type="daterange"
+                    @change="dateChange"
+                    placeholder="选择日期范围">
+                </el-date-picker>
+            </el-form-item>
+             <el-form-item label="医院:" class="form_item_mt10">
+                <el-select v-model="formInline.hospital"  style='width:200px;' @change="selHos">
+                    <el-option v-for="(item,index) in hospitalList" :key="index" :label="item.supplierName" :value="item.code"></el-option>
+                </el-select>
+            </el-form-item>
+
+            <el-form-item label="科室:" class="form_item_mt10">
+                <el-select v-model="formInline.deptCode"  style='width:200px;'>
+                    <el-option v-for="(item,index) in deptList" :key="index" :label="item.deptName" :value="item.deptCode"></el-option>
+                </el-select>
+            </el-form-item>
+
+            <!-- <el-form-item label="执行状态:" class="form_item_mt10">
+                <el-select v-model="formInline.command"  style='width:200px;' @change="onSubmit">
+                    <el-option label="全部" value=""></el-option>
+                    <el-option label="未执行" value="0"></el-option>
+                    <el-option label="执行中" value="1"></el-option>
+                    <el-option label="执行完毕" value="2"></el-option>
+                </el-select>
+            </el-form-item> -->
+            <el-form-item label=" " class="form_item_mt10 ">
+                <el-button type="primary" @click="onSubmit" class="searchBtn">查询</el-button>
+                <Export :tHeader="tHeader" :filterVal='filterVal'
+                        :tableData1='tableData1' :name='name'></Export>
+            </el-form-item>
+        </el-form>
+        <!-- 信息表 -->
+
+          <el-table :data="tableData" border style="width: 100%;margin-top:15px;margin-bottom:10px;" v-loading.body="loading" 
+           show-summary class="min_table" max-height="660" :summary-method="getSummaries">
+            <el-table-column prop="name" label="组长">
+                <template slot-scope="scope">
+                    <div class="append" >
+                        {{scope.row.name}}
+                    </div>
+                </template>
+            </el-table-column>
+            <el-table-column prop="list" label="组员" min-width="100" class-name="blbl">
+                <template slot-scope="scope">
+                    <div v-for="(item,index) in scope.row.list" :key="index" class="append" @mouseenter="enter(index)" @mouseleave="leave" :class="{'hover':index==currentIndex}">
+                        <el-button type="text" @click="shopS(item)">
+                            {{item.serviceName}}
+                        </el-button>
+                        
+                        </div>
+                </template>
+            </el-table-column>
+            <el-table-column prop="list" label="级别" min-width="100" class-name="blbl">
+                <template slot-scope="scope">
+                    <div v-for="(item,index) in scope.row.list" :key="index" class="append" @mouseenter="enter(index)" @mouseleave="leave" :class="{'hover':index==currentIndex}">
+                        <span v-if="item.serviceLevel">{{item.serviceLevel}}</span>
+                        <span v-else>无</span>
+                        </div>
+                </template>
+            </el-table-column>
+            <el-table-column prop="realPrice" label="消费金额" min-width="100" class-name="blbl" align="right">
+                <template slot-scope="scope">
+                    <div v-for="(item,index) in scope.row.list" :key="index" @mouseenter="enter(index)" @mouseleave="leave" :class="{'hover':index==currentIndex}" class="append">
+                         <el-button type="text"  v-if="item.realPrice>0" @click="MShow(item,1)">{{item.realPrice.toQFW()}}</el-button>
+                        <span v-else>0</span>
+
+                        </div>
+                </template>
+            </el-table-column>
+            <el-table-column prop="realPriceJiFen" label="积分" min-width="100" class-name="blbl" align="right">
+                <template slot-scope="scope">
+                    <div v-for="(item,index) in scope.row.list" :key="index" @mouseenter="enter(index)" @mouseleave="leave" :class="{'hover':index==currentIndex}" class="append" >
+                        <el-button type="text"  v-if="item.realPriceJiFen>0" @click="MShow(item,2)">{{item.realPriceJiFen.toQFW()}}</el-button>
+                        <span v-else>0</span>
+                        </div>
+                </template>
+            </el-table-column>
+            <el-table-column prop="realPriceZhuan" label="消转代" min-width="100" class-name="blbl" align="right">
+                <template slot-scope="scope">
+                    <div v-for="(item,index) in scope.row.list" :key="index" class="append" @mouseenter="enter(index)" @mouseleave="leave" :class="{'hover':index==currentIndex}">
+                        <el-button type="text"  v-if="item.realPriceZhuan>0" @click="MShow(item,3)">{{item.realPriceZhuan.toQFW()}}</el-button>
+                        <span v-else>0</span>
+                        </div>
+                </template>
+            </el-table-column>
+            <el-table-column prop="realPrice6" label="6折" min-width="100" class-name="blbl" align="right">
+                <template slot-scope="scope">
+                    <div v-for="(item,index) in scope.row.list" :key="index" class="append" @mouseenter="enter(index)" @mouseleave="leave" :class="{'hover':index==currentIndex}">
+                        <el-button type="text"  v-if="item.realPrice6>0" @click="MShow(item,4)">{{item.realPrice6.toQFW()}}</el-button>
+                        <span v-else>0</span>
+                        </div>
+                </template>
+            </el-table-column>
+            <el-table-column prop="realPrice4" label="4折" min-width="100" class-name="blbl" align="right">
+                <template slot-scope="scope">
+                    <div v-for="(item,index) in scope.row.list" :key="index" class="append" @mouseenter="enter(index)" @mouseleave="leave" :class="{'hover':index==currentIndex}">
+                        <el-button type="text"  v-if="item.realPrice4>0" @click="MShow(item,5)">{{item.realPrice4.toQFW()}}</el-button>
+                        <span v-else>0</span>
+
+                        </div>
+                </template>
+            </el-table-column>
+            <el-table-column prop="realPrice2_5" label="2.5折" min-width="100" class-name="blbl" align="right">
+                <template slot-scope="scope">
+                    <div v-for="(item,index) in scope.row.list" :key="index" class="append" @mouseenter="enter(index)" @mouseleave="leave" :class="{'hover':index==currentIndex}">
+                        <el-button type="text"  v-if="item.realPrice2_5>0" @click="MShow(item,6)">{{item.realPrice2_5.toQFW()}}</el-button>
+                        <span v-else>0</span>
+                        </div>
+                </template>
+            </el-table-column>
+            <el-table-column prop="realPrice_Card" label="卡券返款" min-width="100" class-name="blbl" align="right">
+                <template slot-scope="scope">
+                    <div v-for="(item,index) in scope.row.list" :key="index" class="append" @mouseenter="enter(index)" @mouseleave="leave" :class="{'hover':index==currentIndex}">
+                        <el-button type="text"  v-if="item.realPrice_Card>0" @click="MShow(item,7)">{{item.realPrice_Card.toQFW()}}</el-button>
+                        <span v-else>0</span>
+                        </div>
+                </template>
+            </el-table-column>
+            <el-table-column prop="amount" label="合计" min-width="130" align="right">
+                <template slot-scope="scope">
+                    <div v-for="(item,index) in scope.row.list" :key="index" class="append" @mouseenter="enter(index)" @mouseleave="leave" :class="{'hover':index==currentIndex}">{{item.amount.toQFW()}}</div>
+                </template>
+            </el-table-column>
+             <el-table-column prop="totalPrice" label="组合计" min-width="130" align="right">
+                  <template slot-scope="scope">
+                    <div class="append">
+                        {{Math.round(scope.row.totalPrice).toQFW()}}
+                    </div>
+                </template>
+             </el-table-column>
+        </el-table>
+        <!-- 信息表 -->
+        <span style="color:red">（合计数据已四舍五入）</span>
+        <el-dialog title="详情" :visible.sync="detDialog"   top="30%"  size="" :close-on-click-modal="false">
+            <el-table :data="detTable" style="width: 100%" max-height="400" border>
+                <el-table-column prop="fxCode" label="单号" width="180">
+                    <template slot-scope="scope">
+                        <el-button type="text" @click="openRP(scope.row)">{{scope.row.fxCode}}</el-button>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="projectName" label="项目" width="180"> </el-table-column>
+                <el-table-column prop="customerName" label="客户" width="100"> </el-table-column>
+                <el-table-column prop="refrenceBranchName" label="推荐人" width="100"> </el-table-column>
+                <el-table-column prop="realPrice" label="价格"> </el-table-column>
+            </el-table>
+        </el-dialog>
+        <el-dialog title="订单详情" :visible.sync="ispopRead" top="5%" size="">
+            <report style="width:900px" v-if="ispopRead" :data="selectData" ></report>
+        </el-dialog>
+        <el-dialog title="店家列表"  :visible.sync="isShop" top="5%" size="" >
+            <el-table :data="shopList" style="width: 800px" max-height="400" border>
+                <el-table-column prop="shopName" label="店铺" minwidth="120">
+                    <template slot-scope="scope">
+                        <div class="append">
+                        {{scope.row.shopName}}
+                        </div>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="branchName" label="代理人" minwidth="100">
+                     <template slot-scope="scope">
+                        <div class="append">
+                        {{scope.row.branchName}}
+                        </div>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="phoneNumber" label="电话" minwidth="100">
+                     <template slot-scope="scope">
+                        <div class="append">
+                        {{scope.row.phoneNumber}}
+                        </div>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="shopArea" label="店铺面积" minwidth="100">
+                     <template slot-scope="scope">
+                        <div class="append">
+                        {{scope.row.shopArea}}
+                        </div>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="hospitalName" label="医院" min-width="120">
+                     <template slot-scope="scope">
+                        <div class="append">
+                        {{scope.row.hospitalName}}
+                        </div>
+                    </template>
+                </el-table-column>
+            </el-table>
+        </el-dialog>
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+    import "./lib/achieve.less"
+    import "@/style/selfCommon.less"
+    import Export from '@/components/export'
+    import report from "@/page/FinanceManage/ReportManage/com/reportRead"
+    import {GetConsultingPerformance,GetDropDownPermission,GetDeptAllByHospitalCode,GetConsultDetail,GetShopByConsultantCode} from "@/api/myData"
+    export default {
+        // name:"actingLedger",
+        data () {
+            return {
+                shopList:[],
+                isShop:false,
+                ispopRead:false,
+                selectData:{},
+                detTable:[],
+                detDialog:false,
+                tableData:[],
+                loading:false,
+                hospitalList:[],
+                formInline:{
+                    hospital:"",
+                    date:"",
+                    startDate:"",
+                    endDate:"",
+                    command:"",
+                    deptCode:"",
+                },
+                deptList:[],
+                currentIndex:"-1",
+            }
+        },
+        computed: {
+            /* 导出报表参数 tHeader,filterVal,tableData1*/
+            tHeader(){
+                return ['组长', '组员', '级别', '消费金额', '积分' , '消转代', '6折', '4折', '2.5折', '合计']
+            },
+            filterVal(){
+                return ['name','serviceName', 'serviceLevel', 'realPrice', 'realPriceJiFen', 'realPriceZhuan','realPrice6','realPrice4','realPrice2_5','amount']
+            },
+            tableData1(){
+                let data = JSON.parse(JSON.stringify(this.tableData))
+                let arr = []
+                data.forEach(row=>{
+                    arr = arr.concat(row.list)
+                })
+                return arr
+            },
+            name(){
+                return '设计师'
+            },
+            /*导出报表参数 tHeader,filterVal,tableData1*/
+        },
+        mounted(){
+            let date = new Date()
+            date.setDate("1")
+            this.formInline.date = [date,new Date()]
+            this.GetDropDownPermission()
+        },
+        methods: {
+            async selHos(){
+                this.formInline.deptCode = ""
+                if(this.formInline.hospital.length>0){
+                    let resDep = await GetDeptAllByHospitalCode({
+                        HospitalCode:this.formInline.hospital
+                    })
+                    this.deptList = resDep.data
+                }
+            },
+            getSummaries(param) {
+                const { columns, data } = param;
+                const sums = [];
+                columns.forEach((column, index) => {
+                    if (index === 0) {
+                        sums[index] = '合计';
+                        return;
+                    }
+                    const values = data.map(item => Number(item[column.property]));
+                    if (!values.every(value => isNaN(value))) {
+                        sums[index] = values.reduce((prev, curr) => {
+                            const value = Number(curr);
+                            if (!isNaN(value)) {
+                                return prev.add(curr) ;
+                            } else {
+                                return prev;
+                            }
+                        }, 0);
+                        sums[index] = sums[index].toQFW();
+                    } else {
+                        sums[index] = '';
+                    }
+                });
+
+                return sums;
+            },
+            async GetConsultingPerformance(params){
+                let res = await GetConsultingPerformance(params)
+                this.loading = false
+                if(res.status){
+                     this.tableData = this.getAmount(res.data)
+                }else{
+                    this.$message({ type: 'warning', message: '查询失败!'+res.errorMessage })
+                }
+            },
+             getAmount(data){
+                data.forEach(row => {
+                    row.realPrice = 0
+                    row.realPriceJiFen = 0
+                    row.realPriceZhuan = 0
+                    row.realPrice6 = 0
+                    row.realPrice4 = 0
+                    row.realPrice2_5 = 0
+                    row.realPrice_Card = 0
+                    row.amount = 0
+                    row.list.forEach(ele=>{
+                        ele.amount = ele.realPriceJiFen + ele.realPriceZhuan + ele.realPrice6 + ele.realPrice4 + ele.realPrice2_5 + ele.realPrice +row.realPrice_Card
+                        ele.realPrice = ele.realPrice.add(ele.realPriceWu)
+                        row.realPrice += ele.realPrice
+                        row.realPriceJiFen += ele.realPriceJiFen
+                        row.realPriceZhuan += ele.realPriceZhuan
+                        row.realPrice6 += ele.realPrice6
+                        row.realPrice4 += ele.realPrice4
+                        row.realPrice2_5 += ele.realPrice2_5
+                        row.realPrice_Card += ele.realPrice_Card
+                        row.amount += ele.amount
+                    })
+                });
+                return data
+            },
+            dateChange(val){
+                if(val){
+                    val = val.formatDates()
+                    this.formInline.startDate = val.substring(0,10)
+                    this.formInline.endDate = val.substring(13)
+                }else{
+                    this.formInline.startDate = ""
+                    this.formInline.endDate = ""
+                }
+                // this.onSubmit()
+            },
+            async GetDropDownPermission(){
+                let res = await GetDropDownPermission({typeId: 1})
+                
+                this.hospitalList = res.data
+                this.formInline.hospital = res.data[0].code
+                // this.search()
+            },
+            onSubmit(){
+                this.currentPage = 1
+                this.search()
+            },
+            search(){
+                this.loading = true
+                this.GetConsultingPerformance({
+                    HospitalId:this.formInline.hospital,
+                    StartDate:this.formInline.startDate,
+                    endDate:this.formInline.endDate,
+                    commandState:this.formInline.command,
+                    deptCode:this.formInline.deptCode
+                })
+            },
+            enter(index){
+                // this.currentIndex = index
+            },
+            leave(){
+                // this.currentIndex = "-1"
+            },
+            MShow(data,TypeId,ItemType){
+                this.detDialog = true
+                this.GetConsultDetail({
+                    HospitalId:data.hospitalCode,
+                    StartDate:this.formInline.startDate,
+                    EndDate:this.formInline.endDate,
+                    ServiceManCode:data.code,
+                    TypeId:TypeId,
+                })
+            },
+            async GetConsultDetail(params){
+                let res = await GetConsultDetail(params)
+                if(res.status){
+                    this.detTable = res.data
+                }
+            },
+            openRP(val){
+                this.selectData = val
+                this.ispopRead = true
+            },
+            // 服务店家
+            async GetShopByConsultantCode(params){
+                this.shopList = []
+                let res = await GetShopByConsultantCode(params)
+                if(res.status){
+                    this.shopList = res.data
+                }
+            },
+            shopS(data){
+                this.isShop = true
+                this.GetShopByConsultantCode({
+                    ConsultantCode:data.code
+                })
+            }
+        },
+        components: {
+            Export,
+            report
+        }
+    }
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+.form_item_mt10{
+    margin-right: 0;
+}
+.hover{
+    background: #eef1f6
+}
+</style>

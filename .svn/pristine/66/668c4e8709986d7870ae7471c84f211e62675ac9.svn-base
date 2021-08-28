@@ -1,0 +1,1032 @@
+<template>
+    <div class="mall">
+        <el-form :model="ruleForm" :rules="rules" ref="ruleForm" label-width="100px" class="demo-ruleForm">
+            <el-form-item label="分类：" required style="margin-bottom: 10px">
+                <el-form-item style="float: left">
+                    <el-select v-model="ruleForm.classify1"  prop="" placeholder="请选择" @change='getClass()'>
+                        <el-option v-for="item in Categories" :key="item.name" :label="item.name" :value="item.code"></el-option>
+                    </el-select>
+                </el-form-item>
+                <el-form-item style="float: left">
+                    <el-select v-model="ruleForm.classify2"  placeholder="请选择" @change='getLabel()'>
+                        <el-option v-for="item in subClass" :key="item.name" :label="item.name" :value="item.code"></el-option>
+                    </el-select>
+                </el-form-item>
+                <el-form-item style="float: left">
+                    <el-select v-model="ruleForm.classify3"  placeholder="请选择" @change="getLabelCap">
+                        <el-option v-for="item in label" :key="item.code" :label="item.name" :value="item.code"></el-option>
+                    </el-select>
+                </el-form-item>
+            </el-form-item>
+            <el-form-item label="商品编号：" prop="number" required style="margin-bottom: 10px">
+                <el-input v-model="ruleForm.number" :disabled="true" style="width: 400px"></el-input>
+            </el-form-item>
+            <el-form-item label="商品名称：" prop="projectName" required style="margin-bottom: 10px">
+                <el-input v-model="ruleForm.projectName" style="width: 400px"></el-input>
+            </el-form-item>
+            <el-form-item label="商品别名：" prop="goodsAlias" style="margin-bottom: 10px">
+                <el-input v-model="ruleForm.goodsAlias" style="width: 400px"></el-input>
+            </el-form-item>
+            <el-form-item label="拼音" prop="" style="margin-bottom: 10px">
+                <el-input v-model="ruleForm.pinYin" style="width: 400px"></el-input>
+            </el-form-item>
+            <el-form-item label="医院：" prop="hospital" required style="margin-bottom: 10px" v-if="type == 'four'">
+                <el-select v-model="hospital" placeholder="请选择" @change="selectHs" style="width: 400px">
+                    <el-option v-for="item in hospitalList" :label="item.name" :value="item" :key="item.Code"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="科室：" style="margin-bottom: 10px">
+                <el-select v-model="ruleForm.deptCode" style="width: 400px">
+                   <el-option v-for="(item,index) in deptList" :key="index" :label="item.deptName+'('+item.deptCode+')'"
+                    :value="item.value"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="剂型：" style="margin-bottom: 10px" v-if="type == 'four'">
+                <el-select v-model="ruleForm.jiType" style="width: 400px">
+                    <el-option label="空" value=""></el-option>
+                    <el-option v-for="(item,index) in jitypeList" :key="index" :label="item.DataName" :value="item.DataName"></el-option>
+                </el-select>
+            </el-form-item>
+             <el-form-item label="产地：" style="margin-bottom: 10px" v-if="type == 'four'" prop="origin">
+                <el-input v-model="ruleForm.origin" style="width: 400px"></el-input>
+            </el-form-item>
+             <el-form-item label="生产厂家：" style="margin-bottom: 10px" v-if="type == 'four'" prop="Manufacturer">
+                <el-input v-model="ruleForm.Manufacturer" style="width: 400px"></el-input>
+            </el-form-item>
+             <el-form-item label="计量单位：" style="margin-bottom: 10px" v-if="type == 'four'">
+                <el-input v-model="ruleForm.unit" style="width: 400px"></el-input>
+            </el-form-item>
+             <!-- <el-form-item label="批准文号：" style="margin-bottom: 10px" v-if="type == 'four'">
+                <el-input v-model="ruleForm.ApprovalNumber" style="width: 400px"></el-input>
+            </el-form-item> -->
+            <el-form-item label="是否有效：" style="margin-bottom: 10px" v-if="type == 'four'">
+                <el-radio class="radio" v-model="ruleForm.isEnable" label="1">有效</el-radio>
+                <el-radio class="radio" v-model="ruleForm.isEnable" label="0">无效</el-radio>
+            </el-form-item>
+             <el-form-item label="产品类型：" style="margin-bottom: 10px" v-if="type == 'four'">
+                <el-radio class="radio" v-model="ruleForm.GoodsType" label="1">药品</el-radio>
+                <el-radio class="radio" v-model="ruleForm.GoodsType" label="2">物资</el-radio>
+                <el-radio class="radio" v-model="ruleForm.GoodsType" label="3">特殊</el-radio>
+                <el-radio class="radio" v-model="ruleForm.GoodsType" label="4">产品</el-radio>
+            </el-form-item>
+            <el-form-item label="是否皮试：" style="margin-bottom: 10px" v-if="type == 'four'">
+                <el-radio class="radio" v-model="ruleForm.IsSkinTest" label="1">是</el-radio>
+                <el-radio class="radio" v-model="ruleForm.IsSkinTest" label="0">否</el-radio>
+            </el-form-item>
+            <el-form-item label="是否精二：" style="margin-bottom: 10px" v-if="type == 'four'">
+                <el-radio class="radio" v-model="ruleForm.isJingEr" label="1">是</el-radio>
+                <el-radio class="radio" v-model="ruleForm.isJingEr" label="0">否</el-radio>
+            </el-form-item>
+            <el-form-item label="商户：" style="margin-bottom: 10px" prop="shop" v-if="type == 'third'">
+                <el-select v-model="ruleForm.shop" filterable remote placeholder="请输入关键词" :remote-method="remoteMethod" :loading="loading">
+                    <el-option v-for="item in shopList" :key="item.shopCode" :label="item.shopName" :value="item.shopCode"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="属性：" style="margin-bottom: 10px">
+                <el-row :span="24" style="background: #EEF1F6;padding: 5px 0">
+                    <attr :cap="cap" :getCaps="getCaps" @attrChange="reciveAttr"></attr>
+                </el-row>
+            </el-form-item>
+            <el-form-item label="自定义属性：" style="margin-bottom: 10px">
+                <el-table :data="tableData" border  style="width: 900px;margin-top: 10px">
+                    <el-table-column prop="date" label="名称" min-width="180">
+                        <template scope="scope">
+                            <el-input v-model="scope.row.PropertyName"></el-input>
+                        </template>
+                    </el-table-column>
+                   <el-table-column prop="name" label="内容" min-width="380">
+                        <template scope="scope">
+                            <el-input v-model="scope.row.PropertyValue" placeholder="添加属性内容，多项内容用空格分隔，帮助你更好地整理内容"></el-input>
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="name" label="" min-width="100">
+                        <template scope="scope">
+                            <el-button size="small" type="danger" @click="tableData.splice(scope.$index,1)">删除</el-button>
+                        </template>
+                    </el-table-column>
+                </el-table>
+                <el-button type="primary" @click="addSelfAttr" size="small">添加</el-button>
+            </el-form-item>
+            <el-form-item label="标签：" style="margin-bottom: 10px" v-if="type != 'four'">
+                <el-checkbox-group v-model="dynamicTags" style="line-height: 40px">
+                    <el-checkbox v-for="item in tagList" :key="item.tagName" :label="item.code"> {{item.tagName}}</el-checkbox>
+                </el-checkbox-group>
+            </el-form-item>
+            <el-form-item label="原价：" prop="origionPrice" style="margin-bottom: 10px;width: 400px" v-if="type != 'four'">
+                <el-input v-model="ruleForm.origionPrice" @change="priChange"></el-input>
+            </el-form-item>
+            <el-form-item label="价格：" prop="salePrice" style="margin-bottom: 10px;width: 400px"  v-if="type != 'four'">
+                <el-input v-model="ruleForm.salePrice" @change="priChange"></el-input>
+            </el-form-item>
+            <el-form-item label="规格：" required style="margin-bottom: 10px">
+                <el-checkbox v-model="ruleForm.checked1">
+                    统一设置价格
+                    <el-input v-model="ruleForm.price" type="text" @change="setChange('price')"
+                              style="float: none;width: 100px;margin-left: 10px"></el-input>
+                </el-checkbox>
+                <el-checkbox v-model="ruleForm.checked2">
+                    统一设置库存
+                    <el-input v-model="ruleForm.deposit" type="text" @change="setChange('deposit')"
+                              style="float: none;width: 100px;margin-left: 10px"></el-input>
+                </el-checkbox>
+                <el-table :data="ruleForm.tableData" border style="width: 900px;margin-top: 10px">
+                    <el-table-column prop="UnitName" label="规格" min-width="150">
+                        <template scope="scope">
+                            <el-input v-model="scope.row.UnitName" placeholder="例如：白色300ml"></el-input>
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="ProfitPrice" label="进价" min-width="80">
+                        <template scope="scope">
+                            <el-input v-model="scope.row.ProfitPrice" ></el-input>
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="Price" label="售价" min-width="80">
+                        <template scope="scope">
+                            <el-input v-model="scope.row.Price" @change="change(ruleForm.tableData,scope.$index,1)" ></el-input>
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="PageQuantity" label="库存" min-width="80">
+                        <template scope="scope">
+                            <el-input v-model="scope.row.PageQuantity" @change="change(ruleForm.tableData,scope.$index,2)" ></el-input>
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="UnitCode" label="规格编码" min-width="100">
+                        <template scope="scope">
+                            <el-input v-model="scope.row.UnitCode"></el-input>
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="BarCode" label="商品条形" min-width="150">
+                        <template scope="scope">
+                            <el-input v-model="scope.row.BarCode"></el-input>
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="ApprovalNumber" label="批准文号" min-width="100">
+                        <template scope="scope">
+                            <el-input v-model="scope.row.ApprovalNumber"></el-input>
+                        </template>
+                    </el-table-column>
+                    <el-table-column label="操作" min-width="70">
+                        <template scope="scope">
+                            <el-button type="danger" @click="deleteRow(scope.$index,ruleForm.tableData)" size="small">删除</el-button>
+                        </template>
+                    </el-table-column>
+                </el-table>
+                <el-button type="primary" size="small" @click="addSpec">添加规格</el-button>
+            </el-form-item>
+            <el-form-item label="积分抵现金额：" prop="integral" style="margin-bottom: 10px"  v-if="type != 'four'">
+                <el-input v-model="ruleForm.integral" style="width: 120px;float: none"></el-input>
+            </el-form-item>
+            <el-form-item label="图片：" class="form_item_mt10">
+                <div style="color:red">请上传800*800px以上图片，小于1M，图片过大将严重影响app端加载速度</div>
+                <el-row>
+                    <div style="width:150px;margin-right:5px;float: left">
+                        <div class="main" style="width:150px;">
+                            <span class="pic-tit">主图</span>
+                            <el-upload
+                                :action="action"
+                                :accept="acceptImage"
+                                list-type="picture-card"
+                                :on-preview="handlePictureCardPreview"
+                                :on-remove="handleRemove1" style='line-height:20px'
+                                :file-list="fileList3"
+                                :before-upload="beforeAvatarUpload"
+                                :on-change="handleChange1">
+                                <i class="el-icon-plus" style="margin-top:59px"></i><br/>
+                            </el-upload>
+                            <el-dialog v-model="dialogVisible" size="tiny">
+                                <img width="100%" :src="dialogImageUrl" alt="">
+                            </el-dialog>
+                        </div>
+                    </div>
+                    <div style="width:650px;float: left">
+                        <div class="main" style="width:650px;">
+                            <span class="pic-tit">细节图</span>
+                            <el-upload
+                                :action="action"
+                                :accept="acceptImage"
+                                list-type="picture-card"
+                                :on-preview="handlePictureCardPreview"
+                                :on-remove="handleRemove2" style='line-height:20px'
+                                :file-list="fileList4"
+                                :before-upload="beforeAvatarUpload"
+                                :on-change="handleChange2">
+                                <i class="el-icon-plus"></i><br/>
+                            </el-upload>
+                        </div>
+                        <ul class="" v-if="fileList4.length > 1" style="height: 60px;">
+                            <li style="display: inline-block;width: 98px;margin-right: 8px;" :key="index" class="" v-for="(item,index) in fileList4">
+                                <el-button type="text"><i class="el-icon-arrow-left" @click="move('left',index)"></i></el-button>
+                                <el-button type="text"><i class="el-icon-arrow-right" @click="move('right',index)"></i></el-button>
+                            </li>
+                        </ul>
+                    </div>
+                </el-row>
+            </el-form-item>
+            <el-form-item label="商品详情：" prop="content1" class="form_item_mt10">
+                <VueEditor v-model="content1" useCustomImageHandler @imageAdded="handleImageAdded"></VueEditor>
+            </el-form-item>
+            <el-form-item label-width="100px">
+                <el-button type="primary" @click="submitForm('ruleForm')" :loading="saveLoading">编辑完成</el-button>
+                <el-button @click="resetForm('ruleForm')">取消</el-button>
+                <el-button type="primary" @click="back('ruleForm')">返回商品列表</el-button>
+            </el-form-item>
+        </el-form>
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+    import { VueEditor} from 'vue2-editor'
+    import { baseImgPath } from '@/config/env'
+    import { acceptImage } from '@/config/common'
+    import axios from 'axios'
+    import attr from "./editAttr"
+    import {getCookie} from "@/config/mUtils"
+    import {GetCatelogByColumnCode,GetColumnAll,DeleteCatelogById,GetTagByPage,GetShopByPage,GetDeptAllByHospitalCode,GetDropDownPermission,getBaseDataByCode,DelImg,
+        GetPropertyByKeywords,AddGoods,UpdateGoods,GetServiceManByHspCode,getTopBranch} from "../../../api/myData"
+    import {HtmlUtil} from '../../../config/mUtils'
+    export default {
+        // name: 'mall',
+        props: {
+            mall: {},
+            type: ""
+        },
+        data() {
+            var classify1 = (rule, value, callback) => {
+                if(value==""&&this.Categories.length!=0){
+                    return callback(new Error('请选择大类'));
+                } else{
+                    callback()
+                }
+            };
+            var classify2 = (rule, value, callback) => {
+                if(value==""&&this.subClass.length!=0){
+                    return callback(new Error('请选择中类'));
+                } else{
+                    callback()
+                }
+            };
+            var classify3 = (rule, value, callback) => {
+                if(value==""&&this.label.length!=0){
+                    return callback(new Error('请选择小类'));
+                } else{
+                    callback()
+                }
+            };
+            return {
+                jitypeList:[],
+                saveLoading : false,
+                shopList:[],
+                tagList:[],
+                code:"",
+                dynamicTags: [],
+                inputVisible: false,
+                inputValue: '',
+                action:"",
+                acceptImage:"",
+                time : 0,
+                goodsId:"",
+                column:[],
+                columnIndex:0,//                当前column index值据此筛选添加商品所属columnId
+                catelog:"",//  存放所有分类
+                classCode:"",
+                classId:"",
+                subClass:[],//                中类集合
+                label:[],//                小类集合
+                picture1:[],
+                picture2:[],
+                supplier:[],
+                recAttr:[],//                子组件传过来的属性数组
+                cap:[{}],
+                getCaps:[],//  选项卡
+                deptList:[],
+                tableData:[],//  标签
+                options: [{value: '手术快', label: '手术快'}, {value: '回复时间短', label: '回复时间短'}, {value: '地方', label: '地方'}],
+                ruleForm: {
+                    jiType:"",
+                    Manufacturer:"",
+                    shop:"",
+                    classify1:"",
+                    classify2:"",
+                    classify3:"",
+                    number:"",
+                    projectName:"",
+                    goodsAlias:"",
+                    supplier:"芯美昕公司",
+                    supplierCode:"",
+                    labelList: [],//  标签数组
+                    tableData:this.mall.GUList,
+                    salePrice:"",//                    售价
+                    origionPrice:"",//                    原价
+                    checked1:false,
+                    checked2:false,
+                    price:"",
+                    deposit:"",
+                    integral:"",
+                    fileList2:[],
+                    name: '',
+                    region: '',
+                    desc: '',
+                    origin:"",//产地
+                    unit:"",//计量单位
+                    ApprovalNumber:"",//批准文号
+                    hospital:"",
+                    hospitalCode:"",
+                    deptCode:{},
+                    pinYin: "",
+                    isEnable:"",
+                    GoodsType:"",
+                    IsSkinTest:'',
+                    isJingEr:'',
+                },
+                hospital:{},
+                hospitalList:[],//医院列表
+                content1: "",
+                dialogVisible:false,
+                dialogImageUrl: '',
+                editorOption: {},
+//                主图附图集合
+                fileList3: [],
+                fileList4: [],
+                rules: {
+                    classify1: [
+                        { validator: classify1, trigger: 'blur'}
+                    ],
+                    classify2: [
+                        { validator: classify2, trigger: 'blur'}
+                    ],
+                    classify3: [
+                        { validator: classify3, trigger: 'blur'}
+                    ],
+                    shop:[{required: true, message: '请选填店铺', trigger: 'change'}],
+                    number: [{required: true, message: '请填写编码', trigger: 'blur'}],
+                    projectName: [{required: true, message: '请填写商品名称', trigger: 'blur'}],
+                    supplier: [{required: true, message: '请选择供应商', trigger: 'change'}],
+                    salePrice: [{required: true, message: '请填写售价', trigger: 'blur'}],
+                    origionPrice: [{required: true, message: '请填写原价', trigger: 'blur'}],
+                    integral: [{required: true, message: '请填写积分抵扣额', trigger: 'blur'}],
+                    goodsAlias:[{required: true, message: '请填写别名', trigger: 'blur'}],
+                    origin:[{required: true, message: '请填写', trigger: 'blur'}],
+                    Manufacturer:[{required: true, message: '请填写', trigger: 'blur'}],
+                }
+            };
+        },
+        computed: {
+            Categories(){
+                return this.parentCode("")
+            },
+        },
+        watch: {
+            mall:{
+                handler(curVal, oldVal){
+                    for(var p in curVal.GoodsEntity){
+                        if(curVal.GoodsEntity[p] == null){
+                            curVal.GoodsEntity[p] = ""
+                        }
+                    }
+                    this.ruleForm.jiType = curVal.GoodsEntity.JiType
+                    this.ruleForm.Manufacturer = curVal.GoodsEntity.Manufacturer
+                    this.goodsId = curVal.GoodsEntity.Id
+                    this.code = curVal.GoodsEntity.Code
+                    this.classCode = curVal.GoodsEntity.CatalogCode
+                    this.ruleForm.shop = curVal.GoodsEntity.ShopCode? curVal.GoodsEntity.ShopCode:""
+                    this.ruleForm.number = curVal.GoodsEntity.GoodsCode
+                    this.classId = curVal.GoodsEntity.CatalogCode
+                    this.ruleForm.projectName = curVal.GoodsEntity.Name
+                    this.ruleForm.origin = curVal.GoodsEntity.ProductionAddress
+                    this.ruleForm.unit = curVal.GoodsEntity.UnitName
+                    this.ruleForm.pinYin = curVal.GoodsEntity.PinYin
+                    // this.ruleForm.ApprovalNumber = curVal.GoodsEntity.ApprovalNumber
+                    this.ruleForm.salePrice = curVal.GoodsEntity.PriceSale+""
+                    this.ruleForm.origionPrice = curVal.GoodsEntity.Price + ""
+                    this.ruleForm.isEnable = curVal.GoodsEntity.IsEnable + ""
+                    this.ruleForm.GoodsType = curVal.GoodsEntity.GoodsType + ""
+                    this.content1 = curVal.GoodsEntity.RichText? this.htmlDecode(curVal.GoodsEntity.RichText)+ "":""
+                    this.ruleForm.tableData = curVal.GUList
+                    this.ruleForm.goodsAlias = curVal.GoodsEntity.GoodsAlias?curVal.GoodsEntity.GoodsAlias+"":""
+                    this.ruleForm.integral = curVal.GoodsEntity.LimitAmount+""
+                    this.dynamicTags = curVal.GoodsEntity.GoodsTag.split(",")
+                    this.fileList3 = curVal.GoodsEntity.ImgMainUrl.length>0?[{url:baseImgPath+curVal.GoodsEntity.ImgMainUrl,isNew:0,response:curVal.GoodsEntity.ImgMainUrl}]:[]
+                    this.fileList4 = this.pictureTurn(curVal.GoodsEntity)
+                    this.ruleForm.IsSkinTest = curVal.GoodsEntity.IsSkinTest+''
+                    this.ruleForm.isJingEr = curVal.GoodsEntity.IsJingEr+''
+                    this.attrSplit(curVal.GPList)
+                }
+            },
+            "catelog":{
+                handler(curVal, oldVal){
+                    if(curVal.length>0){
+                        this.classSplit(this.mall.GoodsEntity.CatalogCode)
+                    }
+                },
+                deep:true
+            },
+            "ruleForm.checked1":{
+                handler(curVal, oldVal){
+                    if(curVal == true){
+                        this.commonSet("price")
+                    }
+                },
+                deep: true
+            },
+            "ruleForm.checked2":{
+                handler(curVal, oldVal){
+                    if(curVal == true){
+                        this.commonSet("deposit")
+                    }
+                },
+                deep: true
+            },
+            "ruleForm.price":{
+                handler(curVal,oldVal){
+                    if(this.ruleForm.checked1 == true){
+                        this.commonSet("price")
+                    }
+                },
+                deep:true
+            },
+            "ruleForm.deposit":{
+                handler(curVal,oldVal){
+                    if(this.ruleForm.checked2 == true){
+                        this.commonSet("deposit")
+                    }
+                },
+                deep:true
+            },
+        },
+        mounted: function () {
+            this.action = baseImgPath + "/api/Image/UploadImg?op=goods"
+            this.acceptImage = acceptImage
+            setTimeout(()=>{
+                 this.getColumn()
+            },200)
+           
+        },
+        methods: {
+            back(){
+                this.$router.back()
+            },
+            async selectHs() {
+                this.ruleForm.deptCode = {}
+                let dept = await GetDeptAllByHospitalCode({hospitalCode:this.hospital.value})
+                    for(let item of dept.data){
+                        item["name"] = item.deptName+'('+item.deptCode+')'
+                        item["value"] = item.deptCode
+                    }
+                this.deptList = dept.data
+                this.ruleForm.hospital = this.hospital.name
+                this.ruleForm.hospitalCode = this.hospital.value
+                this.ruleForm.deptCode = this.mall.GoodsEntity.DeptCode
+            },
+            change(data,index,num){
+                let vm = this
+                setTimeout(function(){
+                    if(num == 1){
+                        vm.ruleForm.tableData[index].Price = (data[index].Price.match(/\d+(\.\d{0,2})?/)||[''])[0]
+                    }else{
+                        vm.ruleForm.tableData[index].PageQuantity = (data[index].PageQuantity.match(/\d+(\.\d{0,2})?/)||[''])[0]
+                    }
+                },50)
+            },
+            setChange(set){
+                let vm = this
+                setTimeout(function(){
+                    if(set == "price"){
+                        vm.ruleForm.price = (vm.ruleForm.price.match(/\d+(\.\d{0,2})?/)||[''])[0]
+                    }else{
+                        vm.ruleForm.deposit = (vm.ruleForm.deposit.match(/\d+(\.\d{0,2})?/)||[''])[0]
+                    }
+                },50)
+            },
+            priChange(){
+                let vm = this
+                setTimeout(function(){
+                    vm.ruleForm.salePrice = (vm.ruleForm.salePrice.match(/\d+(\.\d{0,2})?/)||[''])[0]
+                    vm.ruleForm.origionPrice = (vm.ruleForm.origionPrice.match(/\d+(\.\d{0,2})?/)||[''])[0]
+                },50)
+            },
+//            获取所有栏目
+            async getColumn(){
+                try {
+                    let typeCode = "",code=""
+                    if(this.type == 'second'){typeCode = 3;code = 101}
+                    if(this.type == "third"){typeCode = 4;code = 102}
+                    if(this.type == "four"){code = 103}
+                    let [typeList,res,cateLogList,result] = await Promise.all([getBaseDataByCode('0024'),GetDropDownPermission({typeId:1}),GetCatelogByColumnCode({code:code}),
+                    GetTagByPage({"TypeCode":typeCode,"pageIndex":1,"pageSize":100,"keywords":""})])
+                    this.jitypeList = typeList
+                    this.hospitalList = res.data
+                    for(let item of res.data){
+                        item.value=item.code
+                        item.name = item.supplierName
+                        if(this.mall.GoodsEntity.SupplierCode == item.code){
+                            this.hospital = item
+                        }
+                    }
+                    this.catelog =cateLogList.data
+                    this.tagList = result.data
+                } catch (err) {
+                    console.log('获取数据失败', err);
+                }
+            },
+    //    添加商品接口
+            async updateGoods(data){
+                try {
+                    this.saveLoading = true
+                    let res = await UpdateGoods(data);
+                    if(res.success){
+                        this.$message({message: '修改成功', type: 'success'});
+                    }else{
+                        this.$message.error('修改失败');
+                    }
+                    this.saveLoading = false
+                } catch (err) {
+                    console.log(err)
+                    this.$message.error('修改失败');
+                }
+            },
+            //    查询属性
+            async getProperty(data){
+                try {
+                    let res = await GetPropertyByKeywords(data);
+                    this.cap = this.capsCheck(res)
+                } catch (err) {
+                    console.log(err)
+                }
+            },
+            //    大类
+            getClass () {
+                this.ruleForm.classify2 = ""
+                this.ruleForm.classify3 = ""
+                this.label = []
+                let code = ""
+                this.subClass = this.parentCode(this.ruleForm.classify1)
+            },
+            /*1.用正则HtmlUtil表达式实现html转码*/
+            htmlEncode (str) {
+                var s = "";
+                if (str.length == 0) return "";
+                s = str.replace(/&/g, "%26amp;");
+                s = s.replace(/</g, "%26lt;");
+                s = s.replace(/>/g, "%26gt;");
+                s = s.replace(/ /g, "%26nbsp;");
+                s = s.replace(/\'/g, "%26#39;");
+                s = s.replace(/\"/g, "%26quot;");
+                return s;
+            },
+            /*2.用正则表达式实现html解码*/
+            htmlDecode(str) {
+                var s = "";
+                if (str.length == 0) return "";
+                s = str.replace(/&amp;/g, "&");
+                s = s.replace(/&lt;/g, "<");
+                s = s.replace(/&gt;/g, ">");
+                s = s.replace(/&nbsp;/g, " ");
+                s = s.replace(/&#39;/g, "\'");
+                s = s.replace(/&quot;/g, "\"");
+                return s;
+            },
+            //      表单提交
+            submitForm(formName) {
+                // if (this.ruleForm.classify3 != "") {
+                //     this.getCode(this.ruleForm.classify3)
+                // } else {
+                //     if (this.ruleForm.classify2 != "") {
+                //         this.getCode(this.ruleForm.classify2)
+                //     } else {
+                //         if (this.ruleForm.classify1 != "") {
+                //             this.getCode(this.ruleForm.classify1)
+                //         }
+                //     }
+                // }
+                // if (this.fileList3.length != 0 ) {
+                    let catlogCode = this.getCode()
+                    let picture1 = this.getPictureUrl(this.fileList3)
+                    let picture2 = this.getPictureUrl(this.fileList4)
+                    this.$refs[formName].validate((valid) => {
+                        if (valid) {
+                            let column = this.type=="second"?101:102
+                            if (this.type=="second"){column = 101}
+                            if (this.type=="third"){column = 102}
+                            if (this.type=="four"){
+                                column = 103
+                                this.ruleForm.supplier = this.ruleForm.hospitalCode
+                                this.ruleForm.supplierName =this.ruleForm.hospital
+                            }
+                            let obj = {
+                                Id: this.goodsId,
+                                code:this.code,
+                                ColumnCode: column,
+                                supplierCode:this.ruleForm.supplier,
+                                supplierName: this.ruleForm.supplierName,
+                                catalogCode: catlogCode,
+                                name: this.ruleForm.projectName,
+                                goodsCode: this.ruleForm.number,
+                                goodsAlias: this.ruleForm.goodsAlias,
+                                pinYin:this.ruleForm.pinYin,
+                                imgMainUrl: this.getUrl(picture1[0]),
+                                imgAssUrl1: this.getUrl(picture2[0]),
+                                imgAssUrl2: this.getUrl(picture2[1]),
+                                imgAssUrl3: this.getUrl(picture2[2]),
+                                imgAssUrl4: this.getUrl(picture2[3]),
+                                Price: this.type=='four'?this.ruleForm.tableData[0].ProfitPrice:this.ruleForm.origionPrice,
+                                priceSale: this.type=='four'?this.ruleForm.tableData[0].Price:this.ruleForm.salePrice,
+                                Ismall: "1",
+                                goodsTag: this.dynamicTags.join(","),
+                                RichText:  this.htmlEncode(this.content1),
+                                CreateUserCode: getCookie("userCode"),
+                                CreateDate: new Date().formatDate("yyyy-MM-dd"),
+                                goodsPropertyList: JSON.stringify(this.moveNull(this.recAttr.concat(this.tableData))),
+                                goodsUnitList: JSON.stringify(this.moveNull(this.ruleForm.tableData)),
+                                limitAmount: this.ruleForm.integral,
+                                state: this.mall.GoodsEntity.State,
+                                ApproveState: this.mall.GoodsEntity.ApproveState,
+                                productionAddress:this.ruleForm.origin,
+                                unitName:this.ruleForm.unit,
+                                ApprovalNumber:this.ruleForm.ApprovalNumber,
+                                deptCode:this.ruleForm.deptCode||"",
+                                isEnable:this.ruleForm.isEnable,
+                                GoodsType:this.ruleForm.GoodsType,
+                                Manufacturer:this.ruleForm.Manufacturer,
+                                jiType:this.ruleForm.jiType,
+                                IsSkinTest:this.ruleForm.IsSkinTest,
+                                IsJingEr:this.ruleForm.isJingEr
+                            }
+                            if( this.type == "third"){
+                                obj.shopCode = this.ruleForm.shop
+                            }
+                            this.updateGoods(obj)
+                        } else {
+                            console.log('error submit!!');
+                            return false;
+                        }
+                    });
+                // } else {
+                //     this.$message({
+                //         message: '请选择图片',
+                //         type: 'warning'
+                //     });
+                // }
+            },
+            moveNull(data){             
+                if(data.length>0){
+                    data.forEach(row=>{
+                        for(var p in row){
+                            if(!row[p]||row[p] == undefined){
+                                row[p] = ""
+                            }
+                        }
+                    })
+                }
+                return data
+            },
+            async GetShopByPage(params){
+                try{
+                    let res = await GetShopByPage(params)               
+                    this.shopList = res.data
+                    this.loading = false;
+                }catch(err){
+                    console.log(err)
+                }
+            },
+            remoteMethod(query) {
+                if (query !== '') {
+                    this.loading = true;
+                    this.GetShopByPage({pageIndex:1,pageSize:20,keywords:query.removeSP()})
+                } else {
+                    this.shopList = [];
+                }
+            },
+            //            表单重置
+            resetForm(formName) {
+                this.$refs[formName].resetFields();
+            },
+            //    小类
+            getLabel () {
+                this.ruleForm.classify3 = ""
+                this.label = []
+                let code = ""
+                let len = this.subClass.length
+                if (this.ruleForm.classify2 == "") {
+                } else {
+                    this.label = this.parentCode(this.ruleForm.classify2)
+                }
+            },
+            getLabelCap(){
+                let len = this.label.length
+                for (let i = 0; i < len; i++) {
+                    if (this.ruleForm.classify3 == this.label[i].Name) {
+                        this.getProperty({
+                            keywords: "",
+                            "columncode": this.label[i].CloumnCode,
+                            "catelogcode": this.label[i].Code
+                        })
+                        break
+                    }
+                }
+            },
+            //    获取分类叶子节点的code
+            getCode (code) {
+                let catLogCode = ""
+                if (this.ruleForm.classify1 != "") {
+                    catLogCode = "|" + this.ruleForm.classify1 + "|"
+                }
+                if (this.ruleForm.classify2 != "") {
+                    catLogCode = catLogCode + this.ruleForm.classify2 + "|"
+                }
+                if (this.ruleForm.classify3 != "") {
+                    catLogCode = catLogCode + this.ruleForm.classify3 + "|"
+                }
+                return catLogCode
+            },
+            // 添加规格
+            addSpec(){
+                if (this.ruleForm.number != "") {
+                    let price = ""
+                    let deposit = ""
+                    if (this.ruleForm.checked1 == true) {
+                        price = this.ruleForm.price
+                    } else {
+                        price = ""
+                    }
+                    if (this.ruleForm.checked2 == true) {
+                        deposit = this.ruleForm.deposit
+                    } else {
+                        deposit = ""
+                    }
+                    let unitCode = this.ruleForm.tableData.length + 1000
+                    let barCode = this.ruleForm.number + unitCode
+                    this.ruleForm.tableData.push({
+                        ProfitPrice:0,
+                        unitName: "",
+                        Price: price,
+                        PageQuantity: deposit,
+                        UnitCode: unitCode,
+                        BarCode: barCode
+                    })
+                } else {
+                    this.$alert('请先生成商品编码', '提示', {
+                        confirmButtonText: '确定',
+                        type: 'warning',
+                    });
+                }
+            },
+            //删除规格
+            deleteRow (index, data) {
+                data.splice(index, 1)
+                this.tableNumChange()
+            },
+
+            // 统一设置价格订金
+            commonSet(attr){
+                var len = this.ruleForm.tableData.length
+                if (this.ruleForm.price != "") {
+                    if (!isNaN(parseInt(this.ruleForm.price))) {
+                        for (let i = 0; i < len; i++) {
+                            if (attr == "price") {
+                                this.ruleForm.tableData[i].Price = this.ruleForm.price
+                            } else {
+                                this.ruleForm.tableData[i].PageQuantity = this.ruleForm.deposit
+                            }
+                            this.ruleForm.tableData.push()
+                        }
+                    } else {
+                        this.$message({
+                            message: '价格必须是数字类型',
+                            type: 'warning'
+                        });
+                    }
+                }
+            },
+
+            // 图片预览
+            handlePictureCardPreview(file) {
+                // console.log(file, this.fileList4)
+                this.dialogImageUrl = file.url;
+                this.dialogVisible = true;
+            },
+
+            // 删除图片操作
+            handleRemove1(file, fileList) {
+                this.DelImg(file,3,fileList)
+            },
+
+            handleRemove2(file, fileList) {
+                    this.DelImg(file,4,fileList)
+            },
+
+            // 删除原图片/视频
+            async DelImg(file,index,fileList){//点击删除后，组件返回fileList已将该数据删除，需要在确认是否删除后在进行赋值操作
+                if(file.isNew == 0){//新加图片不需要提示
+                    this.$confirm('此操作将永久删除该图片,删除后需保存编辑,否则将出现空白图，是否继续?', '提示', {
+                        confirmButtonText: '确定',
+                        cancelButtonText: '取消',
+                        type: 'warning'
+                    }).then(() => {
+                        this['fileList'+index] = fileList
+                        this.delImg(file.response)
+                    }).catch(() => {
+                        this['fileList'+index].push()
+                    });
+                }else{
+                    this['fileList'+index] = fileList
+                    this.delImg(file.response)
+                }
+            },
+            
+            async delImg(filepath){
+                let res = await DelImg({filepath:filepath})
+                if(!res.status){        
+                    this.$message({message: '原图片删除失败！'+res.errorMessage,type: 'warning'});
+                }
+            },
+
+            beforeAvatarUpload(file) {
+                const isLt2M = file.size / 1024 / 1024 < 1;
+                if (!isLt2M) {
+                    this.$message.error('上传图片大小不能超过 1MB!');
+                }
+                return isLt2M;
+            },
+            // 主图
+            handleChange1(file, fileList) {
+                this.fileList3 = fileList
+            },
+            // 副图
+            handleChange2(file, fileList) {
+                this.fileList4 = fileList
+            },
+            //图片位置切换
+            move(flag, index){
+                var temp,file = []
+                if (flag == "left" && index != 0) {
+                    temp = this.fileList4[index]
+                    this.fileList4[index] = this.fileList4[index - 1]
+                    this.fileList4[index - 1] = temp
+                    this.fileList4.push()
+                }
+                if (flag == "right" && index != this.fileList4.length - 1) {
+                    temp = this.fileList4[index]
+                    this.fileList4[index] = this.fileList4[index + 1]
+                    this.fileList4[index + 1] = temp
+                    this.fileList4.push()
+                }
+            },
+            parentCode (code) {
+                var arr = []
+                for (let i = 0; i < this.catelog.length; i++) {
+                    if (code == this.catelog[i].parentCode) {
+                        arr.push(this.catelog[i])
+                    }
+                }
+                return arr
+            },
+            //  添加自定义属性
+            addSelfAttr(){
+                this.tableData.push({
+                    propertyCode: 99999,
+                    propertyName: "",
+                    propertyValue: "",
+                })
+            },
+            tableNumChange(){
+                let len = this.ruleForm.tableData.length
+                for (let i = 0; i < len; i++) {
+                    this.ruleForm.tableData[i].UnitCode = 1000 + i
+                    this.ruleForm.tableData[i].BarCode = this.ruleForm.number + "" + this.ruleForm.tableData[i].UnitCode
+                }
+                this.ruleForm.tableData.push()
+            },
+            //    属性检测
+            capsCheck(data){
+                let arr = []
+                data.forEach(row => {
+                    if (row.IsChecked == 1) {
+                        arr.push(row)
+                    }
+                })
+                return arr
+            },
+            reciveAttr (val){
+                if (val.length != 0) {
+                    let arr = []
+                    let len = val.length
+                    for (let i = 0; i < len; i++) {
+                        arr.push({
+                            "propertyCode": val[i].propertyCode,
+                            "propertyValue": this.arrTurn(val[i].propertyValue),
+                            "propertyName": val[i].Name,
+                        })
+                    }
+                    this.recAttr = arr
+                }else{
+                    this.recAttr = val
+                }
+            },
+            //   自定义属性和属性分离
+            attrSplit (data) {
+                let arr = []
+                let len = data.length
+                for (let i = 0; i < len; i++) {
+                    if (data[i].PropertyCode == 99999) {
+                        this.tableData.push(data[i])
+                    } else {
+                        arr.push(data[i])
+                    }
+                }
+                this.getCaps = arr
+            },
+            arrTurn(data){
+                if (data instanceof Array) {
+                    return data.join(",")
+                } else {
+                    return data
+                }
+            },
+            classSplit(data){
+                data = data.substring(1, data.length - 1).split("|")
+                this.ruleForm.classify1 = data[0]
+                var vm = this
+                setTimeout(function () {
+                    if (data[1]) {
+                        vm.ruleForm.classify2 = data[1]
+                    }
+                }, 200)
+                setTimeout(function () {
+                    if (data[2]) {
+                        vm.ruleForm.classify3 = data[2]
+                    }
+                }, 300)
+            },
+            pictureTurn(data){
+                let arr = [data.ImgAssUrl1, data.ImgAssUrl2, data.ImgAssUrl3, data.ImgAssUrl4],arr1 = []
+                arr.forEach(row=> {
+                    if (row) {
+                        arr1.push({ url: baseImgPath + row, isNew : 0,response : row })
+                    }
+                })
+                return arr1
+            },
+            getPictureUrl(data){
+                let arr = []
+                for (let i = 0; i < data.length; i++) {
+                    arr.push(data[i].response)
+                }
+                return arr
+            },
+            handleImageAdded(file, Editor, cursorLocation) {
+                var formData = new FormData();
+                formData.append('image', file)
+                axios({
+                    url: baseImgPath + '/api/Image/UploadImg?op=goods',
+                    method: 'POST',
+                    headers: {'Content-Type': 'multipart/form-data'},
+                    data: formData
+                }).then((result) => {
+                    let url = result.data
+                    Editor.insertEmbed(cursorLocation, 'image', baseImgPath + url);
+                }).catch((err) => {
+                    console.log(err);
+                })
+            },
+            getUrl(data){
+                return data?data:''
+            },
+        },
+        components: {
+            attr,
+            VueEditor
+        },
+    }
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+    .pic-tit {
+        line-height: 40px;
+        display: block;
+        border-bottom: 1px dotted rgb(242, 242, 242);
+        margin-bottom: 5px;
+    }
+    .main {
+        height: 150px;
+        overflow: hidden;
+    }
+    .addCap{
+        margin-left: 60px;cursor: pointer;
+    }
+    .addCap:hover,.delete:hover{
+        color: #cda382;
+    }
+    .delete {
+        cursor: pointer;
+    }
+    .check-ipt {
+        float: none;
+        width: 30px;
+        height: 30px;
+        border: 1px solid #bfcbd9;
+        border-radius: 4px;
+        margin-left: 5px;
+        padding: 0 3px;;
+    }
+</style>

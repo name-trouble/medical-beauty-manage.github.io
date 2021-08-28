@@ -1,0 +1,249 @@
+<template>
+    <!-- <el-tree :data="treeList" :props="defaultProps" accordion @node-click="handleNodeClick" :show-checkbox='true'> -->
+    <div>
+        <div>
+            <span>已选择：</span>
+            <div class="tag-content">
+                <el-tag v-for="(tag,$index) in tags" :key="$index" type="success">
+                    {{tag.Name}}
+                </el-tag>
+            </div>
+        </div>
+        <div :span="13" class="grid-content" v-loading="isLoad" element-loading-text="拼命加载中">
+            <el-tree :data="data2" :props="defaultProps" :indent="20" :default-expand-all="false" node-key="Code" ref="tree" :render-content="renderContent" :current-node-key="0" :highlight-current="true" :expand-on-click-node="true" :show-checkbox="true" @check-change="nodeClick">
+            </el-tree>
+
+        </div>
+        <div style="float:right;margin:10px 20px;">
+            <el-button type="info" style="width:100px" @click="save(1)">保存</el-button>
+            <el-button style="width:100px" @click="save(0)">取消</el-button>
+        </div>
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+import { getProjectCount, getProjectAll,GetCatelogByColumnCode } from '@/api/myData'
+//import '../lib/coupon.less'
+
+export default {
+    data() {
+        return {
+            list: "",
+            isLoad: true,
+            treeList: [],
+            porjectList: [],
+            defaultProps: {
+                children: 'children',
+                label: 'label'
+            },
+            tags: [],
+
+            selectProject: [],
+            data1: [],
+            data2: [],
+            editProject:[],
+            ProjectId: [],
+            projectList: [],
+            classList: [],
+        }
+    },
+
+    props: {
+        getProject: Function
+    },
+
+
+
+    created() {
+        let _this = this
+       /* setTimeout(function() {
+            _this.isLoad = false
+        }, 500)*/
+        this.getData()
+    },
+
+    methods: {
+        nodeClick() {
+            let nodes = this.$refs.tree.getCheckedNodes(true)
+            this.tags = []
+            if (nodes.length == 0) return
+            let _this = this
+            nodes.forEach(item => {
+                if (item.CatalogPath) {
+                    _this.tags.push(item)
+                }
+            })
+        },
+
+    /*    async getData() {
+            this.list = await getProjectCount()
+            this.porjectList = await getProjectAll()
+            let data = this.concatData(this.list, this.porjectList)
+            this.treeList = this.ArrayToTree(data, "Code", "ParentCode", "child")
+        },
+*/
+
+        renderContent(h, { node, data, store }) {
+            let nodeStr
+            
+            if (data.CatalogPath) {
+                nodeStr = (
+                    <span class="node_project" style="color:#843aaf;background:#dfdfff">
+                        <span>{data.label} </span>
+                    </span>
+                )
+            }
+            else {
+                nodeStr = (
+                    <span>
+                        <span>{data.label} </span>
+                    </span>
+                )
+            }
+            return (nodeStr)
+        },
+
+      /*  //整合 类型 和项目，构造tree    ,项目code =  Id + CatalogPath  最后|的字符窜（小类code）
+        concatData(typeList, projectList) {
+            if (projectList.length == 0) return
+            projectList.forEach(item => {
+                let str = item["CatalogPath"]
+                let ars = str.split('|')
+                item.RealCode = item.Code
+                item.Code = ars[ars.length - 2] + item["Id"]
+                item.ParentCode = ars[ars.length - 2]
+                item.isProject = true
+            })
+            return typeList.concat(projectList)
+        },*/
+
+
+        save(val) {
+            
+            if (val === 1) {
+                let nodes = this.$refs.tree.getCheckedNodes(true)
+                this.getProject && this.getProject(this.tags)
+            }
+            else {
+                this.getProject && this.getProject()
+            }
+            this.tags = []
+            this.$refs.tree.setCheckedKeys([])
+        },
+
+        /**
+        * @param {原始数组} nodesArray
+        * @param { code 标记 } key
+        * @param { 上级 code标记 } parentkey     parentKey
+        * @param { 子节点 集合} childKey
+        */
+       /* ArrayToTree(nodesArray, key, parentKey, childKey) {
+            var i, l
+            if (!key || key == "" || !nodesArray) return [];
+            
+            if (nodesArray instanceof Array) {
+                var r = [];
+                var tmpMap = {};
+                for (i = 0, l = nodesArray.length; i < l; i++) {
+                    tmpMap[nodesArray[i][key]] = nodesArray[i];
+                }
+                
+                for (i = 0, l = nodesArray.length; i < l; i++) {
+                    if (tmpMap[nodesArray[i][parentKey]] && nodesArray[i][key] != nodesArray[i][parentKey]) {
+                        if (!tmpMap[nodesArray[i][parentKey]][childKey])
+                            tmpMap[nodesArray[i][parentKey]][childKey] = [];
+                        tmpMap[nodesArray[i][parentKey]][childKey].push(nodesArray[i]);
+                    } else {
+                        if(nodesArray[i].CatalogPath){
+
+                        }
+                        r.push(nodesArray[i]);
+                    }
+                }
+                return r;
+            } else {
+                return nodesArray;
+            }
+        },*/
+
+        async getData(index,params) {
+                this.projectList = await getProjectAll()//xiaoxie
+                let res = await GetCatelogByColumnCode({code: 100})//daxie
+                this.classList = res.data
+//                编辑传值params
+            this.data1 = this.dealData(this.projectList)
+            this.data2 = this.getDataTree(this.classList)
+            
+           /* if(params){
+                this.selectProject = this.geteditMes(this.data1,params)
+            }*/
+            this.isLoad = false
+            /*setTimeout(()=>{
+                this.setCheckedKeys(params)
+            },500)*/
+        },
+        getDataTree(data){
+            let arr = [], arr2 = []
+            data.forEach(row=> {
+                arr.push({id: row.code, label: row.name, pid: row.parentCode})
+            })
+            arr2 = this.getdata(this.data1.concat(arr), "")
+            return arr2
+        },
+        dealData(data){
+            data.forEach(row=> {
+                if(!row.CatalogPath){
+                    
+                }
+                let lastCode = row.CatalogPath.split("|")
+                row.pid = lastCode[lastCode.length - 2]
+                row.label = row.Name
+                row.id = row.Code
+            })
+            return data
+        },
+        getdata(data, pid) {
+            
+            var result = [], temp;
+            for (var i = 0; i < data.length; i++) {
+                if (data[i].pid == pid) {
+//                        var obj = {"label": data[i].label, "id": data[i].id};
+                    var obj = data[i]
+                    temp = this.getdata(data, data[i].id);
+                    if (temp.length > 0) {
+                        obj.children = temp;
+                    }
+                    result.push(obj);
+                }
+            }
+            return result;
+        },
+    },
+}
+</script>
+
+<style lang="less" scoped>
+.grid-content {
+    //border: 1px solid #ddd;
+    overflow: auto;
+    height: 500px;
+    padding: 3px;
+}
+
+
+.tag-content {
+    overflow: auto;
+    height: 100px;
+    margin: 3px; //width:600px;
+    //text-align: center;
+    border: 1px solid #ddd;
+}
+
+.el-tag {
+    margin: 3px;
+}
+
+.node_project {
+    color: rebeccapurple;
+}
+</style>

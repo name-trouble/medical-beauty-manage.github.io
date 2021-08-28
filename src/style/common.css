@@ -1,0 +1,445 @@
+body,
+div,
+span,
+header,
+footer,
+nav,
+section,
+aside,
+article,
+ul,
+dl,
+dt,
+dd,
+li,
+a,
+p,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+i,
+b,
+textarea,
+button,
+input,
+select,
+figure,
+figcaption {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+  font-style: normal;
+  text-decoration: none;
+  border: none;
+  font-family: "Helvetica Neue", Helvetica, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "微软雅黑", Arial, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-font-smoothing: antialiased;
+  font-size: 12px;
+}
+body:focus,
+div:focus,
+span:focus,
+header:focus,
+footer:focus,
+nav:focus,
+section:focus,
+aside:focus,
+article:focus,
+ul:focus,
+dl:focus,
+dt:focus,
+dd:focus,
+li:focus,
+a:focus,
+p:focus,
+h1:focus,
+h2:focus,
+h3:focus,
+h4:focus,
+h5:focus,
+h6:focus,
+i:focus,
+b:focus,
+textarea:focus,
+button:focus,
+input:focus,
+select:focus,
+figure:focus,
+figcaption:focus {
+  outline: none;
+}
+body {
+  position: relative;
+}
+/*定义滚动条高宽及背景 高宽分别对应横竖滚动条的尺寸*/
+/*定义滚动条轨道 内阴影+圆角*/
+::-webkit-scrollbar-track {
+  -webkit-box-shadow: inset 0 0 1px rgba(0, 0, 0, 0);
+  border-radius: 10px;
+  background-color: #F5F5F5;
+}
+/*定义滑块 内阴影+圆角*/
+::-webkit-scrollbar-thumb {
+  border-radius: 10px;
+  -webkit-box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.3);
+  background-color: #555;
+}
+::-webkit-input-placeholder {
+  font-size: 12px;
+  line-height: 18px;
+}
+input[type="button"],
+input[type="submit"],
+input[type="search"],
+input[type="reset"] {
+  -webkit-appearance: none;
+  font-size: 12px;
+}
+textarea {
+  -webkit-appearance: none;
+  font-size: 12px;
+}
+html,
+body {
+  height: 100%;
+  width: 100%;
+}
+.fillcontain {
+  height: 100%;
+  width: 100%;
+}
+.clear:after {
+  content: '';
+  display: block;
+  clear: both;
+}
+.block {
+  float: right;
+}
+.clear {
+  zoom: 1;
+}
+.back_img {
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+}
+.margin {
+  margin: 0 auto;
+}
+.left {
+  float: left;
+}
+.right {
+  float: right;
+}
+.hide {
+  display: none;
+}
+.show {
+  display: block;
+}
+.ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+::-webkit-input-placeholder {
+  font-size: 12px;
+  line-height: 18px;
+}
+input[type="button"],
+input[type="submit"],
+input[type="search"],
+input[type="reset"] {
+  -webkit-appearance: none;
+  font-size: 12px;
+}
+.el-button,
+.el-textarea__inner {
+  font-size: 12px !important;
+  box-sizing: border-box;
+}
+.el-form-item__label {
+  font-size: 12px !important;
+  line-height: 18px !important;
+}
+.el-input__inner {
+  font-size: 12px !important;
+}
+.el-dialog__header {
+  text-align: center !important;
+}
+.el-dialog__footer {
+  text-align: center !important;
+}
+.el-breadcrumb {
+  font-size: 13px;
+  margin-bottom: 5px;
+}
+.el-checkbox {
+  margin-right: 15px !important;
+  margin-left: 0 !important;
+}
+/*菜单颜色修改*/
+.el-menu--dark .el-submenu .el-menu {
+  background-color: #154394 !important;
+}
+.el-submenu .el-menu {
+  background-color: #154394 !important;
+}
+.el-menu-item {
+  color: #fff !important;
+}
+.el-menu {
+  border-radius: 2px;
+  list-style: none;
+  position: relative;
+  margin: 0;
+  padding-left: 0;
+  /* background-color: #32373f !important; */
+}
+/*菜单颜色修改*/
+.el-submenu__title {
+  color: #fff !important;
+}
+.el-menu--horizontal.el-menu--dark .el-submenu .el-menu-item.is-active,
+.el-menu-item.is-active {
+  color: #fff !important;
+  background: #CDA382;
+}
+.el-menu-item {
+  height: 34px !important;
+  line-height: 34px !important;
+  padding: 0 45px;
+}
+.el-submenu__title {
+  height: 34px !important;
+  line-height: 34px !important;
+}
+.el-menu div.menu_item li.el-menu-item.is-active span {
+  color: #fff !important;
+}
+.el-submenu .el-menu-item {
+  height: 50px;
+  line-height: 50px;
+  padding: 0 45px;
+  min-width: 86px !important;
+}
+.table_btn {
+  color: #20a0ff;
+  cursor: pointer;
+}
+.el-table__footer {
+  font-weight: bold;
+}
+.form_search {
+  background: #f9f9f9;
+  padding: 10px 0 0 20px;
+}
+.shelve {
+  display: inline-block;
+  width: 100px;
+  height: 36px;
+  border: 1px solid #999;
+  line-height: 36px;
+  font-size: 12px;
+  color: #333;
+  text-align: center;
+  cursor: pointer;
+  margin-top: 15px;
+  border-radius: 3px;
+  margin-right: 5px;
+}
+.shelve.active {
+  background: #6A6D78 !important;
+  color: #fff;
+}
+.shelve:hover {
+  background: #6A6D78 !important;
+  color: #fff;
+}
+.el-table__header-wrapper .cell {
+  text-align-last: center;
+}
+.overflow_col {
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.overflow_ell {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  cursor: pointer;
+}
+.right_tag .el-icon-close {
+  float: right;
+  border-radius: 50%;
+  text-align: center;
+  position: relative;
+  cursor: pointer;
+  font-size: 12px;
+  -ms-transform: scale(0.75, 0.75);
+  transform: scale(0.75, 0.75);
+  height: 18px;
+  width: 18px;
+  line-height: 18px;
+  vertical-align: middle;
+  top: 2px !important;
+  right: -2px;
+}
+.el-radio__labe {
+  font-size: 12px !important;
+}
+.el-table .cell,
+.el-table th > div {
+  padding-left: 5px !important;
+  padding-right: 5px !important;
+  box-sizing: border-box;
+  text-overflow: ellipsis;
+}
+.editor-container .CodeMirror {
+  height: 100%!important;
+}
+.min_table .el-table__empty-block {
+  position: relative;
+  min-height: 60px;
+  text-align: center;
+  width: 100%;
+  height: 100%;
+  min-height: 400px;
+}
+.searchBtn {
+  background: #cda382 !important;
+  border-radius: 4px !important;
+  color: #fff !important;
+  border-color: #d6d4d4 !important;
+}
+.nav {
+  position: relative;
+  height: 36px;
+  margin-bottom: 10px;
+  line-height: 36px;
+}
+.bread {
+  background: #f9f9f9;
+  box-sizing: border-box;
+  height: 36px;
+  line-height: 36px;
+  font-size: 12px;
+  color: #333333;
+  padding-left: 10px;
+}
+.el-breadcrumb {
+  font-size: 13px;
+  line-height: 36px !important;
+}
+.el-form .form_item_mt10 {
+  margin-bottom: 10px;
+}
+.el-form .form_item_mt0 {
+  margin-bottom: 0px;
+}
+.el-form .form_item_ipt220 {
+  width: 220px !important;
+}
+.el-table .warning-row {
+  color: #FF4949;
+}
+.el-table .positive-row {
+  color: #000;
+}
+.min_table .el-table__body-wrapper {
+  min-height: 400px !important;
+}
+.min_table4 .el-table__body-wrapper {
+  min-height: 400px !important;
+}
+.form_item_mt15 {
+  margin-bottom: 15px !important;
+}
+.el-form-item__error {
+  padding-top: 0px !important;
+}
+.el-autocomplete-suggestion li {
+  line-height: 20px !important;
+  padding: 10px !important;
+  border-bottom: 1px solid #eef1f6;
+}
+.el-autocomplete-suggestion li .select_namered {
+  color: red;
+}
+.el-autocomplete-suggestion li .select_nameblack {
+  color: #000;
+}
+.el-input-number {
+  display: block;
+  width: 180px;
+  position: relative;
+}
+.el-select__tags {
+  display: none;
+}
+.form_footer {
+  text-align: center;
+}
+.el-button + .el-button {
+  margin-left: 0px;
+}
+/*分页插件颜色修改*/
+.el-pager li.active {
+  border-color: #cda382 !important;
+  background-color: #cda382 !important;
+  color: #fff;
+  cursor: default;
+}
+.el-pager li:hover {
+  color: #cda382 !important;
+}
+.el-pagination button:hover i {
+  color: #cda382 !important;
+}
+/* .el-input__inner:focus {
+  border: 1px solid #cda382 !important;
+}
+.el-input__inner:hover {
+  border: 1px solid #cda382 !important;
+} */
+.el-textarea__inner:hover {
+  border: 1px solid #cda382 !important;
+}
+.el-textarea__inner:focus {
+  border: 1px solid #cda382 !important;
+}
+.avatar-uploader .el-upload {
+  border: 1px dashed #d9d9d9;
+  border-radius: 6px;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+.avatar-uploader .el-upload:hover {
+  border-color: #20a0ff;
+}
+.node .person {
+  overflow: auto !important;
+}
+.node .person .name {
+  overflow: auto !important;
+  height: auto !important;
+}
+.childLevel .node {
+  width: 9em !important;
+}
+.treeModel .childLevel {
+  padding: 0 !important;
+}
+.node .person .avat {
+  display: none !important;
+}

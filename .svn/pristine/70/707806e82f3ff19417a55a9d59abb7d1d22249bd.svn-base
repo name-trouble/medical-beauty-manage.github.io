@@ -1,0 +1,351 @@
+<template>
+    <div class="upload">
+    <!-- 图片展示 -->
+    <div class="cha" v-for="(item,index) in imgList" :key="index">
+      <div  class="imgCon">
+            <el-progress type="circle" :percentage="percentage[index]" :width=100 v-show="percentage[index] < 100"></el-progress>
+            <img class="upLoadImg"  :src="item.localUrl" v-show="item.localUrl">
+      <!-- 放大icon -->
+            <div class="layer">
+                <i @click="imgShow(item.localUrl)" class="el-icon-view view"></i>
+                <!-- 删除icon -->
+                <i class="el-icon-delete del" @click="delImg(item,index)"></i>
+                <!-- <i class="el-icon-download"></i> -->
+                <!-- <i @click="DownLoadImg(item.url)">下载</i> -->
+                <a style="color:#fff" :href="api+item.url" download="案例" v-if="downLoadApi">
+                    <i class="icon iconfont icon-xiazai"></i>
+                </a>
+            </div>
+      </div>
+    </div>
+    <!-- 图片上传控件 -->
+    <div class="load" v-if="imgList.length<10">
+        <i class="el-icon-plus"></i>
+        <input type="file" name="" id="form" :accept='acceptImage' :disabled="disabled" :value="fileValue" multiple @change="uploadIMG">
+    </div>
+    <!-- 图片预览弹框 -->
+    <!-- <el-dialog :visible.sync="isEnlargeImage" size=""  :append-to-body="true" top="8%" >
+            <img @click="isEnlargeImage = false" style="width:100%;" :src="imgUrl" width="400px">
+    </el-dialog> -->
+    </div>
+</template>
+
+<script>
+import { xmxUrl, baseImgPath } from '@/config/env'
+import {  imgApi, acceptImage } from '@/config/common'
+import axios from 'axios'
+
+export default {
+    // name: "AddDoctor",
+    props: {
+        fileList:Array,
+        action:String,
+        limit:6,
+        downLoadApi: {
+            type: String,
+            default: ''
+        },
+        
+    },
+    components: {
+
+    },
+    data() {
+        return {
+            api:this.downLoadApi,
+            percentage:[],
+            acceptImage,
+            baseImgPath,
+            picavalue: 0,
+            imgUrl: null,
+            slimit:10,
+            isEnlargeImage: false,
+            imgList:[],
+            fileValue:'',
+            disabled:false,
+        }
+    },
+    watch:{
+        'fileList':{
+            handler(curVal,oldVal){
+                for(let i=0;i<curVal.length;i++){
+                    this.percentage.push(100)
+                }
+            }
+        }
+    },
+    mounted(){
+        if(this.limit){
+            debugger
+            this.slimit = this.limit
+        }
+        this.imgList = this.fileList
+    },
+    methods: {
+        DownLoadImg(data){
+            this.$emit('DownLoadImg',data)
+        },
+        imgShow(url){
+            this.isEnlargeImage = true
+            this.$emit('imgView',url)
+        },
+
+      // file转blob
+        readBlobAsDataURL(blob, callback) {
+            var a = new FileReader();
+            a.onload = function(e) {callback(e.target.result);};
+            a.readAsDataURL(blob);
+        },
+
+        uploadIMG(e) {
+            this.picavalue = 0
+            let files = e.target.files || e.dataTransfer.files;
+            if (!files.length) return;
+            for(let j =0;j<files.length;j++){
+                if(files[j].size>this.picavalue){
+                    this.picavalue = files[j].size
+                }
+            }
+            if (this.picavalue / 1024/1024 >15 ) {
+                this.$message({
+                message: "图片过大不支持上传,不能超过15M",
+                type: "warning"
+                });
+            } else {
+                let len = files.length>this.slimit-this.imgList.length?this.slimit-this.imgList.length:files.length
+                for(let i = 0;i<len;i++){
+                    this.imgPreview(files[i],this.imgList.length);
+                    this.imgList.push({})
+                    this.percentage.push(0)
+                }
+            }
+        },
+        //获取图片
+        imgPreview(file,index,callback) {
+            let self = this;
+                //判断支不支持FileReader
+                if (!file || !window.FileReader) return;
+                if (/^image/.test(file.type)) {
+                    //创建一个reader
+                    let reader = new FileReader();
+                    //将图片转成base64格式
+                    reader.readAsDataURL(file);
+                    //读取成功后的回调
+                    reader.onloadend = function() {
+                        let result = this.result;
+                        let img = new Image();
+                        img.src = result;
+                        console.log("********未压缩前的图片大小********");
+                        img.onload = function() {
+                            let data = self.compress(img,result.length,file.name);
+                            self.imgList[index].localUrl = result
+                            let blob = self.dataURItoBlob(data);
+                            console.log("*******base64转blob对象******");
+                            var formData = new FormData();
+                            formData.append("file", blob);
+                            formData.append("1", 1);
+                            console.log("********将blob对象转成formData对象********");
+                            let config = {
+                                headers: { "Content-Type": "multipart/form-data" },
+                                onUploadProgress: function (progressEvent) {
+                                    var percentComplete = Math.round(progressEvent.loaded * 100 / progressEvent.total);
+                                    self.percentage[index] = percentComplete
+                                    self.percentage.push()
+                                },
+                            };
+                            // 发送请求;
+                            axios.post(self.action, formData, config).then(res => {
+                                console.log(res)
+                                if (res.status == 200) {
+                                    self.imgList[index].url = res.data
+                                    self.imgList[index].localUrl = result
+                                    self.imgList.push()
+                                    // 清除fileValue使的组件可以连续传同一张图片
+                                    self.fileValue = ""
+                                    self.$emit('onSuccess',self.imgList)
+                                    if(self.imgList.length>=self.slimit){
+                                        self.disabled = ""
+                                    }
+                                } else {
+                                    // 失败后删除预先添加的对象
+                                    self.imgList.splice(index,1)
+                                    self.imgList.splice(index,1)
+
+                                    self.$message({
+                                    message: "图片上传失败，请重试",
+                                    type: "warning"
+                                    });
+                                }
+                            });
+                        };
+                    };
+                }
+        },
+        // 压缩图片
+        compress(img,size,name) {
+            let canvas = document.createElement("canvas");
+            let ctx = canvas.getContext("2d");
+            let initSize = img.src.length;
+            let width = img.width;
+            let height = img.height;
+            canvas.width = width;
+            canvas.height = height;
+            // 铺底色
+            ctx.fillStyle = "#fff";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0, width, height);
+
+            //根据文件大小自定义压缩比例
+            let ndata,r = Math.ceil(size/1024/1024),mul = 1
+            if(r>5){
+                ndata = canvas.toDataURL("image/jpeg", 0.1);
+            }else if(0<r&&r<=5){
+                ndata = canvas.toDataURL("image/jpeg", parseInt((10/r)*10)/100);
+            }
+            // if(r>=10){
+            //     ndata = canvas.toDataURL("image/jpeg", 1);
+            // }
+            console.log("*******压缩后的图片大小*******");
+            // console.log(ndata)
+            //   console.log(ndata.length);
+            return ndata;
+        },
+
+        dataURItoBlob(dataurl) {
+            var arr = dataurl.split(','), mime = arr[0].match(/:(.*?);/)[1],
+                bstr = atob(arr[1]), n = bstr.length, u8arr = new Uint8Array(n);
+            while (n--) {
+                u8arr[n] = bstr.charCodeAt(n);
+            }
+            return new Blob([u8arr], { type: mime });
+        },
+        // dataURLtoFile(dataurl, filename) {
+        //     var arr = dataurl.split(','), mime = arr[0].match(/:(.*?);/)[1],
+        //         bstr = atob(arr[1]), n = bstr.length, u8arr = new Uint8Array(n);
+        //     while(n--){
+        //         u8arr[n] = bstr.charCodeAt(n);
+        //     }
+        //     return new File([u8arr], filename, {type:mime});
+        // },
+
+        //删除事件
+        delImg(img,index) {
+            this.imgList.splice(index,1)
+            this.percentage.splice(index,1)
+            this.$emit('onRemove',img,this.imgList)
+            this.disabled = false
+        }
+    }
+}
+</script>
+
+<style scoped lang="less">
+.upload {
+  position: relative;
+  // 图片展示
+  .cha {
+    display: inline-block;
+    top: 0;
+    left: 0;
+    margin-right: 8px;
+    width: 100px;
+    height: 100px;
+    border: 1px solid #c0ccda;
+    border-radius: 6px;
+    overflow: hidden;
+    box-sizing: border-box;
+    .layer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 2;
+      width: 100%;
+      height: 100px;
+      background-color: rgba(0, 0, 0, 0.3);
+      text-align: center;
+      line-height: 100px;
+      opacity: 0;
+      color: #ffffff;
+      border: none;
+    }
+    .view{
+        padding: 0 4px;
+        cursor: pointer;
+    }
+    .del {
+        padding: 0 4px;
+        cursor: pointer;
+        opacity: 0;
+
+    }
+    img {
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100px;
+      border: none;
+    }
+  }
+  //鼠标放上时显示删除和放大
+  .cha:hover .layer,
+  .cha:hover .del {
+    opacity: 1;
+  }
+
+  //点击上传
+  .load {
+      cursor: pointer;
+    position: relative;
+    display:inline-block;
+    vertical-align: top;
+    top: 0;
+    left: 0;
+    width: 100px;
+    height: 100px;
+    border: 1px dashed #c0ccda;
+    border-radius: 6px;
+    text-align: center;
+    input {
+        cursor: pointer;
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+    }
+    i{
+        line-height: 100px;
+
+        font-weight:400;
+        font-size: 28px;
+        color: #8c939d;
+    }
+  }
+  .load:hover{
+      border: 1px dashed #20a0ff;
+  }
+  .load::before {
+    top: 50%;
+    left: 50%;
+    transform: translateY(-50%);
+    width: 1px;
+    height: 80%;
+    border-right: 1px solid #cccccc;
+  }
+  .load:after {
+    top: 50%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80%;
+    height: 1px;
+    border-top: 1px solid #cccccc;
+  }
+}
+.imgCon{
+    display: inline-block;
+    width:100px;height:100px;
+    border:1px solid #ccc;
+    position: relative;
+}
+</style>

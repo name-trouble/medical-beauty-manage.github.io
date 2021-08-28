@@ -1,0 +1,249 @@
+<template>
+    <div class="add">
+        <el-form :model="form" style="width: 700px" ref="form">
+            <el-form-item label="性别：" class="form_item_mt0" label-width="90px">
+                    <el-checkbox-group v-model="sexChecked" @change="handleCheckedCitiesChange0">
+                        <el-checkbox class="checkBox" v-for="(hos,index) in sexList" :label="hos" :key="index">{{hos=='1'?'男':'女'}}</el-checkbox>
+                    </el-checkbox-group>
+            </el-form-item>
+            <el-form-item label="生日月份：" class="form_item_mt0" label-width="90px">
+                    <el-checkbox :indeterminate="isIndeterminate[1]" v-model="checkAll[1]" name="1" @change="handleCheckAllChange">全选</el-checkbox>
+                    <div style="margin: 5px 0;"></div> 
+                    <el-checkbox-group v-model="monthChecked" @change="handleCheckedCitiesChange1">
+                        <el-checkbox class="checkBox" v-for="(mon,index) in monthList" :label="mon" :key="index">{{mon}}月</el-checkbox>
+                    </el-checkbox-group>
+            </el-form-item>
+            <el-form-item label="年龄范围：" class="form_item_mt0" label-width="90px">
+                    <el-input-number v-model="form.ageStart" :controls="false" :min=0 :max=100 style="width:100px"></el-input-number>
+                    <div style="float:left;width:20px;text-align:center">~</div>
+                    <el-input-number v-model="form.ageEnd" :controls="false" :min=0 :max=100 style="float:left;width:100px"></el-input-number>
+            </el-form-item>
+            <el-form-item label="注册时间：" class="form_item_mt0" label-width="90px">
+                    <el-date-picker v-model="date" type="daterange" placeholder="选择日期范围" @change="dateForm" :picker-options="pickerOptions2" class="form_item_ipt_260"></el-date-picker>
+            </el-form-item>
+        </el-form>
+        <div style="color:red">提示：1、不做选择默认不限条件。2、新建用户规则需保存底部新建弹窗</div>
+        <div class="footer_ope">
+            <el-button @click="save('form')" type="primary" :loading="saveLoading">保存</el-button>
+            <el-button @click="cancel">取消</el-button>
+        </div>
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+    import { getCookie } from '@/config/mUtils'
+    import { SetRedPacketUserRule,GetRedPacketUserRule } from '@/api/myData'
+    export default {
+        props: {
+            currentId:"",
+        },
+        data () {
+            return {
+                date:"",
+                saveLoading:false,
+                checkAll:[false,false,false,false],
+                isIndeterminate: [false,false,false,false],
+                sexList:['1','0'],
+                sexChecked:[],
+                monthList:[],
+                monthChecked:[],
+                ageChecked:[],
+                registerCheck:[],
+                form: {
+                    sex:"",
+                    selfAge:false,
+                    selfRegister:false,
+                    ageStart:Number,
+                    ageEnd:Number,
+                    registerStart:"",
+                    registerEnd:"",
+                    amount:"",
+                    name:"",
+                    startDate: "",
+                    endDate: "",
+                    checked: true,
+                    channel:"1",
+                    CatalogType:"1",
+                    limitAmount:"",
+                    type:"1",
+                    users:"1",
+                    ProjectId:[],
+                    limitCount:"",
+                    limitUser:"",
+                    IsAllGoods:"true",
+                },
+                pickerOptions2: {
+                shortcuts: [{
+                        text: '最近一周',
+                        onClick(picker) {
+                        const end = new Date();
+                        const start = new Date();
+                        start.setTime(start.getTime() - 3600 * 1000 * 24 * 7);
+                        picker.$emit('pick', [start, end]);
+                        }
+                    }, {
+                        text: '最近一个月',
+                        onClick(picker) {
+                        const end = new Date();
+                        const start = new Date();
+                        start.setTime(start.getTime() - 3600 * 1000 * 24 * 30);
+                        picker.$emit('pick', [start, end]);
+                        }
+                    }, {
+                        text: '最近三个月',
+                        onClick(picker) {
+                        const end = new Date();
+                        const start = new Date();
+                        start.setTime(start.getTime() - 3600 * 1000 * 24 * 90);
+                        picker.$emit('pick', [start, end]);
+                        }
+                    }, {
+                        text: '最近六个月',
+                        onClick(picker) {
+                        const end = new Date();
+                        const start = new Date();
+                        start.setTime(start.getTime() - 3600 * 1000 * 24 * 180);
+                        picker.$emit('pick', [start, end]);
+                        }
+                    }, {
+                        text: '最近一年',
+                        onClick(picker) {
+                        const end = new Date();
+                        const start = new Date();
+                        start.setTime(start.getTime() - 3600 * 1000 * 24 * 365);
+                        picker.$emit('pick', [start, end]);
+                        }
+                    }]
+                },
+            }
+        },
+        watch:{
+            
+        },
+        mounted(){
+            this.setBaseData()
+            if(this.currentId){
+                this.getData()
+            }
+        },
+        methods: {
+            async SetRedPacketUserRule(data){
+                let res = await SetRedPacketUserRule(data)
+                if (res.status == true) {
+                        this.$message({type: 'success', message: '添加成功!'})
+                        this.$emit("userSelect",res.data.id)
+                    } else {
+                        this.$message({type: 'error', message: '添加失败!'})
+                    }
+            },
+            async getData(){
+                let res = await GetRedPacketUserRule({id:this.currentId})
+                this.copyData(res.data)
+            },
+            copyData(data){
+                for(var key in data){
+                    if(data[key] == null){
+                        data[key]=""
+                    }
+                }
+                this.sexChecked = data.genders.length>0?data.genders.split(","):[]
+                this.monthChecked = data.months.length>0?data.months.split(","):[]
+                this.checkAll[1] = this.monthChecked.length==this.monthList.length?true:false
+                
+                this.isIndeterminate[1]  = this.monthChecked.length > 0 && this.monthChecked.length < this.monthList.length;
+                this.form.ageStart = data.minAge
+                this.form.ageEnd = data.maxAge
+                if(data.minRegDate){
+                    let d1 = data.minRegDate,d2 = data.maxRegDate
+                    let start = new Date(d1.substring(0,4),Number(d1.substring(5,7))-1,d1.substring(8,10),d1.substring(11,13),d1.substring(14,16),d1.substring(17,19))
+                    let end = new Date(d2.substring(0,4),Number(d2.substring(5,7))-1,d2.substring(8,10),d2.substring(11,13),d2.substring(14,16),d2.substring(17,19))
+                    this.date = [start,end]
+                }
+            },
+            // 编辑时条件赋值
+            initData(val){
+                
+            },
+            dateForm(val){
+                if(val){
+                    val = val.formatDates()
+                    this.form.registerStart = val.substring(0,10)
+                    this.form.registerEnd = val.substring(13)
+                }else{
+                    this.form.registerStart = ""
+                    this.form.registerEnd = ""
+                }
+            },
+            cancel(){
+                this.$emit("userSelect")
+            },
+
+            save(){
+                // 保存用户条件，接受返回Id作为此红包的添加Id
+                // this.$emit("userSelect",)
+                let obj = {
+                    "genders": this.sexChecked.join(","),
+                    "months": this.monthChecked.join(","),
+                    "minAge": this.form.ageStart,
+                    "maxAge": this.form.ageEnd,
+                    "minRegDate": this.form.registerStart,
+                    "maxRegDate": this.form.registerEnd,
+                    "submitUserId": getCookie("userId"),
+                    "submitUserName": getCookie("userName"),
+                }
+                if(this.currentId){
+                    obj.id = this.currentId
+                }
+                this.SetRedPacketUserRule(obj)
+               
+            },
+           
+            setBaseData(){
+                for(var i=1;i<13;i++){
+                    this.monthList.push(i+'')
+                }
+            },
+            handleCheckedCitiesChange0(value) {
+                this.setAndRefresh(value,0,this.sexList)
+            },
+            handleCheckedCitiesChange1(value) {
+                this.setAndRefresh(value,1,this.monthList)
+            },
+            setAndRefresh(value,index,list){
+                
+                let checkedCount = value.length;
+                this.checkAll[index] = checkedCount === list.length;
+                this.isIndeterminate[index]  = checkedCount > 0 && checkedCount < list.length;
+                this.isIndeterminate.push()
+                this.checkAll.push()
+            },
+            handleCheckAllChange(val) {
+                let index = Number(val.target.name)
+                this.checked(index,val.target.checked)
+                this.isIndeterminate[index] = false;
+                this.isIndeterminate.push()
+            },
+            checked(index,ope){
+                switch(index){
+                    case 0: this.sexChecked = ope?this.sexList:[]
+                    break;
+                    case 1: this.monthChecked = ope?this.monthChecked = this.monthList:[];
+                    break;
+                    case 2: if(ope){this.ageChecked=this.ageList;this.form.selfAge = false}else{this.ageChecked = [];} 
+                    break;
+                    case 3: if(ope){this.registerCheck=this.reigster;this.form.selfRegister = false}else{this.ageChecked = [];}
+                    break;
+                }
+            },
+
+        },
+        components: {
+
+        }
+    }
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+
+</style>

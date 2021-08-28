@@ -1,0 +1,403 @@
+<template>
+    <div class="settled selCommon">
+        <el-form :inline="true" :model="formInline" class="demo-form-inline form_search" label-width="80px" >
+            <el-form-item label="日期："  class="form_item_mt10 ">
+                <el-date-picker
+                    v-model="date"
+                    type="daterange"
+                    @change="dateChange"
+                    
+                    placeholder="选择日期范围">
+                </el-date-picker>
+            </el-form-item>
+            <el-form-item label="医院:" class="form_item_mt10">
+                <el-select v-model="formInline.Hospital"  style='width:200px;' @change="search">
+                    <el-option v-for="(item,index) in HospitalList" :key="index" :label="item.supplierName" :value="item.code"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label=" " class="form_item_mt10 form_item_wh280">
+                <el-button type="primary" @click="search" class="searchBtn">查询</el-button>
+                <el-button @click="exportD" :loading="exportLoading" class="searchBtn">导出明细</el-button>
+                <Export ref="port" :tHeader="tHeader" :filterVal='filterVal' :tableData1='reportData' :name='name' style="display:none"></Export>
+            </el-form-item>
+        </el-form>
+        <el-table :data="tableData" border style="width: 100%;margin-top:15px;margin-bottom:10px;" max-height="640" 
+        show-summary  class="min_table smt" v-loading="loading">
+            <el-table-column prop="orderDate " label="支付日期" width="90" fixed="left">
+                <template scope="scope">
+                        {{scope.row.orderDate.substring(0,10)}}
+                </template>
+            </el-table-column>
+            <el-table-column prop="realAmount1" label="现金" min-width="75" align="right" sortable>
+                <template scope="scope">
+                      <el-button type="text" @click="viewDet(scope.row,'001',scope.row.realAmount1,'现金')">
+                        {{scope.row.realAmount1.toQFW()}}
+                    </el-button>
+                </template>
+            </el-table-column>
+            <el-table-column prop="realAmount2" label="网银" min-width="75" align="right" sortable>
+                <template scope="scope">
+                      <el-button type="text" @click="viewDet(scope.row,'002',scope.row.realAmount2,'网银')" >
+                        {{scope.row.realAmount2.toQFW()}}
+                    </el-button>
+                </template>
+            </el-table-column>
+            <el-table-column prop="realAmount3" label="支付宝" min-width="75" align="right" sortable>
+                <template scope="scope">
+                     <el-button type="text" @click="viewDet(scope.row,'003',scope.row.realAmount3,'支付宝')" >
+                        {{scope.row.realAmount3.toQFW()}}
+                    </el-button>
+                </template>
+            </el-table-column>
+            <el-table-column prop="realAmount4" label="微信" min-width="75" align="right" sortable>
+                <template scope="scope">
+                    <el-button type="text" @click="viewDet(scope.row,'004',scope.row.realAmount4,'微信')">
+                        {{scope.row.realAmount4.toQFW()}}
+                    </el-button>
+                </template>
+            </el-table-column>
+            <el-table-column prop="realAmount5" label="银联借记卡" min-width="100" align="right" sortable> 
+                <template scope="scope">
+                      <el-button type="text" @click="viewDet(scope.row,'005',scope.row.realAmount5,'银联借记卡')">
+                        {{scope.row.realAmount5.toQFW()}}
+                    </el-button>
+                </template>
+            </el-table-column>
+            <el-table-column prop="realAmount6" label="银联信用卡" min-width="100" align="right" sortable>
+                <template scope="scope">
+                    <el-button type="text" @click="viewDet(scope.row,'006',scope.row.realAmount6,'银联信用卡')" >
+                        {{scope.row.realAmount6.toQFW()}}
+                    </el-button>
+                </template>
+            </el-table-column>
+            <el-table-column prop="realAmount7" label="分期贷" min-width="80" align="right" sortable>
+                <template scope="scope">
+                    <el-button type="text" @click="viewDet(scope.row,'007',scope.row.realAmount7,'分期贷')">
+                        {{scope.row.realAmount7.toQFW()}}
+                    </el-button>
+                </template>
+            </el-table-column>
+            
+            <el-table-column prop="realAmount12" label="么么贷" min-width="80" align="right" sortable>
+                <template scope="scope">
+                    <el-button type="text" @click="viewDet(scope.row,'012',scope.row.realAmount12,'么么贷')">
+                        {{scope.row.realAmount12.toQFW()}}
+                    </el-button>
+                </template>
+            </el-table-column>
+            <el-table-column prop="realAmount13" label="即分期" min-width="80" align="right" sortable>
+                <template scope="scope">
+                    <el-button type="text" @click="viewDet(scope.row,'013',scope.row.realAmount13,'即分期')">
+                        {{scope.row.realAmount13.toQFW()}}
+                    </el-button>
+                </template>
+            </el-table-column>
+            <el-table-column prop="realAmount14" label="马上分期" min-width="80" align="right" sortable>
+                <template scope="scope">
+                    <el-button type="text" @click="viewDet(scope.row,'014',scope.row.realAmount14,'马上分期')" >
+                        {{scope.row.realAmount14.toQFW()}}
+                    </el-button>
+                </template>
+            </el-table-column>
+            <el-table-column prop="realAmount15" label="即有分期" min-width="80" align="right" sortable>
+                <template scope="scope">
+                    <el-button type="text" @click="viewDet(scope.row,'015',scope.row.realAmount15,'即有分期')">
+                        {{scope.row.realAmount15.toQFW()}}
+                    </el-button>
+                </template>
+            </el-table-column>
+            <el-table-column prop="realAmount16" label="丽人贷" min-width="80" align="right" sortable>
+                <template scope="scope">
+                    <el-button type="text" @click="viewDet(scope.row,'016',scope.row.realAmount16,'丽人贷')" >
+                        {{scope.row.realAmount16.toQFW()}}
+                    </el-button>
+                </template>
+            </el-table-column>
+            <el-table-column prop="realAmount17" label="任买" min-width="80" align="right" sortable>
+                <template scope="scope">
+                    <el-button type="text" @click="viewDet(scope.row,'017',scope.row.realAmount17,'任买')">
+                        {{scope.row.realAmount17.toQFW()}}
+                    </el-button>
+                </template>
+            </el-table-column>
+            <el-table-column prop="realAmount22" label="小牛" min-width="80" align="right" sortable>
+                <template scope="scope">
+                    <el-button type="text" @click="viewDet(scope.row,'022',scope.row.realAmount22,'小牛')">
+                        {{scope.row.realAmount22.toQFW()}}
+                    </el-button>
+                </template>
+            </el-table-column>
+            <el-table-column prop="realAmount8" label="卡券" min-width="75" align="right">
+                <template scope="scope">
+                      <span style="float: right;color:red">
+                          {{scope.row.realAmount8.toQFW()}}
+                      </span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="realAmount9" label="积分" min-width="75" align="right">
+                <template scope="scope">
+                    <el-button type="text" @click="viewDet(scope.row,'009',scope.row.realAmount9,'积分')" style="float: right;color:red">
+                        {{scope.row.realAmount9.toQFW()}}
+                    </el-button>
+                </template>
+            </el-table-column>
+            <el-table-column prop="realAmount10" label="套餐" min-width="75" align="right">
+                <template scope="scope">
+                      <span style="float: right;color:red">
+                          {{scope.row.realAmount10.toQFW()}}
+                      </span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="realAmount11" label="门票" min-width="75" align="right">
+                <template scope="scope">
+                      <span style="float: right;color:red">
+                          {{scope.row.realAmount11.toQFW()}}
+                      </span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="realAmount18" label="预付款" min-width="80" align="right">
+                <template scope="scope">
+                    <el-button type="text" @click="viewDet(scope.row,'018',scope.row.realAmount18,'预付款')"  style="float: right;color:red">
+                        {{scope.row.realAmount18.toQFW()}}
+                    </el-button>
+                </template>
+            </el-table-column>
+            <el-table-column prop="realAmount19" label="APP定金" min-width="80" align="right">
+                <template scope="scope">
+                    <el-button type="text" @click="viewDet(scope.row,'019',scope.row.realAmount19,'APP定金')"  style="float: right;color:red">
+                        {{scope.row.realAmount19.toQFW()}}
+                    </el-button>
+                </template>
+            </el-table-column>
+            <el-table-column prop="realAmount20" label="APP卡券" min-width="80" align="right">
+                <template scope="scope">
+                    <el-button type="text" @click="viewDet(scope.row,'020',scope.row.realAmount20,'APP卡券')" style="float: right;color:red">
+                        {{scope.row.realAmount20.toQFW()}}
+                    </el-button>
+                </template>
+            </el-table-column>
+            <el-table-column prop="realAmount21" label="APP积分" min-width="80" align="right">
+                <template scope="scope">
+                    <el-button type="text" @click="viewDet(scope.row,'021',scope.row.realAmount21,'APP积分')" style="float: right;color:red">
+                        {{scope.row.realAmount21.toQFW()}}
+                    </el-button>
+                </template>
+            </el-table-column>
+            <el-table-column prop="amount" label="合计(不含红色)" min-width="100" align="right" >
+                <template scope="scope">
+                      <span style="float: right">
+                          {{scope.row.amount.toQFW()}}
+                      </span>
+                </template>
+            </el-table-column>
+        </el-table>
+        <!-- 分页 -->
+        <div class="block">
+            <el-pagination
+                 @size-change="handleSizeChange"
+                 @current-change="handleCurrentChange"
+                 :current-page="currentPage"
+                 :page-sizes="[10, 30, 50, 100]"
+                 :page-size="size"
+                 layout="total, sizes, prev, pager, next, jumper"
+                 :total="total">
+             </el-pagination>
+            <!-- 共{{total}}条数据 -->
+        </div>
+
+         <el-dialog :title="title" :visible.sync="dialogView"  top="5%"  size="" :close-on-click-modal="false">
+             <Det :detDate="detDate" v-if="dialogView"  :propTotal="propTotal" :selAccount="selAccount" :from="from"></Det>
+        </el-dialog>
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+    import Export from '@/components/export'
+    import Det from "./com/hosRecDetDialog.vue"
+    import {GetEveryDayPayAmount,GetDropDownPermission,GetEveryDayPayAmountDetail,GetEveryDayPayAmountExport} from "@/api/myData"
+    import "@/style/selfCommon.less"
+    export default {
+        data () {
+            return {
+                date:"",
+                mes:{},
+                dialogView:false,
+                dialogFormVisible:false,
+                total:0,
+                size:10,
+                currentPage:1,
+                HospitalList:[],
+                branchList:[],
+                formInline: {
+                    branch:"",
+                    Hospital:"",
+                    startDate:"",
+                    endDate:"",
+                    type:""
+                },
+                agentList:[],
+                tableData:[],
+                detDate:[],
+                loading:false,
+                propTotal:"",
+                selAccount:false,
+                from:true,
+                title:"",
+                exportData:[],
+                exportLoading:false,
+            }
+        },
+        computed: {
+            /* 导出报表参数 tHeader,filterVal,tableData1*/
+            tHeader(){
+                return ['订单日期','订单编号','客户姓名','推荐人姓名','咨询师','设计师','设计师助理','医生', '护士','项目类型','项目名称', '附加费','提成金额','提成方式','支付日期','支付方式','支付金额','返款金额','返款抵扣积分']
+            },
+            filterVal(){
+                return ['orderDate','fxCode','customerName','refrenceBranchName','marketConsultantName','designerName','designerAssistName','doctorName',
+                'nurseName','itemTypeName','projectName','extTotal','commissionAmount','consumeTypeName','payDate','payTypeName','realAmount','worthAmountOut','pointAmountOut']
+            },
+            name(){
+                return '收入明细'
+            },
+            reportData(){
+                let arr = JSON.parse(JSON.stringify(this.exportData))
+                return arr
+            },
+        },
+       
+        mounted(){
+            let date1 = new Date()
+            date1.setDate(1)
+            this.date = [date1,new Date()]
+            this.getSupplierByPage()
+        },
+        methods: {
+            async exportD(){
+                if(this.formInline.startDate){
+                     this.exportLoading = true
+                    let res = await GetEveryDayPayAmountExport({
+                        "hospitalId": this.formInline.Hospital,
+                        "startDate": this.formInline.startDate,
+                        "endDate": this.formInline.endDate,
+                    })
+                    if(res.status){
+                        this.exportData = res.data
+                        this.$refs.port.handleDownload()
+                    }else{
+                        this.$message({ type: 'error', message: '获取数据失败!'+res.errorMessage +',无法导出'})
+                    }
+                    this.exportLoading = false
+                }else{
+                    this.$message({ type: 'warning', message: '请先选择日期！'})
+                }
+            },
+            getSummaries(param) {
+                const { columns, data } = param;
+                const sums = [];
+                columns.forEach((column, index) => {
+                    if (index === 0) {
+                        sums[index] = '合计';
+                        return;
+                    }
+                    const values = data.map(item => Number(item[column.property]));
+                    if (!values.every(value => isNaN(value))) {
+                        sums[index] = values.reduce((prev, curr) => {
+                            const value = Number(curr);
+                            if (!isNaN(value)) {
+                                return prev.add(curr);
+                            } else {
+                                return prev;
+                            }
+                        }, 0);
+                        sums[index] = sums[index].toQFW();
+                    } else {
+                        sums[index] = '';
+                    }
+                });
+                return sums;
+            },
+            dateChange(val){
+                if(val){
+                    this.formInline.startDate = val.substring(0,10)
+                    this.formInline.endDate = val.substring(13)
+                }else{
+                    this.formInline.startDate = ""
+                    this.formInline.endDate = ""
+                }
+                
+            },
+            async GetEveryDayPayAmount(params){
+                try {
+                    let res = await GetEveryDayPayAmount(params)
+                    this.loading = false
+                    this.total = res.count
+                    res.data.forEach(row=>{
+                        row.amount = row.realAmount1+row.realAmount2+row.realAmount3+row.realAmount4+row.realAmount5+row.realAmount6+row.realAmount7
+                    +row.realAmount12+row.realAmount13+row.realAmount14+row.realAmount15+row.realAmount16
+                        +row.realAmount17
+                    })
+                    this.tableData = res.data
+                } catch (err) {
+                    console.log(err)
+                }
+            },
+            async getSupplierByPage(){
+                let res = await GetDropDownPermission({typeId:1})
+                this.formInline.Hospital = res.data[0].code
+                this.HospitalList = res.data
+            },
+            search(){
+                this.detDate = []
+                this.currentPage = 1
+                this.submit()
+            },
+            submit(){
+                this.loading = true
+                this.GetEveryDayPayAmount({
+                   startDate :this.formInline.startDate,
+                   endDate:this.formInline.endDate,
+                   pageIndex:this.currentPage,
+                   pageSize:this.size,
+                   hospitalId:this.formInline.Hospital,
+                //    ConsumeTypeId:this.formInline.type
+                })
+            },
+
+            async GetDetail(params){
+                let res = await GetEveryDayPayAmountDetail(params)
+                this.detDate = res.data
+                this.dialogView = true
+            },
+
+            handleSizeChange(val) {
+                console.log(`每页 ${val} 条`);
+                this.size = val
+                this.submit()
+             },
+             handleCurrentChange(val) {
+                console.log(`当前页: ${val}`);
+                this.currentPage = val
+                this.submit()
+             },
+             viewDet(data,status,total,ope){
+                 this.title = ope
+                 this.propTotal = total
+                 this.selAccount = status == "005"?true:false
+                 this.GetDetail({
+                     HospitalId:this.formInline.Hospital,
+                     PayType:status,
+                     PayDate:data.orderDate,
+                })
+            }
+        },
+        components: {
+            Export,
+            Det
+        }
+    }
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+
+</style>

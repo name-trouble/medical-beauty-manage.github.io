@@ -1,0 +1,123 @@
+<template>
+    <div class="">
+        <el-upload
+            class="avatar-uploader"
+            :action="uploadUrl"
+            :acceptImage='acceptImage'
+            list-type="picture-card"
+            :file-list="photoList"
+            :on-success="handleAvatarSuccess"
+            :on-remove="DelImg">
+            <i class="el-icon-plus avatar-uploader-icon"></i>
+        </el-upload>
+        <div slot="footer" class="dialog-footer">
+            <el-button type="primary" @click="onSubmit('ruleForm')" :loading="saveLoading">确定</el-button>
+            <el-button @click="resetForm('ruleForm')">取消</el-button>
+        </div>
+    </div>
+</template>
+
+<script>
+    import { xmxUrl, baseImgPath } from '@/config/env'
+    import { imgApi, acceptImage,pageSetList } from '@/config/common'
+    let uploadUrl = xmxUrl + imgApi + '?op=live' 
+    import {DelImg,caseEdit} from "@/api/myData"
+    import "@/style/selfCommon.less"
+    export default {
+        props:{
+            caseData:'',
+        },
+        data () {
+            return {
+                baseImgPath,
+                uploadUrl,
+                acceptImage,
+                photoList:[],
+                saveLoading:false,
+            }
+        },
+        mounted(){
+            
+            if(this.caseData.pictures){
+                this.caseData.pictures.forEach(row => {
+                    this.photoList.push({
+                        url:this.baseImgPath+row,
+                        response:row,
+                    })
+                });
+            }
+        },
+        methods:{
+            async onSubmit(){
+                let pictures = []
+                this.photoList.forEach(row=>{
+                    pictures.push(row.response)
+                })
+                let caseData = this.caseData
+                for(let key in caseData){
+                    if(caseData[key] == null){
+                        caseData[key] = ''
+                    }
+                }
+                this.saveLoading = true
+                this.caseEdit({
+                    id:caseData.id,
+                    pictures:pictures.join("#"),
+                    catalogId : caseData.catalogId,
+                    catalogName : caseData.catalogName,
+                    operationDate : caseData.operationDate,
+                    hospitalId : caseData.hospitalId,
+                    hospitalName : caseData.hospitalName,
+                    doctorId : caseData.doctorId,
+                    doctorName : caseData.doctorName,
+                    designerId : caseData.designerId,
+                    designerName : caseData.designerName,
+                    serviceMark : caseData.serviceMark,
+                    doctorMark : caseData.doctorMark,
+                    operationMark : caseData.operationMark,
+                })
+            },
+            resetForm(){
+                this.$emit("closeDialog",false,4)
+            },
+            handleAvatarSuccess(res, file,fileList){
+                this.photoList = fileList
+            },
+
+            async DelImg(file,fileList){// 删除原图片/视频
+                let res = await DelImg({filepath:file.response})
+                if(!res.status){
+                    this.$message({message: '原图片删除失败！'+res.errorMessage,type: 'warning'});
+                }else{
+                    this.photoList = fileList
+                }
+            },
+            caseEdit(data){
+                console.log(data)
+                caseEdit(data).then(res=>{
+                    console.log(res)
+                    if(!res.status){
+                        this.$message({message: '修改失败！'+res.errorMessage,type: 'warning'});
+                        
+                    }else{
+                        this.$message({message: '修改成功！',type: 'success'});
+                        this.$emit("closeDialog",true,4)
+                    }
+                    this.saveLoading = false
+                })
+            }
+        },
+        components: {
+            
+        }
+    }
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+.dialog-footer{
+    text-align: center;
+    width: 100%;
+    margin-top: 20px;
+}
+</style>

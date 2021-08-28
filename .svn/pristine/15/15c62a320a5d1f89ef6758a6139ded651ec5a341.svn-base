@@ -1,0 +1,465 @@
+<template>
+    <div class="settled selCommon">
+        <el-form :inline="true" :model="formInline" class="demo-form-inline form_search" label-width="80px" >
+            <!-- <el-form-item label="时间范围："  class="form_item_mt10 ">
+                <el-select v-model="year" placeholder="选择年份" style="width:100px;float:left">
+                        <el-option v-for="(item,index) in yearList" :key="index" :label="item" :value="item"></el-option>
+                    </el-select>
+                    <el-select v-model="month" placeholder="选择月份" style="width:100px;float:left">
+                        <el-option v-for="(item,index) in monthList" :key="index" :label="item" :value="item"></el-option>
+                    </el-select>
+            </el-form-item> -->
+            <el-form-item label="结算日期："  class="form_item_mt10 ">
+                <el-date-picker
+                    v-model="date"
+                    type="date"
+                    @change="dateChange"
+                    style="width: 200px;"
+                    placeholder="选择日期">
+                </el-date-picker>
+            </el-form-item>
+            <el-form-item label="医院："  class="form_item_mt10 form_item_wh280" style="width:285px;position:relative">
+                <!-- 模拟多选 -->
+                <el-input v-model="formInline.mulHos" style="width: 200px;position:absolute" placeholder="请选择"></el-input>
+                <el-select v-model="formInline.Hospital" placeholder="" style="width: 200px;opacity: 0;height:36px;" @change="selMulData" multiple >
+                    <el-option v-for="item in HospitalList" :key="item.value" :label="item.name" :value="item"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="转入客户："  class="form_item_mt10 form_item_wh280">
+                <el-select v-model="formInline.branch" placeholder="" style="width: 200px;" @change="change">
+                    <el-option label="全部" value=""></el-option>
+                    <el-option label="医院" value="1"></el-option>
+                    <el-option label="销售公司" value="2"></el-option>
+                    <el-option label="消费商" value="3"></el-option>
+                </el-select>
+            </el-form-item>
+            <!-- <el-form-item label="关键字："  class="form_item_mt10 form_item_wh280">
+                <el-input v-model="formInline.keywords" style="width: 200px;"></el-input>
+            </el-form-item> -->
+            <el-form-item label="医院："  class="form_item_mt10 form_item_wh280" v-if="formInline.branch == 1">
+                <el-select v-model="formInline.keywords" placeholder="" style="width: 200px;">
+                    <el-option label="全部" value=""></el-option>
+                    <el-option v-for="item in HospitalList" :key="item.value" :label="item.name" :value="item.value"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="销售公司："  class="form_item_mt10 form_item_wh280" v-if="formInline.branch == 2">
+                <el-select v-model="formInline.keywords" placeholder="" style="width: 200px;">
+                    <el-option v-for="item in agentList" :key="item.code" :label="item.branchName" :value="item.code"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="关键字："  class="form_item_mt10 form_item_wh280" v-if="formInline.branch == 3">
+                <el-input v-model="formInline.keywords" style="width: 200px;"></el-input>
+            </el-form-item>
+            <el-form-item label="显示当月："  class="form_item_mt10 form_item_wh280">
+                <el-checkbox v-model="formInline.isCurrentMonth"></el-checkbox>
+            </el-form-item>
+            <el-form-item label=" " class="form_item_mt10 form_item_wh280">
+                <el-button type="primary" @click="submit" class="searchBtn">查询</el-button>
+                <Export ref="port" :tHeader="tHeader" :filterVal='filterVal' :tableData1='reportData' :name='name'></Export>
+            </el-form-item>
+        </el-form>
+        <el-table :data="tableData" border style="width: 100%;margin-top:15px;margin-bottom:10px;" class="min_table smt" v-loading="loading"
+         max-height="660" show-summary :summary-method="getSummaries">
+            <el-table-column prop="hospitalName" label="医院" min-width="80" align="center"></el-table-column>
+            <el-table-column prop="toName" label="转入客户" min-width="80"></el-table-column>
+            <el-table-column label="开户人" prop="toName" min-width="100">
+                <template scope="scope">
+                     {{scope.row.bankCardHolder}}
+                 </template>
+            </el-table-column>
+            <el-table-column label="开户行" prop="toName" min-width="100">
+                <template scope="scope">
+                    <span>{{scope.row.openBankName}}</span>
+                </template>
+            </el-table-column>
+             <el-table-column label="银行卡号" prop="toName" min-width="100" align="center">
+                 <template scope="scope">
+                     {{scope.row.bankCardId}}
+                 </template>
+             </el-table-column>
+            <el-table-column label="金额" prop="totalAmountOut" min-width="120" align="right" style="color: red">
+                <template scope="scope">
+                    <el-button type="text" size="small" @click="det(scope.$index,tableData)"  style="float: right;">￥{{scope.row.totalAmountOut.toQFW()}}</el-button>
+                </template>
+            </el-table-column>
+            <el-table-column label="操作" prop="toName" width="120" align="center">
+                <template scope="scope">
+                    <el-button type="primary" size="small" @click="settle(scope.$index,tableData)">结算</el-button>
+                </template>
+            </el-table-column>
+            <!-- <template slot="append" v-if="tableData.length>0">
+                <tr class="last-row">
+                    <td class="cell" style="font-weight: bold">合计</td>
+                    <td class="cell"></td>
+                    <td class="cell"></td>
+                    <td class="cell">
+                        <span style="float: right;color: red;font-weight: bold">
+                         {{totalAmount.toQFW()}}
+                    </span>
+                    </td>
+                    <td class="cell"></td>
+                </tr>
+            </template> -->
+        </el-table>
+        <div style="float:left">
+            <el-button @click="batchSet" type="primary" :loading="batchLoading">一键审核</el-button>
+        </div>
+        <!-- 分页 -->
+        <div class="block">
+            <el-pagination @size-change="handleSizeChange" @current-change="handleCurrentChange" 
+                :current-page="currentPage" :page-sizes="[10, 20, 30, 40]" :page-size="size"
+                layout="total, sizes, prev, pager, next, jumper" :total="total">
+            </el-pagination>
+        </div>
+        <!-- <div class="">
+            共{{total}}条数据
+        </div> -->
+        <el-dialog title="详情" :visible.sync="dialogTableVisible" size="" @close='dialogClose'>
+            <det style="width:1100px" :mes="mes" :date="formInline.date " @reportData='childReportData' @detSettle="detSettle" v-if="dialogTableVisible" @openRP="openRP" :isFinished="formInline.type"></det>
+        </el-dialog>
+        <el-dialog title="订单详情" :visible.sync="ispopRead" top="5%" size="">
+            <report style="width:900px" v-if="ispopRead" :data="selectData" ></report>
+        </el-dialog>
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+    import det from "./components/branchSD.vue"
+    import report from "@/page/FinanceManage/ReportManage/com/reportRead"
+    import Export from '@/components/export'
+    import {GetHospitalOut,GetDropDownPermission,HosOutSettle,BatchApproveProofOrder,GetSupplierBySupTypeCode} from "@/api/myData"
+    import "@/style/selfCommon.less"
+    export default {
+        data () {
+            return {
+                batchLoading:false,
+                selectData:{},
+                ispopRead:false,
+                loading:false,
+                mes:{},
+                dialogTableVisible:false,
+                
+                HospitalList:[],
+                formInline: {
+                    keywords:"",
+                    Hospital:[],
+                    mulHos:"",
+                    branch:"",
+                    date:"",
+                    startTime: "",
+                    endTime: "",
+                    type:0,
+                    hos:"",
+                    isCurrentMonth:false,
+                },
+                date:"",
+                agentList:[],
+                tableData:[],
+                year:new Date().getFullYear(),
+                month:"",
+                yearList:[],
+                monthList:[],
+                mes:"",
+                sum:{
+                    totalAmountOut:0,
+                },
+                total:0,
+                currentPage:0,
+                size:10,
+                allData:[],
+                detData:[],//子组件表格数据
+            }
+        },
+        computed: {
+            /* 导出报表参数 tHeader,filterVal,tableData1*/
+            tHeader(){
+                if(this.detData.length>0){//子组件键值
+                    return ['单号', '客户', '推荐人', '医院','转到','订单金额','提成总额','比例','提成金额']
+                }else{
+                   return ['医院', '转出客户', '开户人', '开户行','银行卡号','金额']
+                }
+            },
+            filterVal(){
+                if(this.detData.length>0){//子组件键值
+                    return ['fxCode','customerName','refrenceBranchName','hospitalName','toName','orderAmount','realAmount','toRate','amountOut']
+                }else{
+                    return ['hospitalName', 'toName', 'bankCardHolder', 'openBankName','bankCardId','totalAmountOut']
+                }
+            },
+            name(){
+                return '医院结算'
+            },
+            reportData(){
+                let arr
+                if(this.detData.length>0){
+                    arr = JSON.parse(JSON.stringify(this.detData))
+                    arr.forEach(ele=>{
+                        ele.toRate = ele.toRate.mul(100)+'%'
+                    })
+                }else{
+                    arr = JSON.parse(JSON.stringify(this.allData))
+                }
+                return arr
+            },
+            totalAmount(){
+                let sum = 0
+                this.tableData.forEach(row=>{
+                    sum  = sum.add(row.totalAmountOut)
+                })
+                return sum
+            }
+        },
+       
+        mounted(){
+            this.date = new Date()
+            this.getSupplierByPage()
+        },
+        methods: {
+            dialogClose(){
+                
+                this.detData = []
+            },
+            childReportData(obj){
+                this.detData = obj
+                this.$refs.port.handleDownload()
+            },  
+            dateChange(val){
+                if(val){
+                    this.formInline.date = val
+                }else this.formInline.date = ""
+            },
+            change(){
+                this.formInline.keywords = ""
+            },
+            getSummaries(param) {
+                return ["总合计",'','','','','￥'+this.sum.totalAmountOut.toQFW(),''];
+            },
+            
+//            结算
+            async HosOutSettle(params){
+                try {
+                    let res = await HosOutSettle(params)
+                    if(res.status){
+                        this.$message({message: '结算成功', type: 'success'});
+                        this.search()
+                    }else{
+                        this.$message.error('结算失败')
+                    }
+                } catch (err) {
+                    console.log(err)
+                }
+            },
+            detSettle(){
+                this.dialogTableVisible = false
+                this.search()
+            },
+//            获取信息表
+            async GetHospitalOut(params){
+                try {
+                    this.loading = true
+                    let res = await GetHospitalOut(params)
+                    this.loading = false
+                    if(res.status){
+                        this.total = res.count
+                        this.allData = res.data
+                        this.pageChange()
+                        this.getTotal()
+                    }else{
+                        this.$message.error('获取数据失败'+res.errorMessage);
+                    }
+                } catch (err) {
+                    console.log(err)
+                }
+            },
+//            获取医院
+            async getSupplierByPage(){
+                let res = await GetSupplierBySupTypeCode({SupTypeCode:"001"});
+                let arr = []
+                res.forEach(row=>{
+                    arr.push({
+                        name:row.SupplierName,
+                        value:row.Code
+                    })
+                })
+                this.HospitalList = arr
+                let res1 = await GetDropDownPermission({typeId:2})
+                this.agentList = res1.data
+                // this.formInline.branch = this.agentList[0].code
+            },
+            submit(){
+                
+                this.currentPage = 1
+                this.search()
+            },
+//            搜索
+            search(){
+                this.sum = {
+                    totalAmountOut:0,
+                },
+                this.GetHospitalOut({
+                    HospitalId:this.getHos(this.formInline.Hospital),
+                    CommissionDate:this.formInline.date,
+                    IsFinished:this.formInline.type,
+                    keywords:this.formInline.keywords.removeSP(),
+                    TypeId:this.formInline.branch,
+                    isCurrentMonth:this.formInline.isCurrentMonth?1:0
+                })
+            },
+            getHos(data){
+                
+                let name = []
+                data.forEach(row=>{
+                    name.push(row.value)
+                })
+                return name.join(",")
+            },
+//结算事件
+            settle(index,data){
+                // this.$confirm('是否进行结算?', '提示', {
+                //     confirmButtonText: '确定',
+                //     cancelButtonText: '取消',
+                //     type: 'warning'
+                // }).then(() => {
+                //     this.HosOutSettle({
+                //         HospitalId: data[index].hospitalId,
+                //         toCode:data[index].toCode,
+                //         CommissionDate:this.formInline.date,
+                //     })
+                // }).catch(() => {
+                // });
+                const h = this.$createElement;
+                this.$msgbox({
+                    title: '提示',
+                    message: h('p', null, [
+                        h('span', null, '是否进行结算? '),
+                    ]),
+                    showCancelButton: true,
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    type: 'warning',
+                    beforeClose: (action, instance, done) => {
+                        if (action === 'confirm') {
+                            instance.confirmButtonLoading = true;
+                            instance.confirmButtonText = '执行中...';
+                            this.HosOutSettle({
+                                HospitalId: data[index].hospitalId,
+                                toCode:data[index].toCode,
+                                CommissionDate:this.formInline.date,
+                                TypeId:data[index].typeId,
+                                isCurrentMonth:this.formInline.isCurrentMonth?1:0
+                            })
+                            instance.confirmButtonLoading = false;
+                            done();
+                        } else {
+                            done();
+                        }
+                    }
+                }).then(action => {});
+            },
+            det(index,data){
+                this.mes = data[index]
+                this.mes.isCurrentMonth = this.formInline.isCurrentMonth
+                this.dialogTableVisible = true
+            },
+            openRP(val){
+                this.selectData = val
+                this.ispopRead = true
+            },
+            handleSizeChange(val) {
+                this.size = val
+                this.pageChange()
+            },
+
+            handleCurrentChange(val) {
+                this.currentPage = val
+                this.pageChange()
+            },
+            pageChange(data){
+                this.tableData = this.allData.slice((this.currentPage-1)*this.size,this.currentPage*this.size)
+            },
+            getTotal(){
+                this.allData.forEach(row=>{
+                   this.sum.totalAmountOut = this.sum.totalAmountOut.add(row.totalAmountOut)
+               })
+            },
+            // 批量审核
+            batchSet(){
+                let flg = true,tipMes = ""
+                if(this.formInline.date==""){
+                    flg = false
+                    tipMes += "结算日期未选择！"
+                }
+                if(this.formInline.Hospital.length==0){
+                    flg = false
+                    tipMes += "医院未选择！"
+                }
+                if(!flg){
+                    this.$alert(tipMes, '提示', {
+                        confirmButtonText: '确定',
+                        type: 'warning',
+                        callback: action => {
+                        }
+                    });
+                }else{
+                    this.$confirm('此操作将批量审核'+this.formInline.date+'的订单，是否继续?', '提示', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    type: 'warning'
+                    }).then(() => {
+                        this.batchLoading = true
+                        this.BatchApproveProofOrder()
+                    }).catch(() => {});
+                }
+                
+            },
+            async BatchApproveProofOrder(){
+                let res = await BatchApproveProofOrder({
+                    CommissionDate:this.formInline.date,
+                    hospitalCode:this.getHos(this.formInline.Hospital)
+                })
+                if(res.status){
+                    this.allCheckdialog = false
+                    this.$message({ type: 'success', message: '审核成功!' })
+                    this.search()
+                }else{
+                    this.$message({ type: 'error', message: '审核失败!'+res.errorMessage })
+                }
+                this.batchLoading = false
+            },
+            selMulData(){
+                
+                if(this.formInline.Hospital.length==1&&this.formInline.Hospital[0].value==""){
+                    this.formInline.mulHos = "全部"
+                }else{
+                    let name = []
+                    let selHos = JSON.parse(JSON.stringify(this.formInline.Hospital))
+                    let len = selHos.length
+                    for(var i =0;i<len;i++){
+                        if(selHos[i].value == ""){
+                            this.formInline.mulHos = "全部"
+                            this.formInline.Hospital = []
+                            this.formInline.Hospital.push({
+                                name:"全部",
+                                value:""
+                            })
+                            return false
+                        }else{
+                            name.push(selHos[i].name)
+                        }
+                    }
+                    this.formInline.mulHos = name.join(",")
+                }
+            }
+        },
+        components: {
+            Export,
+            det,
+            report
+        }
+    }
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+
+</style>

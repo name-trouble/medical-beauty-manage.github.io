@@ -1,0 +1,201 @@
+<template>
+    <div class="tag selCommon">
+        <el-form :inline="true"  class="demo-form-inline form_search" label-width="80px"
+>
+            <el-form-item label="日期：" class="form_item_mt10">
+                    <el-date-picker
+                        v-model="date"
+                        style='width:200px;'
+                        type="date"
+                        @change="dateChange"
+                        placeholder="选择日期">
+                    </el-date-picker>
+            </el-form-item>
+            <el-form-item label="医院：" class="form_item_mt10">
+                <el-select v-model="formInline.hospitalCode"  style='width:200px;' @change="onSubmit" >
+                    <el-option v-for="(item,index) in hospitalList" :key="index" :label="item.supplierName" :value="item.code"></el-option>
+                </el-select>
+            </el-form-item>
+
+            <el-form-item label="关键字：" class="form_item_mt10">
+                <el-input v-model="formInline.keywords" placeholder="服务商" style='width:200px;'></el-input>
+            </el-form-item>
+            <el-form-item label=" " class="form_item_mt10">
+                <el-button type="primary" @click="onSubmit" class="searchBtn">查询</el-button>
+            </el-form-item>
+        </el-form>
+         <el-table  :data="tableData" border style="width: 100%;margin-top:20px" max-height="560" class="min_table" show-summary v-loading="loading"  :summary-method="getSummaries">
+            <el-table-column prop="serviceInfoName" label="姓名" min-width="80">
+                <template slot-scope="scope">
+                    <el-button type="text" @click="viewDet(scope.row.serviceCode)">
+                        {{scope.row.serviceInfoName}}
+                        </el-button>
+                </template>
+            </el-table-column>
+            <el-table-column prop="serviceGrade" label="等级" min-width="80">
+                <template slot-scope="scope">
+                    <span v-if="scope.row.serviceGrade == 1">总监</span>
+                    <span v-if="scope.row.serviceGrade == 2">经理</span>
+                    <span v-if="scope.row.serviceGrade == 3">科长</span>
+                    <span v-if="scope.row.serviceGrade == 4">组长</span>
+                    <span v-if="scope.row.serviceGrade == 5">美导</span>
+                </template>
+            </el-table-column>
+            <!-- <el-table-column prop="openBankName" label="推荐人" min-width="80"></el-table-column>
+            
+            <el-table-column prop="bankCardId" label="开户行" min-width="80"></el-table-column>
+        
+            <el-table-column prop="commissionAmount" label="账号" min-width="80" ></el-table-column>
+          
+            <el-table-column prop="hospitalName" label="团队" min-width="90" >
+                <template slot-scope="scope">
+                    <el-tag type="success" v-if="scope.row.isFinished == 1">已结算</el-tag>
+                    <el-tag type="danger" v-else>未结算</el-tag>
+                </template>
+            </el-table-column> -->
+            <el-table-column prop="commissionAmount1" label="5%" min-width="80" align="right"></el-table-column>
+            <el-table-column prop="commissionAmount2" label="2%" min-width="80" align="right"></el-table-column>
+            <el-table-column prop="commissionAmount3" label="1.5%" min-width="80"  align="right"></el-table-column>
+            <el-table-column prop="commissionAmount4" label="1%" min-width="80"  align="right"></el-table-column>
+            <el-table-column prop="commissionAmount5" label="0.5%" min-width="80" align="right" ></el-table-column>
+             <el-table-column prop="commissionAmount1" label="本人业绩" min-width="80"  align="right"></el-table-column>
+            <el-table-column prop="totalRealAmount" label="提成合计" min-width="80"  align="right"></el-table-column>
+            <!-- <el-table-column prop="customerName" label="操作" min-width="80" align="center">
+                <template slot-scope="scope">
+                     <el-button type="primary" size="small" :disabled="scope.row.isFinished==1" @click="settle(scope.row)">结算</el-button>
+                </template>
+            </el-table-column> -->
+        </el-table>
+        <el-dialog title="服务商详情" :visible.sync="dialogService" size=""  top="20%">
+            <det style="width: 800px" v-if="dialogService" :mes="mes"></det>
+        </el-dialog>
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+    import  "@/style/selfCommon.less"
+    import det from "@/page/MemberCenter/service/com/memberDet"
+    import { getCookie, delCookie } from '@/config/mUtils'
+    import {GetDropDownPermission,GeneratorServiceFiveConsume,GetServiceLevelConsume,SettlementServiceCommissionNew} from "@/api/myData"
+    export default {
+        data () {
+            return {
+                mes:{},
+                dialogService:false,
+                loading:false,
+                date:"",
+                currentPage:1,
+                total:0,
+                pageSize:10,
+                keywords:"",
+                formInline:{
+                    hospitalCode:"",
+                    date:"",
+                    startDate:"",
+                    endDate:"",
+                    grade:"",
+                    keywords:'',
+                    IsFinished:0,
+                },
+                tableData:[],
+                hospitalList:[],
+            }
+        },
+        computed:{
+
+        },
+        mounted(){
+            this.date = new Date()
+            this.formInline.date = new Date()
+            this.GetDropDownPermission()
+        },
+        methods:{
+            viewDet(data){
+                this.mes = {code:data}
+                this.dialogService = true
+            },
+
+            dateChange(val){
+                this.formInline.date = val
+            },  
+
+            async SettlementService(params){
+                let res = await SettlementServiceCommissionNew(params)
+                if(res.status){
+                    this.$message({ type: 'success', message: '结算成功' })
+                    this.search()
+                }else{
+                    this.$message({ type: 'warning', message: '结算失败!'+res.errorMessage })
+                }
+            },
+
+            getSummaries(param) {
+                const { columns, data } = param;
+                const sums = [];
+                columns.forEach((column, index) => {
+                    if (index === 0) {
+                        sums[index] = '合计';
+                        return;
+                    }
+                    const values = data.map(item => Number(item[column.property]));
+                    if (!values.every(value => isNaN(value))) {
+                        sums[index] = values.reduce((prev, curr) => {
+                        const value = Number(curr);
+                        if (!isNaN(value)) {
+                           return prev.add(curr) ;
+                        } else {
+                            return prev;
+                        }
+                        }, 0);
+                        sums[index] =sums[index].toQFW();
+                    } else {
+                        sums[index] = '';
+                    }
+                });
+                sums[1] = ""
+                return sums;
+            },
+
+            async GetDropDownPermission(){
+                let res1 = await GetDropDownPermission({typeId: 1});
+                this.hospitalList = res1.data
+                this.formInline.hospitalCode = res1.data[0].code
+            },
+
+            onSubmit(){
+                this.currentPage = 1
+                this.search()
+            },
+           
+            async GetServiceLevelConsume(params,index){
+                let res = await GetServiceLevelConsume(params)
+                this.loading = false
+                res.data.forEach(row=>{
+                    row.commissionAmount = row.commissionAmount1+row.commissionAmount2+row.commissionAmount3+row.commissionAmount4+row.commissionAmount5
+                    row.realAmount = row.realAmount1+row.realAmount2+row.realAmount3+row.realAmount4+row.realAmount5
+                })
+                this.tableData = res.data
+            },
+
+            search(){
+                this.saveHos = this.formInline.hospitalCode
+                this.saveEnd = String(this.date).length>0?this.date.formatDate("yyyy-MM-dd"):""
+                this.loading = true
+                this.GetServiceLevelConsume({
+                    CommissionDate:String(this.date).length>0?this.date.formatDate("yyyy-MM-dd"):"",
+                    HospitalCode:this.formInline.hospitalCode,
+                    Keywords:this.formInline.keywords,
+                    IsFinished:1,
+                })
+            },
+        },
+        components: {
+            det
+        }
+    }
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+
+</style>

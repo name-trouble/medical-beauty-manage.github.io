@@ -1,0 +1,432 @@
+<template>
+    <div>
+         <el-form :inline="true" :model="formInline" class="demo-form-inline form_search" label-width="80px">
+            <el-form-item label="选择时间：" style='margin-bottom:10px;font-size:12px !important;'>
+                <el-date-picker
+                    v-model="date"
+                    style='width:200px;'
+                    type="daterange"
+                    @change="dateSelect"
+                    placeholder="选择日期范围">
+                </el-date-picker>
+            </el-form-item>
+            <el-form-item label="付款状态：" class="form_item_mt10">
+                 <el-select v-model="formInline.isPayOff"  style='width:200px;' @change="onSubmit">
+                    <el-option label="全部" value=""></el-option>
+                    <el-option label="未付清" value="0"></el-option>
+                    <el-option label="已付清" value="1"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="关键字：" class="form_item_mt10">
+                <el-input v-model="formInline.keywords" style="width: 200px;" placeholder="编号/客户/服务者/卡号" v-on:keyup.enter.native="onSubmit"></el-input>
+            </el-form-item>
+            
+           <el-form-item label="医院:" class="form_item_mt10">
+                <el-select v-model="formInline.hospital"  style='width:200px;'>
+                    <el-option v-for="(item,index) in hospitalList" :key="index" :label="item.supplierName" :value="item.code"></el-option>
+                </el-select>
+            </el-form-item>
+            <br/>
+            <el-form-item label=" " class="form_item_mt10">
+                <el-button type="primary" @click="onSubmit" class="searchBtn">查询</el-button>
+                <el-button type="primary" @click="add" class="searchBtn">添加处方单</el-button>
+            </el-form-item>
+        </el-form>
+        <el-table :data="tableData" border style="width: 100%;margin-top:20px" class="min_table4 smt"  v-loading="loading" @selection-change="handleSelectionChange">
+            <el-table-column type="selection" width="55"></el-table-column>
+            <el-table-column prop="orderProductCode" label="订单编号" min-width="120">
+                 <template scope="scope">
+                    <el-button type="text" size="small" @click="views(scope.$index,tableData)">{{scope.row.orderProductCode}}</el-button>
+                </template>
+            </el-table-column>
+            <el-table-column  prop="name" label="订单日期" min-width="110">
+                <template scope="scope">
+                     <span v-if="scope.row.orderDate">
+                        {{scope.row.orderDate.substring(0,10)}}
+                    </span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="customerName" label="客户" min-width="100">
+                 <template scope="scope">
+                    <el-button type="text" @click="view(scope.$index,tableData)">{{scope.row.customerName}}</el-button>
+                </template>
+            </el-table-column>
+            <el-table-column prop="hospitalName" label="医院" min-width="170" align="center"> </el-table-column>
+            <el-table-column  prop="refrenceBranchName" label="推荐人" width="180">
+                <template scope="scope">
+                    <span v-if="scope.row.refrenceBranchName">
+                        {{scope.row.refrenceBranchName}}[{{scope.row.refrenceBranchCode}}]
+                    </span>
+                </template>
+            </el-table-column>
+            <el-table-column  prop="totalAmount"  label="订单金额" min-width="100" align="right">
+                <template scope="scope">
+                    <span v-if="scope.row.totalAmount">￥{{scope.row.totalAmount.toQFW()}}</span>
+                    <span v-else>￥0</span>
+                </template>
+            </el-table-column>
+            <el-table-column  prop="address"  label="付款状态" min-width="120" align="center">
+                <template scope="scope">
+                    <div v-if="scope.row.opStatus == 2">
+                        <el-tag type="danger">已退款</el-tag>
+                        <span>金额：{{scope.row.refundAmount}}</span>
+                    </div>
+                    <div v-else>
+                        <el-tag type="success" v-if="scope.row.isPayoff">已付清</el-tag>
+                        <el-tag type="warning" v-else>未付清</el-tag>
+                    </div>
+                </template>
+            </el-table-column>
+             <el-table-column prop="cardNO" label="卡号" min-width="100"> </el-table-column>
+             <el-table-column prop="nurseName" label="服务者" min-width="100"> </el-table-column>
+             <el-table-column prop="createBy" label='创建者' min-width="100"></el-table-column>
+             <el-table-column prop="nurseName" label="打印" min-width="150" align="center">
+                <template scope="scope">
+                    <el-button type="primary" size="small"  @click="print(scope.row.orderProductCode,1)">处方单</el-button>
+                    <!-- <el-button type="primary" size="small"  @click="print(scope.row.orderProductCode,2)">处置单</el-button> -->
+                    <el-button type="primary" size="small"  @click="print(scope.row.orderProductCode,3)">治疗单</el-button>
+                </template>
+             </el-table-column>
+            <el-table-column  prop="address"  label="操作" min-width="80" align="center">
+                 <template scope="scope">
+                    <el-button type="primary" size="small" @click="edit(scope.$index,tableData)" :disabled="scope.row.isPayoff">编辑</el-button>
+                </template>
+            </el-table-column>
+        </el-table>
+       <el-button type="primary" @click="AddPrintContent" :disabled="multipleSelection.length == 0" style="margin-top:20px;">批量打印</el-button>
+         <!-- 分页 -->
+        <div class="block">
+            <el-pagination
+                @size-change="handleSizeChange"
+                @current-change="handleCurrentChange"
+                :current-page="currentPage"
+                :page-sizes="[10, 20, 30, 40]"
+                :page-size="size"
+                layout="total, sizes, prev, pager, next, jumper"
+                :total="total">
+            </el-pagination>
+        </div>
+        <!-- 分页 -->
+
+        <!-- 添加产品单弹框 -->
+        <el-dialog title="添加处方单" :visible.sync="dialogFormVisible" :close-on-click-modal="false" size="" top="10%">
+            <ordonnance @addClose="addClose" ref="addOrd" v-if="dialogFormVisible" style="width:950px" @openSelDrug='openSelDrug'></ordonnance>
+        </el-dialog>
+        <!-- 添加产品单 -->
+
+        <el-dialog title="查看" :visible.sync="readDialog" :close-on-click-modal="false" size="">
+            <views v-if="readDialog" :mesCode="mesCode" style="width:900px"></views>
+        </el-dialog>
+
+        <!-- 编辑弹框  -->
+        <el-dialog title="编辑" :visible.sync="editDialog" size="" top="10%">
+            <edit @addClose="addClose" ref="editOrd" :mesCode="mesCode" :id="mesId" :payMesShow="payMesShow" v-if="editDialog" style="width:950px" @openSelDrug='openSelDrug'></edit>
+        </el-dialog>
+
+        <el-dialog title="客户详情" :visible.sync="dialogView"  top="5%"  size="" :close-on-click-modal="false">
+            <CustomerView :mes="cusMes" style="width: 1100px"  v-if="dialogView"></CustomerView>
+        </el-dialog>
+
+        <el-dialog title="选择药品" :visible.sync="dialogSelDrug"  top="20%"  size="" :close-on-click-modal="false">
+            <selDrug :mes="condition" style="width: 640px" @addDrug="addDrug" v-if="dialogSelDrug"></selDrug>
+        </el-dialog>
+        <!-- 打印区域 -->
+         <div id="print" style="margin:0;padding:0">
+            <p style="margin:0;padding:0">
+                <img :src="url" alt="" :width="width" height="auto">
+            </p>
+        </div>
+    </div>
+</template>
+<script>
+    import {getLodop,needCLodop} from '@/config/LodopFuncs'
+    let LODOP
+    import { getCookie } from "@/config/mUtils";
+    import "@/style/selfCommon.less"
+    import ordonnance from "./com/ordonnance.vue"
+    import views from "./com/view.vue"
+    import edit from "./com/edit.vue"
+    import selDrug from './com/selDrug'//处方单选药品
+    import CustomerView from "../ReportManage/com/customerDetail.vue"
+    import { xmxUrl, baseImgPath } from '@/config/env'
+    import { imgApi, acceptImage } from '@/config/common'
+    import {GetDropDownPermission,GetProofOrderProduct,TreatmentPrint,DisposalPrint,GetProofOrderProductDetail} from "@/api/myData"
+    export default {
+        // name:"",
+        data() {
+            return {
+                dialogSelDrug:false,
+                loading:false,
+                cusMes:{},
+                dialogView:false,
+                url:"",
+                mesId:"",
+                mesCode:"",
+                size: 10,
+                total: 0,
+                currentPage: 1,
+                date:"",
+                width:480,
+                dialogFormVisible:false,
+                payMesShow:false,
+                readDialog:false,
+                editDialog:false,
+                tableData:[],
+                hospitalList:[],
+                formInline: {
+                    name: '',
+                    startDate:"",
+                    endDate:"",
+                    keywords:"",
+                    isPayOff:"",
+                    hospital:"",
+                    service:"",
+                },
+                allService:[],
+                serviceList:[],
+                hrefName:getCookie("userName"),
+                condition:{},
+                multipleSelection:[],
+            };
+        },
+        computed: {
+            /* 导出报表参数 tHeader,filterVal,tableData1*/
+            // tHeader(){
+            //     return ['代理编号', '注册日期', '代理人', '联系电话', '身份证号', '来源渠道', '代理等级', '缴纳会费', '缴纳押金', '推荐人', '团队人数']
+            // },
+            // filterVal(){
+            //     return ['Code', 'RegistDate', 'BranchName', 'PhoneNumber', 'IDCard', 'SourcWayeCode', 'BranchGradeCode', 'PayAmount', 'Pledge', 'ReferrerName', 'TeamCount']
+            // },
+            // tableData1(){
+            //     return this.tableData
+            // },
+            // name(){
+            //     return '代理管理'
+            // },
+            /*导出报表参数 tHeader,filterVal,tableData1*/
+        },
+        mounted(){
+            this.url = baseImgPath
+            let date = new Date()
+            date.setDate("01")
+            this.date = [date,new Date()]
+            this.GetDropDownPermission()
+        },
+        methods: {
+            handleSelectionChange(val) {
+                this.multipleSelection = val;
+            },
+            async templateChange(val){
+                if(val){
+                    this.tableData = []
+                }else{
+                    let res = await GetPrintDetailList({id:val})
+                    this.tableData = res.data
+                }
+            },
+            openSelDrug(status,ope,condition){
+                
+                if(status){//打开选药品窗口
+                    this.dialogSelDrug = true
+                    this.ope = ope
+                    this.condition = condition
+                }else{//选择完毕关闭药品窗口
+                    this.dialogSelDrug = false
+                }
+            },
+            addDrug(status,obj){
+                
+                if(status){//选药确认
+                    if(this.ope == 'add'){
+                        this.$refs.addOrd.addDrugs(obj)
+                    }else{
+                        this.$refs.editOrd.addDrugs(obj)
+                    }
+                }else{//取消
+                    this.dialogSelDrug = false
+                }
+            },
+            view(index,data){
+                this.cusMes = data[index]
+                this.dialogView = true
+            },
+            async GetDropDownPermission(){
+                let data = {typeId: 1}
+                let [res] = await Promise.all([GetDropDownPermission(data)])
+                this.hospitalList = res.data
+                this.formInline.hospital = getCookie('hospitalCode')?getCookie('hospitalCode'):''
+            },
+            dateSelect(val){
+                if (val) {
+                    this.formInline.startDate = val.substring(0, 10)
+                    this.formInline.endDate = val.substring(13)
+                } else {
+                    this.formInline.startDate = ""
+                    this.formInline.endDate = ""
+                }
+                this.onSubmit()
+            },
+            // 添加完成的回调
+            addClose(val){
+                if(val){
+                    this.search()
+                }
+                this.dialogFormVisible = false
+                this.editDialog = false
+            },
+            // 添加产品单
+            add(){
+                this.dialogFormVisible = true
+            },
+            onSubmit(){
+                this.currentPage = 1
+                this.search()
+            },
+            search(){
+                this.GetProofOrderProduct({
+                    KeyWords:this.formInline.keywords.removeSP(),
+                    PageSize:this.size,
+                    PageIndex:this.currentPage,
+                    "isPayOff": this.formInline.isPayOff,
+                    "startDate": this.formInline.startDate,
+                    "endDate": this.formInline.endDate,
+                    hospitalCode:this.formInline.hospital,
+                    goodsType:1,
+                })
+            },
+            async GetProofOrderProduct(params){
+                this.loading = true
+                let res = await GetProofOrderProduct(params)
+                if(res.status){
+                    this.tableData = res.data
+                    this.total = res.count
+                }else{
+                    this.$message({ type: 'warning', message: '获取数据失败!'+res.errorMessage })
+                }
+                this.loading = false
+            },
+            handleSizeChange(val) {
+                console.log(`每页 ${val} 条`);
+                this.size = val
+                this.search()
+            },
+            handleCurrentChange(val) {
+                console.log(`当前页: ${val}`);
+                this.currentPage = val
+                this.search()
+            },
+            edit(index,data){
+                this.mesCode = data[index].orderProductCode
+                this.mesId = data[index].id
+                this.editDialog = true
+            },
+            views(index,data){
+                
+                this.mesCode = data[index].orderProductCode
+                this.readDialog = true
+            },
+            print(code,ope){
+                let url =  document.location.protocol +"//" + document.location.hostname +(80 == document.location.port || "" == document.location.port ? "": ":" + document.location.port) +"/";
+                let newWin = window.open(url + "print/printOrdonnance.html?code=" + code + "&ope=" + ope);
+            },
+
+            // printCus() {
+            // let isneed = getLodop();  
+            // this.isInstall = isneed == 0?false:true
+            //     if(isneed!=0){
+            //         LODOP=getLodop();
+            //         LODOP.PRINT_INITA(0,0,522,333,"排队打印");	
+            //         LODOP.SET_PRINT_PAGESIZE(0,550,840,"A4");
+            //         this.AddPrintContent();
+            //         LODOP.PREVIEW();
+            //     }else{
+                    
+            //     }
+            // },
+            // <table cellspacing="0" cellpadding="0" style="border-collapse:collapse;font-size: 14px;width:760px;margin: 0 auto;font-size:12px" bordercolor="#000000"></table>
+            async AddPrintContent() {
+                LODOP=getLodop();  
+                let customerId = this.multipleSelection[0].customerId,hospitalName = this.multipleSelection[0].hospitalName,customerName = this.multipleSelection[0].customerName,flg = true,codes = []
+               let listHtml = ''
+                this.multipleSelection.forEach(row=>{
+                    if(customerId == row.customerId){
+                        codes.push(row.orderProductCode)
+                    }else{
+                        this.$message({ type: 'warning', message: '请选择同一个人的产品单!'})
+                        flg = false
+                        return false
+                    }
+                })
+                if(flg){
+                    let res = await GetProofOrderProductDetail({
+                        OrderProductCodes :codes.join(",")
+                    })
+                    if(res.status){
+                        listHtml+=this.getlist(res.data,hospitalName,customerName)
+                        listHtml+= '</table>'
+                    LODOP = getLodop();
+                    LODOP.PRINT_INIT("打印控件功能演示_Lodop功能_打印表格");
+                    var text = "td{}.tab_th{}"
+                    LODOP.SET_PRINT_PAGESIZE(1, 0, 0, "A4")
+                    LODOP.ADD_PRINT_TABLE(20, 1, "99.8%", 320, text+listHtml);
+                    LODOP.PREVIEW();
+                    }
+                }
+            },
+            getlist(data,hospitalName,customerName){
+                    let html = '',sumData = 0
+                data.forEach(row=>{
+                      html+=
+                        '<tr style="text-align:center;height:30px">'+
+                        '<td width="28%" style="height: 30px;">'+row['productName']+'</td>'+
+                        '<td width="25%" style="height: 30px;">'+row['unitName']+'</td>'+
+                        '<td width="9%" style="height: 30px;">'+row['quantity']+'</td>'+
+                        '<td width="9%" style="height: 30px;">'+row['price']+'</td>'+
+                        '<td width="9%" style="height: 30px;">'+row['realAmount']+'</td>'+
+                        '<td width="20%" style="height: 30px;">'+row['usage']+'</td>'+
+                        '</tr>'
+                        sumData+=row.quantity.mul(row.price)
+                })
+                let listHtml = '<table cellspacing="0" cellpadding="0" style="border-collapse:collapse;font-size: 14px;width:760px;margin: 0 auto;font-size:12px" bordercolor="#000000">'+
+                    '<thead>'+
+                    '<tr style="height:66px;">'+
+                    '<th  colspan="6" tindex="1">'+
+                    '<div style="font-size:18px;height:33px;text-align:center">'+hospitalName+'</div>'+
+                    '<div style="font-size:18px;height:33px;text-align:center">产 品 单</div>'+
+                    '</th></tr>' +
+                    '<tr style="height:30px;">' +
+                        '<td style="height: 30px;" align="left">客户：'+customerName+'</td>'+
+                        '<td style="height: 30px;" >填制时间：</td>'+
+                        '<td style="height: 30px;" colspan="2">金额：'+sumData+'</td>'+
+                    '</tr>' +
+                    '<tr style="height:30px;text-align:center">'+
+                        '<td width="28%" style="border-bottom: 1px solid #111;">药品名称</td>'+
+                        '<td width="25%" align="center" style="border-bottom: 1px solid #111;">规格</td>'+
+                        '<td width="9%" style="border-bottom: 1px solid #111;">数量</td>'+
+                        '<td width="9%" style="border-bottom: 1px solid #111;">单价</td>'+
+                        '<td width="9%" style="border-bottom: 1px solid #111;">总价</td>'+
+                        '<td width="20%" style="border-bottom: 1px solid #111;">用法</td>'+
+                    '</tr>'+
+                    '</thead>'
+                return listHtml+html
+            }
+  
+        },
+        components:{
+            ordonnance,
+            selDrug,
+            views,
+            edit,CustomerView
+        }
+    }
+</script>
+<style scoped>
+.block{
+    margin-top: 20px;
+    float: right
+}
+#print{
+    display: none;
+}
+</style>
+

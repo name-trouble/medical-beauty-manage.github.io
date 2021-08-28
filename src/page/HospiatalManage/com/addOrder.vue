@@ -1,0 +1,437 @@
+<template>
+    <div>
+        <el-form :model="ruleForm" :inline="true" :rules="rules" ref="ruleForm" label-width="100px"
+                 class="demo-ruleForm">
+            <el-form-item label="预约日期：" prop="date" class="form_item_mt15">
+                <el-date-picker
+                    v-model="date"
+                    type="date"
+                    class="form_item_ipt"
+                    @change="dateChange"
+                    placeholder="选择日期" >
+                </el-date-picker>
+            </el-form-item>
+
+            <el-form-item label="预约时间段：" prop="time" required class="form_item_mt15">
+                <el-input v-model="ruleForm.time" placeholder="如12001300" class="form_item_ipt"></el-input>
+            </el-form-item>
+            <el-form-item label="客户姓名：" prop="customerCode" class="form_item_mt15">
+                <el-autocomplete v-model="ruleForm.name" :fetch-suggestions="queryCus" placeholder="请输入内容"
+                                 class="form_item_ipt"
+                                 :trigger-on-focus="false"
+                                 @select="selectCus">
+                    <template v-slot="{item}">
+                        <my-item-orderCus :item="item"></my-item-orderCus>
+                    </template>
+                </el-autocomplete>
+            </el-form-item>
+
+            <el-form-item label="推荐人：" class="form_item_mt15">
+                {{ruleForm.refer}}
+            </el-form-item>
+            <el-form-item label="预约科室：" class="form_item_mt15">
+                <el-select v-model="ruleForm.room" class="form_item_ipt">
+                    <el-option v-for="(item,index) in deptList" :key="index"
+                               :label="item.deptName+'('+item.deptCode+')'"
+                               :value="item.deptName+'|'+item.deptCode"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="预约医生：" class="form_item_mt15">
+                <el-select v-model="ruleForm.doctor" class="form_item_ipt">
+                    <el-option v-for="(item,index) in doctorList" :key="index" :label="item.text"
+                               :value="item.name+'|'+item.code"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="预约助理：" class="form_item_mt15">
+                <el-select v-model="ruleForm.des" class="form_item_ipt" @change="desChange">
+                    <el-option v-for="(item,index) in desList" :key="index" :label="item.text"
+                               :value="item.name+'|'+item.code"></el-option>
+                </el-select>
+            </el-form-item>
+
+            <el-form-item label="状态：" class="form_item_mt15">
+                <el-select v-model="ruleForm.type" class="form_item_ipt">
+                    <el-option label="未来院" value="1"></el-option>
+                    <el-option label="手术中" value="2"></el-option>
+                    <el-option label="已完成" value="3"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="麻醉：" class="form_item_mt15">
+                <el-radio class="radio" v-model="ruleForm.mz" label="1">局麻</el-radio>
+                <el-radio class="radio" v-model="ruleForm.mz" label="2">全麻</el-radio>
+                <el-radio class="radio" v-model="ruleForm.mz" label="3">无</el-radio>
+            </el-form-item>
+            <el-form-item label="项目：" prop="selPro" class="form_item_mt15">
+                <div style="width:500px">
+                    <div>
+                        <el-tag v-for="(item,index) in proList" :key="index" :closable="true" :close-transition="false"
+                                @close="handleClose(index)">
+                            {{item.GoodsAlias}}
+                        </el-tag>
+                    </div>
+                    <el-autocomplete v-model="ruleForm.project" class="form_item_ipt" :fetch-suggestions="queryPro"
+                                     placeholder="请输入内容" :trigger-on-focus="false"
+                                     @select="selectPro">
+                        <template v-slot="{item}">
+                            <my-item-orderPro :item="item"></my-item-orderPro>
+                        </template>
+                    </el-autocomplete>
+                </div>
+
+            </el-form-item>
+            <el-form-item label="备注：" class="form_item_mt15">
+                <el-input v-model="ruleForm.memo" type="textarea" :rows="3" style="width:500px"></el-input>
+            </el-form-item>
+        </el-form>
+        <div class="form_footer">
+            <el-button @click="add('ruleForm')" type="primary" :loading="saveLoading">确定</el-button>
+            <el-button @click="cancel('ruleForm')">取消</el-button>
+        </div>
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+    import {AddReservation,GetUserAllByKeywords,GetBranchByKeywords,GetGoodsByKeywords,GetServiceManList,getUserById,
+        getBaseDataByCode,GetHospitalAccountByCode,GetDeptAllByHospitalCode} from "@/api/myData";
+    import Vue from "vue";
+    import { getCookie } from "@/config/mUtils";
+    Vue.component("my-item-orderPro", {
+        functional: true,
+        render: function (h, ctx) {
+            var item = ctx.props.item;
+            return h("div", ctx.data, [
+                h("p", {attrs: {class: "select_name", title: item.Name}}, ["名称：" + item.GoodsAlias]),
+                h("p", {attrs: {class: "select_code", title: item.Name}}, ["编号：" + item.code]),
+                h("p", {attrs: {class: "select_code", title: item.Name}}, ["医院：" + item.SupplierName]),
+                h("p", {attrs: {class: "select_code", title: item.Name}}, ["价格区间：" + item.priceRange])
+            ]);
+        },
+        props: {
+            item: {type: Object, required: true}
+        }
+    });
+    Vue.component('my-item-orderCus', {
+        functional: true,
+        render: function (h, ctx) {
+            var item = ctx.props.item;
+            return h('div', ctx.data, [
+                h('p', {attrs: {class: 'select_name' + item.Type, title: item.name}}, ['名字：' + item.name]),
+                h('p', {attrs: {class: 'select_name' + item.Type, title: item.name}}, ['编号：' + item.code]),
+                h('p', {attrs: {class: 'select_name' + item.Type, title: item.name}}, ['手机号：' + item.phone]),
+                h('p', {attrs: {class: 'select_name' + item.Type, title: item.name}}, ['卡号：' + item.cardNO]),
+            ]);
+        },
+        props: {
+            item: {type: Object, required: true}
+        }
+    });
+
+
+    export default {
+        data() {
+            var checkTime = (rule, value, callback) => {
+                if (!value) {
+                    return callback(new Error('时间段不能为空'));
+                }
+                setTimeout(() => {
+                    if (value.length == 8) {
+                        if (value.substring(0, 2) <= 24 && Number(value.substring(2, 4)) < 60 && value.substring(4, 6) <= 24 && Number(value.substring(6, 7)) < 60) {
+                            callback();
+                        } else {
+                            return callback(new Error('请检查格式'));
+                        }
+                    } else {
+                        return callback(new Error('请检查格式'));
+                    }
+                }, 1000);
+            };
+            return {
+                saveLoading:false,
+                time: "",
+                date: "",
+                ruleForm: {
+                    startTime: "",
+                    endTime: "",
+                    date: "",
+                    type: "1",
+                    name: "",
+                    customer: "",
+                    customerCode: "",
+                    message: "",
+                    phone: "",
+                    refer: "",
+                    referrer: "",
+                    referrerCode: "",
+                    project: "",
+                    selPro: [],
+                    designer: "",
+                    designerAssist: "",
+                    time: "",
+                    room: "",
+                    doctor: "",
+                    des: "",
+                    desCode: "",
+                    desName: "",
+                    mz: "1",
+                    memo: "",
+                },
+                loading: false,
+                branhcList: [],
+                projectList: [],
+                customerList: [],
+                doctorList: [],
+                deptList: [],
+                UserList: [],
+                desList: [],
+                proList: [],
+                rules: {
+                    customerCode: [{required: true, message: "请选择客户", trigger: "change"}],
+                    referrerCode: [{required: true, message: "请选择客户", trigger: "change"}],
+                    phone: [{required: true, message: "请输入电话", trigger: "blur"}],
+                    time: [{validator: checkTime, trigger: 'blur'}],
+                    selPro: [{type: 'array', required: true, message: '请至少选择一个项目'}],
+                    date: [
+                        {required: true, message: '请选择时间'}
+                    ]
+                },
+                classify: ["现场咨询", "网络咨询", "代理商", "朋友介绍", "市场咨询顾问", "会员中心", "二级市场", "前台咨询", "微信咨询"]
+            };
+        },
+        mounted() {
+            this.date = new Date();
+            this.ruleForm.date = new Date();
+            this.getServiceMan();
+        },
+        methods: {
+            desChange(){
+                if (this.ruleForm.des.length > 0) {
+                    this.ruleForm.desCode = this.ruleForm.des.split("|")[1]
+                    this.ruleForm.desName = this.ruleForm.des.split("|")[0]
+                }
+            },
+            async getMember(str) {
+                let res = await GetUserAllByKeywords({'keywords': str.removeSP()})
+                if (res instanceof Array && res.length > 0) {
+                    for (let item of res) {
+                        this.customerList.push({
+                            value: item["MemberName"],
+                            phone: item["PhoneNumber"],
+                            code: item["Code"],
+                            name: item["MemberName"],
+                            referrerCode: item['ReferrerCode'],
+                            referrerName: item['ReferrerName'],
+                            Type: item.Type == 1 ? "black" : "red",
+                            cardNO: item["CardNO"] ? item["CardNO"] : ""
+                        })
+                    }
+                }
+            },
+            //查找会员 下拉补全
+            queryCus(queryString, cb) {
+                // queryString=enCode(queryString)
+                this.customerList = []
+                if (queryString !== '' && queryString != undefined) {
+                    this.getMember(queryString)
+                }
+                this.ruleForm.customerCode = ""
+                this.ruleForm.referrerCode = ""
+                let _this = this
+                clearTimeout(this.timeout);
+                this.timeout = setTimeout(() => {
+                    cb(_this.customerList);
+                }, 1000);
+            },
+
+
+            //点击获取 会员信息  Oject
+            selectCus(item) {
+                this.ruleForm.customer = item.name
+                this.ruleForm.customerCode = item.code
+                this.ruleForm.referrer = item.referrerName ? item.referrerName : ""
+                this.ruleForm.referrerCode = item.referrerCode ? item.referrerCode : ""
+                this.ruleForm.refer = item.referrerName
+                this.ruleForm.phone = item.phone
+            },
+
+            selectRef(item){
+                this.ruleForm.refrence = item.referrerName ? item.referrerName : ""
+                this.ruleForm.referrerCode = item.referrerCode ? item.referrerCode : ""
+            },
+            async AddReservation(params) {
+                this.saveLoading = true
+                let res = await AddReservation(params);
+                if (res.status) {
+                    this.$message({
+                        message: '添加成功',
+                        type: 'success'
+                    });
+                    this.cancel()
+                    this.$emit("close", true);
+                } else {
+                    this.$message.error('添加失败' + res.errorMessage);
+                }
+                this.saveLoading = false
+            },
+            timeChange(val){
+                if (val) {
+                    this.ruleForm.startTime = val.substring(0, 8)
+                    this.ruleForm.endTime = val.substring(11)
+                }
+            },
+            remoteMethod(query) {
+                if (query !== "") {
+                    this.loading = true;
+                    this.getMember({keywords: query.removeSP()});
+                } else {
+                }
+            },
+            //获的医护人员
+            async getServiceMan() {
+                let hospitalCode = getCookie("hospitalCode")
+                let [dept,res] = await Promise.all([GetDeptAllByHospitalCode({HospitalCode: hospitalCode}),GetServiceManList()])
+                this.deptList = dept.data
+                for (let item of res.data) {
+                    let hosCodes = item.hospitalCode.split(",")
+                    if ((hospitalCode == ""||hosCodes.indexOf(hospitalCode)>=0)&& item.serTypeCode === "001") { //医生
+                        this.doctorList.push({
+                            'code': item["code"],
+                            'name': item["serviceName"],
+                            'text': item["serviceName"] + "(" + item["code"] + ")"
+                        });
+                    }
+                    if ((hospitalCode == ""||hosCodes.indexOf(hospitalCode)>=0)&& item.serTypeCode === '006') {    //设计师助理
+                        this.desList.push({
+                            'code': item["code"],
+                            'name': item["serviceName"],
+                            'text': item["serviceName"] + '(' + item["code"] + ')'
+                        })
+                    }
+                }
+            },
+            //查找项目  下拉补全
+            async queryPro(queryString, cb) {
+                this.projectList = [];
+                if (queryString !== "" && queryString != undefined) {
+                    let res = await GetGoodsByKeywords({keywords: queryString.removeSP(), IsMall: 0});
+                    this.getProject(res);
+                }
+                let _this = this;
+                clearTimeout(this.timeout);
+                this.timeout = setTimeout(() => {
+                    cb(_this.projectList);
+                }, 100);
+            },
+            async remoteMethodUser(params){
+                let res = await GetUserAllByKeywords({keywords: params.removeSP()})
+                this.UserList = res
+            },
+            // 获取项目
+            getProject(res) {
+                // let res = await GetGoodsByKeywords({keywords: str.removeSP(), IsMall: 0});
+                if (res instanceof Array && res.length > 0) {
+                    for (let item of res) {
+                        this.projectList.push({
+                            value: "(" +item["GoodsEntity"]["Code"] +")" +item["GoodsEntity"]["GoodsAlias"],
+                            code: item["GoodsEntity"]["Code"],
+                            Name: item["GoodsEntity"]["Name"],
+                            GoodsAlias: item["GoodsEntity"]["GoodsAlias"],
+                            ServiceMan: item["GoodsEntity"]["ServiceMan"],
+                            ServiceManName: item["GoodsEntity"]["ServiceManName"],
+                            price: item["GoodsEntity"]["PriceSale"],
+                            priceRange: item["PriceRange"],
+                            FarePercent: item["GoodsEntity"]["FarePercent"],
+                            SupplierCode: item["GoodsEntity"]["SupplierCode"],
+                            SupplierName: item["GoodsEntity"]["SupplierName"],
+                            GUList: item["GUList"]
+                        });
+                    }
+                }
+            },
+
+            //点击获取 项目信息  Oject
+            selectPro(item) {
+                this.proList.push(item)
+                this.ruleForm.selPro.push(item)
+                this.ruleForm.project = ""
+            },
+
+            handleClose(index){
+                this.proList.splice(index, 1)
+            },
+
+            dateChange(val) {
+                ;
+                this.ruleForm.date = val;
+            },
+            cancel(formName) {
+                // this.$refs[formName].resetFields();
+                for (var p in this.ruleForm) {
+                    this.ruleForm[p] = ""
+                }
+                this.$emit("close", false);
+            },
+            add(formName) {
+                let project = this.getNameCode(this.proList)
+                this.$refs[formName].validate(valid => {
+                    if (valid) {
+                        let deptCode = this.ruleForm.room.length > 0 ? this.ruleForm.room.split("|")[1] : ""
+                        let deptName = this.ruleForm.room.length > 0 ? this.ruleForm.room.split("|")[0] : ""
+                        let doctorCode = this.ruleForm.doctor.length > 0 ? this.ruleForm.doctor.split("|")[1] : ""
+                        let doctorName = this.ruleForm.doctor.length > 0 ? this.ruleForm.doctor.split("|")[0] : ""
+                        let obj = {
+                            reservationDate: this.ruleForm.date,
+                            startTime: this.ruleForm.time.substring(0, 2) + ":" + this.ruleForm.time.substring(2, 4),
+                            endTime: this.ruleForm.time.substring(4, 6) + ":" + this.ruleForm.time.substring(6, 8),
+                            customerCode: this.ruleForm.customerCode,
+                            customerName: this.ruleForm.customer,
+                            deptCode: deptCode,
+                            deptName: deptName,
+                            doctorCode: doctorCode,
+                            doctorName: doctorName,
+                            referrerCode: this.ruleForm.referrerCode,
+                            referrerName: this.ruleForm.referrer,
+                            projectCode: project[0],
+                            projectName: project[1],
+                            reservationStatus: this.ruleForm.type,
+                            createUserId: getCookie("userId"),
+                            createBy: getCookie("userName"),
+                            memo: this.ruleForm.memo,
+                            designerAssist: this.ruleForm.desCode,
+                            designerAssistName: this.ruleForm.desName,
+                            narcotization: this.ruleForm.mz,
+                            HospitalCode: getCookie("hospitalCode") ? getCookie("hospitalCode") : "HZ100014",
+                        };
+                        this.AddReservation(obj);
+                    } else {
+                        console.log("error submit!!");
+                        return false;
+                    }
+                });
+            },
+            getNameCode(data){
+                if (data.length > 0) {
+                    let code = [], name = []
+                    data.forEach(row => {
+                        code.push(row.code)
+                        name.push(row.GoodsAlias)
+                    });
+                    return [code.join(","), name.join(",")]
+                } else {
+                    return ["", ""]
+                }
+            }
+        }
+    };
+</script>
+
+<style scoped>
+    .form_item_ipt {
+        width: 200px;
+    }
+
+    .form_footer {
+        text-align: center;
+    }
+</style>
+
+

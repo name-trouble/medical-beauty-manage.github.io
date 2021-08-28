@@ -1,0 +1,129 @@
+<template>
+    <div class="selCommon">
+        <el-form :inline="true" :model="formInline" class="demo-form-inline form_search" label-width="80px" >
+            <el-form-item :label="dialogMes.label"  class="form_item_mt10 ">
+                <el-date-picker v-model="date" type="daterange"  @change="dateChange" style='width:200px;' placeholder="选择日期范围"></el-date-picker>
+            </el-form-item>
+            <el-form-item :label="label"  class="form_item_mt10">
+                <el-input v-model="formInline.project"></el-input>
+            </el-form-item>
+            <el-form-item label="模块：" class="form_item_mt10">
+                <el-select v-model="formInline.module">
+                    <el-option label="全部" value=""></el-option>
+                    <el-option label="限时秒杀" value="1"></el-option>
+                    <el-option label="体验专区" value="2"></el-option>
+                    <el-option label="特惠项目" value="3"></el-option>
+                    <el-option label="量贩专区" value="4"></el-option>
+                </el-select>
+            </el-form-item>
+
+            <el-form-item label="" class="form_item_mt10 form_item_wh280">
+                <el-button type="primary" @click="search" class="searchBtn" icon="search">查询</el-button>
+             </el-form-item>
+        </el-form>
+        <!-- 分享数 -->
+    
+        <!-- 下单数 -->
+        <div v-if="dialogMes.type==6">
+            <el-table :data="tableData" border style="width: 100%;margin-top:15px;margin-bottom:10px;"
+             max-height="500" class="min_table smt" v-loading="loading" show-summary>
+                <el-table-column prop="payDate" label="订单编号" min-width="100"></el-table-column>
+                <el-table-column prop="payDate" label="订单时间" min-width="100"></el-table-column>
+                <el-table-column prop="hospitalName" label="项目" min-width="100"></el-table-column>
+                <el-table-column prop="receiveBranchName" label="订单金额" min-width="100"></el-table-column>
+                <el-table-column prop="receiveBranchName" label="分享模块" min-width="100"></el-table-column>
+                <el-table-column prop="receiveBranchName" label="链接" min-width="100"></el-table-column>
+            </el-table>
+        </div>
+        <!-- 下单数 -->
+        <div v-if="dialogMes.type==7">
+            <el-table :data="tableData" border style="width: 100%;margin-top:15px;margin-bottom:10px;" 
+            max-height="500" class="min_table smt" v-loading="loading" show-summary>
+                <el-table-column prop="payDate" label="订单编号" min-width="100"></el-table-column>
+                <el-table-column prop="payDate" label="订单时间" min-width="100"></el-table-column>
+                <el-table-column prop="receiveBranchName" label="用户" min-width="100"></el-table-column>
+                <el-table-column prop="hospitalName" label="项目" min-width="150"></el-table-column>
+                <el-table-column prop="receiveBranchName" label="订单金额" min-width="100"></el-table-column>
+            </el-table>
+        </div>
+
+        <!-- 分页 -->
+        <div class="block">
+            <el-pagination
+                 @size-change="handleSizeChange"
+                 @current-change="handleCurrentChange"
+                 :current-page="currentPage"
+                 :page-sizes="[10, 30, 50, 100]"
+                 :page-size="size"
+                 layout="total, sizes, prev, pager, next, jumper"
+                 :total="total">
+             </el-pagination>
+        </div>
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+    import {} from "@/api/myData"
+    import "@/style/selfCommon.less"
+    export default {
+        data () {
+            return {
+                date:"",
+                label:'日期',
+                tableData:[],
+                currentPage:1,
+                size:10,
+                total:1,
+                loading:false,
+                formInline:{
+                    startDate:"",
+                    endDate:"",
+                    module:"",
+                    project:"",
+                }
+            }
+        },
+        props:{
+            dialogMes:Object,
+        },
+        computed: {
+            
+        },
+       
+        mounted(){
+            
+        },
+        methods: {
+            dateChange(val){
+                if(val){
+                    val = val.formatDates()
+                    this.formInline.startDate = val.substring(0,10)
+                    this.formInline.endDate = val.substring(13)
+                }else{
+                    this.formInline.startDate = ""
+                    this.formInline.endDate = ""
+                }
+            },
+            handleSizeChange(val) {
+                this.size = val
+                this.submit()
+            },
+            handleCurrentChange(val) {
+                this.currentPage = val
+                this.submit()
+            },
+            search(){
+
+            },
+            submit(){
+
+            }
+        }
+    }
+</script>
+<style scoped>
+.block{
+    float: right;
+    margin-bottom: 20px;
+}
+</style>

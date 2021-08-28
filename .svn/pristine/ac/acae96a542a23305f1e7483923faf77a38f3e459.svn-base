@@ -1,0 +1,188 @@
+<template>
+    <div class="tag selCommon">
+        <el-form :inline="true" :model="formInline" class="demo-form-inline form_search" label-width="80px">
+            <el-form-item label="医院：" class="form_item_mt10">
+                <el-select v-model="formInline.hospitalCode"  style='width:200px;' @change="hosChange">
+                    <el-option v-for="(item,index) in hospitalList" :key="index" :label="item.supplierName" :value="item.code"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="仓库：" class="form_item_mt10">
+                <el-select v-model="formInline.warehouse"  style='width:200px;'>
+                    <el-option label="全部" value=""></el-option>
+                    <el-option v-for="(item,index) in whList" :key="index" :label="item.warehouseName" :value="item.id"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label=" " class="form_item_mt10">
+                <el-button type="primary" @click="onSubmit" class="searchBtn">查询</el-button>
+            </el-form-item>
+        </el-form>
+        <!-- 信息表 -->
+        <el-table :data="tableData" border style="width: 100%;margin-top:15px;margin-bottom:10px;" max-height="560" class="smt min_table" v-loading="loading">
+            <el-table-column prop="warehouseName" label="仓库" min-width="90"></el-table-column>
+            <el-table-column prop="batchNumber" label="批号" min-width="90"></el-table-column>
+            <el-table-column prop="drugName" label="药品名称" min-width="90"></el-table-column>
+            <el-table-column prop="unitName" label="规格" min-width="90"></el-table-column>
+            0<el-table-column prop="effectiveDate" label="有效期" min-width="90">
+                <template scope="scope">
+                    <span v-if="scope.row.effectiveDate">{{scope.row.effectiveDate.substring(0,10)}}</span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="originAddress" label="预警日期" min-width="90">
+                <template scope="scope">
+                    <span style="color:red">{{scope.row.warningDate.substring(0,10)}}</span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="originAddress" label="产地" min-width="90"></el-table-column>
+            <el-table-column prop="manufacturer" label="生产厂家" min-width="90"></el-table-column>
+            <el-table-column prop="jiType" label="剂型" min-width="90"></el-table-column>
+            <el-table-column prop="dwName" label="单位" min-width="90"></el-table-column>
+            <el-table-column prop="quantityIn" label="入库总数" min-width="90"></el-table-column>
+            <el-table-column prop="quantityOut" label="出库总数" min-width="90"></el-table-column>
+            <el-table-column prop="remainingCount" label="库存数量" min-width="90"></el-table-column>
+            <el-table-column prop="originAddress" label="预警数量" min-width="90">
+                <template scope="scope">
+                    <span style="color:red">{{scope.row.warningCount}}</span>
+                </template>
+            </el-table-column>
+        </el-table>
+        <!-- 信息表 -->
+
+        <!-- 分页 -->
+        <div class="block">
+            <el-pagination
+                @size-change="handleSizeChange"
+                @current-change="handleCurrentChange"
+                :current-page="currentPage"
+                :page-sizes="[10, 20, 30, 40]"
+                :page-size="size"
+                layout="total, sizes, prev, pager, next, jumper"
+                :total="total">
+            </el-pagination>
+        </div>
+        <!-- 分页 -->
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+    import {baseImgPath} from "@/config/env"
+    import  "@/style/selfCommon.less"
+    import { getCookie, delCookie } from '@/config/mUtils'
+    import {GetStockWarning,GetDropDownPermission,GetWarehouse} from "@/api/myData"
+    export default {
+        data () {
+            return {
+                loading:false,
+                total:0,
+                size:10,
+                currentPage:1,
+                formInline: {
+                    keywords: '',
+                    typeCode:'',
+                    hospitalCode:"",
+                    warehouse:"",
+                },
+                whList:[],
+                allWhList:[],
+                tableData:[],
+                hospitalList:[],
+            }
+        },
+        computed: {
+            
+        },
+        mounted(){
+            this.GetDropDownPermission()
+        },
+        methods:{
+            hosChange(val){
+                this.formInline.warehouse = ""
+                if(getCookie('hospitalCode')){
+                }else{
+                    if(val!=''){
+                        this.whList = []
+                        this.allWhList.forEach(ele=>{
+                            
+                            if(val == ele.hospitalCode){
+                                this.whList.push(ele)
+                            }
+                        })
+                    }else{
+                        this.whList = JSON.parse(JSON.stringify(this.allWhList))
+                    }
+                }
+            },
+            async GetDropDownPermission(){
+                let res1 = await GetDropDownPermission({typeId: 1});
+                this.hospitalList = res1.data
+                let whList = await GetWarehouse({
+                    "hospitalCode": "",pageIndex:1,pageSize:100,keywords:"",typeId:1//药房
+                })
+                if(getCookie('hospitalCode')){
+                    whList.data.forEach(ele=>{
+                        
+                        if(ele.hospitalCode == getCookie('hospitalCode')){
+                            this.whList.push(ele)
+                            this.allWhList.push(ele)
+                        }
+                    })
+                }else{
+                    this.whList = whList.data
+                    this.allWhList = JSON.parse(JSON.stringify(whList.data))
+                }
+                
+            },
+            async GetStockWarning(params){
+                try{
+                    this.loading = true
+                    let res = await GetStockWarning(params)
+                    this.tableData = res.data
+                    this.total = res.count
+                    this.loading = false
+                }catch(err){
+                    console.log(err)
+                }
+            },
+          
+            onSubmit(){
+                this.currentPage = 1
+                this.search()
+            },
+            search(){
+                this.GetStockWarning({
+                    "warehouseId": this.formInline.warehouse,
+                    "hospitalCode": this.formInline.hospitalCode,
+                    pageIndex:this.currentPage,
+                    pageSize:this.size,
+                    keywords:this.formInline.keywords.removeSP()
+                })
+            },
+            handleSizeChange(val) {
+                this.size = val
+                this.search()
+            },
+            handleCurrentChange(val) {
+                this.currentPage = val
+                this.search()
+            },
+
+            deleteRow(index,data){
+                this.$confirm('此操作将删除该数据, 是否继续?', '提示', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    type: 'warning'
+                }).then(() => {
+                    
+                }).catch(() => {
+
+                });
+            },
+        },
+        components: {
+        }
+    }
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+
+</style>

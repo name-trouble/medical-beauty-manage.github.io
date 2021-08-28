@@ -1,0 +1,434 @@
+<template>
+    <div class="tag selCommon">
+        <el-form :inline="true"  class="demo-form-inline form_search" label-width="80px">
+            <el-form-item label="关键字：" class="form_item_mt10">
+                <el-input v-model="keywords" placeholder="名称" style="width: 200px;"  v-on:keyup.enter.native="onSubmit"></el-input>
+            </el-form-item>
+            <el-form-item label=" " class="form_item_mt10">
+                <el-button type="primary" @click="onSubmit" class="searchBtn">查询</el-button>
+                <el-button type="primary" @click="add('添加')" class="searchBtn">添加新设置</el-button>
+            </el-form-item>
+        </el-form>
+        <el-table  :data="tableData" border style="width: 100%;margin-top:20px">
+            <el-table-column prop="typeId" label="类型"  min-width="180">
+                <template scope="scope">
+                    <span v-if="scope.row.typeId == 1">药品</span>
+                    <span v-if="scope.row.typeId == 2">分类</span>
+                    <span v-if="scope.row.typeId == 3">项目</span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="name" label="名称" min-width="180"></el-table-column>
+            <el-table-column prop="commissionPrice" label="提成" min-width="180"></el-table-column>
+             <el-table-column prop="address" label="操作" width="200">
+                 <template scope="scope">
+                     <el-button type="primary" @click="edit(scope.$index,tableData)" size="small">编辑</el-button>
+                     <el-button @click="del(scope.$index,tableData)" size="small">删除</el-button>
+                 </template>
+             </el-table-column>
+        </el-table>
+        <div class="block" style="margin-bottom:10px">
+            <el-pagination @size-change="pageSizeChange" @current-change="pageIndexChange" 
+            :total="total" :current-page.sync="currentPage" :page-size="pageSize" 
+            :page-sizes="[10, 20, 30, 40]" 
+            layout="total, sizes, prev, pager, next, jumper">
+            </el-pagination>
+        </div>
+        <el-dialog :title="title" :visible.sync="dialogFormVisible" size="">
+            <el-form :model="formInline" class="demo-form-inline" label-width="80px" style="width:600px">
+                <el-form-item label="类型：" class="form_item__mt10">
+                    <el-radio class="radio" v-model="formInline.type" label="1">药品</el-radio>
+                    <el-radio class="radio" v-model="formInline.type" label="2">分类</el-radio>
+                    <el-radio class="radio" v-model="formInline.type" label="3">项目</el-radio>
+                </el-form-item>
+                <el-form-item label="名称：" class="form_item_mt10" v-if="formInline.type != 2">
+                    <el-autocomplete v-model="project" :fetch-suggestions="queryPro" placeholder="请输入内容" style="width:220px;float:left;margin-right:5px"
+                                        custom-item="my-item-nursePro" :trigger-on-focus="false" @select="selectPro"></el-autocomplete>
+                </el-form-item>
+                <el-form-item label="名称：" class="form_item_mt10" v-else>
+                    <el-select v-model="formInline.fClass" placeholder="请选择" style='width:150px;' @change="fChange">
+                        <el-option v-for="item in fClassList" :label="item.name" :value="item" :key="item.code"></el-option>
+                    </el-select>
+                    <el-select v-model="formInline.sClass" placeholder="请选择" style='width:150px;' @change="sChange">
+                        <el-option v-for="item in sClassList" :label="item.name" :value="item" :key="item.code"></el-option>
+                    </el-select>
+                    <el-select v-model="formInline.tClass" placeholder="请选择" style='width:150px;' @change="tChange">
+                        <el-option v-for="item in tClassList" :label="item.name" :value="item" :key="item.code"></el-option>
+                    </el-select>
+                </el-form-item>
+                <el-form-item label="提成：" class="form_item_mt10">
+                    <el-input v-model="formInline.amount" class="form_item_ipt220" @change="numCheck">
+                        <template slot="prepend">￥</template>
+                    </el-input>
+                </el-form-item>
+            </el-form>
+            <div class="form_footer">
+                <el-button type="primary" @click="sure" :loading="saveLoading">确 定</el-button>
+                <el-button @click="cancel">取 消</el-button>
+            </div>
+        </el-dialog>
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+    import {baseImgPath} from "@/config/env"
+    import  "@/style/selfCommon.less"
+    import { getCookie, delCookie } from '@/config/mUtils'
+    import {GetGoodsByKeywords2,AddNurseSet,UpdateNurseSet,GetNurseSet,GetCatelogByColumnCode,DeleteNurseSet,GetGoodsByKeywords} from "@/api/myData"
+    import Vue from 'vue'
+    Vue.component('my-item-nursePro', {
+        functional: true,
+        render: function(h, ctx) {
+            var item = ctx.props.item;
+            
+            return h('li', ctx.data, [
+                h('p', { attrs: { class: 'select_name', title: item.Name } }, ['名称：' + item.GoodsAlias]),
+                h('p', { attrs: { class: 'select_code', title: item.Name,  } }, ['编号：' + item.GoodsCode]),
+                h('p', { attrs: { class: 'select_code', title: item.Name, } }, ['医院：' + item.SupplierName]),
+                h('p', { attrs: { class: 'select_code', title: item.Name, } }, ['价格区间：' + item.priceRange])
+            ]);
+        },
+        props: {
+            item: { type: Object, required: true }
+        }
+    });
+    export default {
+        // name: "VideoManage",
+        data () {
+            return {
+                saveLoading:false,
+                dialogFormVisible:false,
+                project:"",
+                title:"",
+                opeIndex:0,
+                currentPage:1,
+                total:0,
+                pageSize:10,
+                keywords:"",
+                catelogList:[],
+                formInline:{
+                    type:"1",
+                    name:"",
+                    code:"",
+                    amount:"",
+                    fClass:"",
+                    sClass:"",
+                    tClass:""
+                },
+                time:0,
+                fClassList:[],
+                sClassList:[],
+                tClassList:[],
+                tableData:[],
+                projectList:[]
+            }
+        },
+        computed: {
+           
+        },
+        watch:{
+            "formInline.type":{
+                handler(curVal,oldVal){
+                    
+                    if(this.time == 1){
+                        this.formInline.name = ""
+                        this.formInline.code = ""
+                        this.formInline.amount = ""
+                        this.formInline.fClass = ""
+                        this.formInline.sClass = ""
+                        this.formInline.tClass = ""
+                        this.sClassList = []
+                        this.tClassList = []
+                    }else{
+                        this.time == 1
+                    }
+                },
+                deep:true
+            }
+        },
+        mounted(){
+            this.getCatelog()
+        },
+        methods:{
+            fChange(){
+                
+                this.formInline.sClass = ""
+                this.setdata(this.formInline.fClass.name,this.formInline.fClass.catalogPath)
+                this.sClassList = this.parentCode(this.formInline.fClass.value)
+            },
+            sChange(){
+                this.formInline.tClass = ""
+                this.setdata(this.formInline.sClass.name,this.formInline.sClass.catalogPath)
+                this.tClassList = this.parentCode(this.formInline.sClass.value)
+                
+            },
+            tChange(){
+                this.setdata(this.formInline.tClass.name,this.formInline.tClass.catalogPath)
+            },
+            setdata(name,code){
+                // this.formInline.name = name
+                this.$set(this.formInline,'name',name)
+                this.$set(this.formInline,'code',code)
+                // this.formInline.code = code
+            },
+            async getCatelog(){
+                try{
+                    let res= await GetCatelogByColumnCode({code:100})
+                    this.catelogList = res.data
+                    this.fClassList = this.parentCode("")
+                    this.search()
+                }catch(err){
+                    console.log(err)
+                }
+            },
+
+            parentCode(code){
+                let arr = []
+                for(let i = 0;i<this.catelogList.length;i++){
+                    if(this.catelogList[i].parentCode == code){
+                        arr.push({
+                            name:this.catelogList[i].name,
+                            value:this.catelogList[i].code,
+                            catalogPath:this.catelogList[i].catalogPath
+                        })
+                    }
+                }
+                return arr
+            },
+            sure(){
+                let obj = {
+                    typeId:this.formInline.type,
+                    name:this.formInline.name,
+                    code:this.formInline.code,
+                    commissionPrice:this.formInline.amount,
+                }
+                let name = getCookie("userName"),id = getCookie("userId")
+                if(this.opeIndex == 0){
+                    obj.createUserId = id
+                    obj.createBy = name
+                    this.AddNurseSet(obj)
+                }else{
+                     obj.modifiedUserId = id
+                    obj.modifiedBy = name
+                    obj.id = this.formInline.id
+                    this.UpdateNurseSet(obj)
+                }
+            },
+            cancel(){
+                this.dialogFormVisible = false
+            },
+
+            add(ope){
+                this.time == 1
+                this.title = ope
+                this.opeIndex = 0
+                this.dialogFormVisible = true
+                this.formInline={
+                    type:"1",
+                    name:"",
+                    code:"",
+                    amount:"",
+                    fClass:"",
+                    sClass:"",
+                    tClass:""
+                }
+                this.project = ""
+            },
+
+            edit(index,data){
+                this.opeIndex = 1
+                this.dialogFormVisible = true
+                this.initData(data[index])
+            },
+            initData(data){
+                this.formInline.type = data.typeId+""
+                this.time == 0
+                this.formInline.name = data.name
+                this.formInline.code = data.code
+                this.$set(this.formInline,'amount',data.commissionPrice)
+                this.formInline.id = data.id
+                let _this = this
+                if(data.typeId == 1||data.typeId == 3){
+                    this.project = data.name
+                }
+                if(data.typeId == 2){
+                    let code = data.code.replace(/^\|+|\|+$/g,'').split("|")
+                    if(code[0]){
+                        this.fClassList.forEach(ele => {
+                            if(code[0] == ele.value){
+                                this.formInline.fClass = ele
+                                this.$set(this.formInline,'fClass',ele)
+                                this.fChange()
+                                return
+                            }
+                        });
+                    }
+                    setTimeout(()=>{
+                        if(code[1]){
+                            _this.sClassList.forEach(ele => {
+                                if(code[1] == ele.value){
+                                    _this.formInline.sClass = ele
+                                    _this.$set(this.formInline,'sClass',ele)
+                                    this.sChange()
+                                    return
+                                }
+                            });
+                        }
+                    },100)
+                    setTimeout(()=>{
+                        if(code[2]){
+                            _this.tClassList.forEach(ele => {
+                                if(code[2] == ele.value){
+                                    // _this.formInline.tClass = ele
+                                    _this.$set(this.formInline,'tClass',ele)
+                                     this.tChange()
+                                    return
+                                }
+                            });
+                        }
+                    },100)
+                }
+                if(data.typeId == 3){
+                    
+                }
+            },
+
+            del(index,data){
+                this.$confirm('此操作将永久删除该配置, 是否继续?', '提示', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    type: 'warning'
+                }).then(() => {
+                    this.DeleteNurseSet({id:data[index].id})
+                }).catch(() => {
+                          
+                });
+            },
+
+            onSubmit(){
+                this.currentPage = 1
+                this.search()
+            },
+            
+            async AddNurseSet(params){
+                this.saveLoading = true
+                let res = await AddNurseSet(params)
+                if(res.status){
+                    this.$message({message: '添加成功',type: 'success'});
+                    this.dialogFormVisible = false
+                    this.search()
+                }else{
+                    this.$message.error("添加失败");
+                }
+                this.saveLoading = false
+            },
+            async UpdateNurseSet(params){
+                this.saveLoading = true
+                let res = await UpdateNurseSet(params)
+                if(res.status){
+                    this.$message({message: '编辑成功',type: 'success'});
+                    this.dialogFormVisible = false
+                    this.search()
+                }else{
+                    this.$message.error("编辑失败");
+                }
+                this.saveLoading = false
+            },
+            async DeleteNurseSet(params){
+                let res = await DeleteNurseSet(params)
+                 if(res.status){
+                    this.$message({message: '删除成功',type: 'success'});
+                    this.search()
+                }else{
+                    this.$message.error("删除失败");
+                }
+            },
+            async GetNurseSet(params){
+                let res = await GetNurseSet(params)
+                this.total = res.count
+                this.tableData = res.data
+            },
+            numCheck(){
+                
+               let vm = this
+                setTimeout(function() {
+                    
+                        vm.formInline.amount = (vm.formInline.amount.match(/\d+(\.\d{0,2})?/)||[''])[0]
+                }, 50)
+            },
+             //点击获取 项目信息  Oject
+            selectPro(item) {
+                this.formInline.name = item.GoodsAlias
+                this.formInline.code = item.code
+            },
+            //查找项目  下拉补全
+            queryPro(queryString, cb) {
+                this.projectList = []
+                // this.initProject()
+                if (queryString !== '' && queryString != undefined) {
+                    this.getProject(queryString)
+                }
+                let _this = this
+                clearTimeout(this.timeout)
+                this.timeout = setTimeout(() => {
+                    cb(_this.projectList)
+                }, 1000)
+            },
+
+            async getProject(str) {
+                let res
+                if(this.formInline.type == "1"){
+                    res = await GetGoodsByKeywords2({ "keywords": str.removeSP(), 'ConsumeTypeId': 11 })
+                }else{
+                    res = await GetGoodsByKeywords({ "keywords": str.removeSP(), 'isMall': 0 })
+                }
+                let arr = []
+                if (res instanceof Array && res.length > 0) {
+                    for (let item of res) {
+                        
+                        arr.push({
+                            value: '(' + item["GoodsEntity"]["Code"] + ')' + item["GoodsEntity"]["GoodsAlias"],
+                            code: item["GoodsEntity"]["Code"],
+                            GoodsCode:item["GoodsEntity"]["GoodsCode"],
+                            Name: item["GoodsEntity"]["Name"],
+                            GoodsAlias:item["GoodsEntity"]["GoodsAlias"],
+                            ServiceMan: item["GoodsEntity"]['ServiceMan'],
+                            ServiceManName: item["GoodsEntity"]['ServiceManName'],
+
+                            price: item["GoodsEntity"]['PriceSale'],
+                            priceRange:item["PriceRange"],
+                            FarePercent: item["GoodsEntity"]['FarePercent'],
+
+                            SupplierCode: item["GoodsEntity"]['SupplierCode'],
+                            SupplierName: item["GoodsEntity"]['SupplierName'],
+                            GUList: item["GUList"]
+                        })
+                    }
+                }
+                this.projectList = arr
+            },
+            pageIndexChange(index) {
+                this.search()
+            },
+            pageSizeChange(size) {
+                this.pageSize = size
+                this.search()
+            },
+            search(){
+                this.GetNurseSet({
+                    Keywords:this.keywords.removeSP(),
+                    PageSize:this.pageSize,
+                    PageIndex:this.currentPage
+                })
+            }
+        },
+        components: {
+        }
+    }
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+.form_footer{
+    text-align: center
+}
+</style>

@@ -1,0 +1,543 @@
+<template>
+    <div class="commodityAudit selCommon">
+        <!-- 查询信息 -->
+        <el-form :inline="true" :model="formInline" class="demo-form-inline form_search" label-width="80px">
+            <el-form-item label="栏目：" class="form_item_mt10">
+                <el-select v-model="formInline.column" placeholder="请选择" style='width:180px;' @change="columnChange">
+                    <el-option label="全部" value=""></el-option>
+                    <el-option v-for="item in column" :label="item.Name" :value="item.CloumnCode" :key="item.Code"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="大类：" class="form_item_mt10">
+                <el-select v-model="formInline.class1" placeholder="请选择" style='width:180px;' @change="classChange">
+                    <el-option label="全部" value=""></el-option>
+                    <el-option v-for="item in class1" :label="item.name" :value="item.code" :key="item.code"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="中类：" class="form_item_mt10">
+                <el-select v-model="formInline.class2" placeholder="请选择" style='width:180px;' @change="class2Change">
+                    <el-option label="全部" value=""></el-option>
+                    <el-option v-for="item in class2" :label="item.name" :value="item.code" :key="item.code"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="小类：" class="form_item_mt10">
+                <el-select v-model="formInline.class3" placeholder="请选择" style='width:180px;'>
+                    <el-option label="全部" value=""></el-option>
+                    <el-option v-for="item in class3" :label="item.name" :value="item.code" :key="item.code"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="价格区间：" class="form_item_mt10">
+                <el-input v-model="formInline.startPrice" placeholder="" style="width: 82px;"  v-on:keyup.enter.native="search"></el-input>
+                <span style="display:inline-block;float:left;margin-right:5px;">-</span>
+                <el-input v-model="formInline.endPrice" placeholder="" style="width: 82px;" v-on:keyup.enter.native="search"></el-input>
+            </el-form-item>
+            <el-form-item label="医院：" class="form_item_mt10">
+                <el-select v-model="formInline.supplier" placeholder="请选择" filterable style='width:180px;'>
+                    <el-option v-for="item in supplierList" :label="item.supplierName" :value="item.code" :key="item.code"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="医生：" class="form_item_mt10">
+                <el-select v-model="formInline.doctor" placeholder="请选择" style='width:180px;'>
+                    <el-option label="全部" value=""></el-option>
+                    <el-option v-for="item in doctorList" :label="item.ServiceName" :value="item.Code" :key="item.Code"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="商户：" class="form_item_mt10">
+                <el-select
+                    v-model="formInline.shop" filterable remote placeholder="请输入关键词" :remote-method="remoteMethod" v-loading="loading">
+                    <el-option v-for="item in shopList" :key="item.value" :label="item.ShopName" :value="item.ShopCode"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="商品名称：" class="form_item_mt10">
+                <el-input v-model="formInline.name" style="width: 180px"  v-on:keyup.enter.native="search"></el-input>
+            </el-form-item>
+            <br/>
+            <el-form-item label="    " class="form_item_mt10">
+                <el-button type="primary" @click="onSubmit" class="searchBtn">查询</el-button>
+            </el-form-item>
+        </el-form>
+        <!-- 查询信息 -->
+        <ul>
+            <li class="shelve" :class="{'active':currentIndex==0}" @click="select(0)">待审核</li>
+            <li class="shelve" :class="{'active':currentIndex==1}" @click="select(1)">已审核</li>
+            <li class="shelve" :class="{'active':currentIndex==2}" @click="select(2)">已驳回</li>
+        </ul>
+        <!-- 信息表 -->
+        <div v-show='currentIndex == 0 '>
+            <el-table :data="tableDataOff" border style="width: 100%;margin-top:10px;margin-bottom:10px;" v-loading="tabloading" class="min_table smt"
+             max-height="570" ref="multipleTable" @selection-change="handleSelectionChangeOff">
+                <el-table-column type="selection" align="center" width="55"></el-table-column>
+                <el-table-column prop="ImgMainUrl" label="图片"  min-width="70">
+                    <template scope='scope'>
+                        <img style="vertical-align: middle" width="50px" height="50px" :src="scope.row.ImgMainUrl" alt="">
+                    </template>
+                </el-table-column>
+                <el-table-column prop="goodsCode" label="商品编号" min-width="150"></el-table-column>
+                <el-table-column prop="name" label="商品名称" min-width="270"></el-table-column>
+                <el-table-column prop="catalogName" label="分类" min-width="150">
+                    <template scope="scope">
+                        {{scope.row.cloumnName}}/{{scope.row.catalogName}}
+                    </template>
+                </el-table-column>
+                <el-table-column prop="supplierName" label="医院/供方" min-width="150"></el-table-column>
+                <el-table-column prop="priceRange" label="售价" min-width="120"></el-table-column>
+                <el-table-column prop="limitAmount" label="积分抵现" min-width="100"></el-table-column>
+                <el-table-column prop="createBy" label="提交" min-width="100"></el-table-column>
+                <el-table-column fixed="right" prop="grade" label="操作" min-width="100">
+                    <template scope="scope">
+                        <el-button @click="handleClick(scope.$index, tableDataOff)" type="primary">审核</el-button>
+                    </template>
+                </el-table-column>
+            </el-table>
+            <!-- 信息表 -->
+            <!-- 分页 -->
+            <div class="block">
+                <el-pagination @size-change="handleSizeChange" @current-change="handleCurrentChange"
+                               :current-page="currentPage[0]" :page-sizes="[10, 20, 30, 40]" :page-size="pageSize[0]"
+                               layout="total, sizes, prev, pager, next, jumper" :total="totalPage[0]">
+                </el-pagination>
+            </div>
+            <!-- 分页 -->
+        </div>
+        <div v-show='currentIndex == 1 '>
+            <el-table :data="tableDataOn"  border style="width: 100%;margin-top:10px;margin-bottom:10px;" max-height="470"  v-loading="tabloading" class="min_table smt"
+                      ref="multipleTable" @selection-change="handleSelectionChangeOn">
+                <el-table-column
+                    type="selection"
+                    width="55">
+                </el-table-column>
+                <el-table-column prop="ImgMainUrl" label="图片"  min-width="70">
+                    <template scope='scope'>
+                        <img style="vertical-align: middle" width="50px" height="50px" :src="scope.row.ImgMainUrl" alt="">
+                    </template>
+                </el-table-column>
+                <el-table-column prop="goodsCode" label="商品编号" min-width="150"></el-table-column>
+                <el-table-column prop="name" label="商品名称" min-width="270"></el-table-column>
+                <el-table-column prop="catalogName" label="分类" min-width="150">
+                    <template scope="scope">
+                        {{scope.row.cloumnName}}/{{scope.row.catalogName}}
+                    </template>
+                </el-table-column>
+                <el-table-column prop="supplierName" label="医院/供方" min-width="150"></el-table-column>
+                <el-table-column prop="priceRange" label="售价" min-width="120"></el-table-column>
+                <el-table-column prop="limitAmount" label="积分抵现"  min-width="100"></el-table-column>
+                <el-table-column prop="createBy" label="提交"  min-width="150"></el-table-column>
+                <el-table-column prop="limitAmount" label="审核"  min-width="150"></el-table-column>
+            </el-table>
+            <!-- 信息表 -->
+            <!-- 分页 -->
+            <div class="block">
+                <el-pagination @size-change="handleSizeChange" @current-change="handleCurrentChange"
+                               :current-page="currentPage[1]" :page-sizes="[10, 20, 30, 40]" :page-size="pageSize[1]"
+                               layout="total, sizes, prev, pager, next, jumper" :total="totalPage[1]">
+                </el-pagination>
+            </div>
+            <!-- 分页 -->
+        </div>
+        <div v-show='currentIndex == 2 '>
+            <el-table :data="tableDataDown"  border style="width: 100%;margin-top:10px;margin-bottom:10px;" max-height="470"  v-loading="tabloading" class="min_table smt"
+                      ref="multipleTable" @selection-change="handleSelectionChangeDown">
+                <el-table-column
+                    type="selection"
+                    width="55">
+                </el-table-column>
+                <el-table-column prop="ImgMainUrl" label="图片"  min-width="70">
+                    <template scope='scope'>
+                        <img style="vertical-align: middle" width="50px" height="50px" :src="scope.row.ImgMainUrl" alt="">
+                    </template>
+                </el-table-column>
+                <el-table-column prop="goodsCode" label="商品编号" min-width="150"></el-table-column>
+                <el-table-column prop="name" label="商品名称" min-width="270"></el-table-column>
+                <el-table-column prop="catalogName" label="分类" min-width="150">
+                    <template scope="scope">
+                        {{scope.row.cloumnName}}/{{scope.row.catalogName}}
+                    </template>
+                </el-table-column>
+                <el-table-column prop="supplierName" label="医院/供方" min-width="150"></el-table-column>
+                <el-table-column prop="priceRange" label="售价" min-width="120"></el-table-column>
+                <el-table-column prop="limitAmount" label="积分抵现"  min-width="100"></el-table-column>
+                <el-table-column prop="createBy" label="提交"  min-width="150"></el-table-column>
+                <el-table-column prop="limitAmount" label="审核"  min-width="150"></el-table-column>
+                <el-table-column prop="limitAmount" label="驳回意见"  min-width="150"></el-table-column>
+            </el-table>
+            <!-- 信息表 -->
+            <!-- 分页 -->
+            <div class="block">
+                <el-pagination @size-change="handleSizeChange" @current-change="handleCurrentChange"
+                               :current-page="currentPage[2]" :page-sizes="[10, 20, 30, 40]" :page-size="pageSize[2]"
+                               layout="total, sizes, prev, pager, next, jumper" :total="totalPage[2]">
+                </el-pagination>
+            </div>
+            <!-- 分页 -->
+        </div>
+
+        <el-dialog title="审核" :visible.sync="dialogFormVisible" size="">
+            <el-form :model="form" style="width: 500px;">
+                <el-form-item label="申请单编号：" :label-width="formLabelWidth" class="form_item_mt0">
+                    <span>{{form.goodsCode}}</span>
+                </el-form-item>
+                <el-form-item label="状态：" :label-width="formLabelWidth" class="form_item_mt0">
+                    <span v-if="form.approveState == 0">待审核</span>
+                </el-form-item>
+                <el-form-item label="申请人：" :label-width="formLabelWidth" class="form_item_mt0">
+                    <span>{{form.number}}</span>
+                </el-form-item>
+                <el-form-item label="申请时间：" :label-width="formLabelWidth">
+                    <span>{{form.publishDate}}</span>
+                </el-form-item>
+                <el-form-item label="使用范围：" :label-width="formLabelWidth">
+                  <!-- <span>{{}}</span>-->
+                </el-form-item>
+            </el-form>
+            <div slot="footer" class="dialog-footer">
+                <el-button type="primary" @click="passFirst">审核通过</el-button>
+                <el-button @click="Reject">驳 回</el-button>
+            </div>
+        </el-dialog>
+
+        <!--驳回弹窗-->
+        <el-dialog title="审核驳回：" :visible.sync="dialogFormVisible1" size="">
+            <el-form :model="form1" style="width: 500px;">
+                <el-form-item label="驳回原因" :label-width="formLabelWidth" class="form_item_mt0">
+                    <el-input type="textarea"
+                        :autosize="{ minRows: 3, maxRows: 4}"
+                        placeholder="请输入内容"
+                        v-model="form1.textarea">
+                    </el-input>
+                </el-form-item>
+            </el-form>
+            <div slot="footer" class="dialog-footer">
+                <el-button type="primary" @click="sure">确定</el-button>
+                <el-button @click="cancel">取消</el-button>
+            </div>
+        </el-dialog>
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+    import {baseImgPath} from "@/config/env"
+    import '@/style/selfCommon.less';
+    import {getCookie} from "@/config/mUtils"
+    import {GetGoodsByConditions,GetColumnAll,GetShopByPage,GetDropDownPermission,
+        GetCatelogByColumnCode,UpdateGoodsState,GetServiceManByHspCode}  from "@/api/myData"
+    export default {
+        // name: 'commodityAudit',
+        data() {
+            return {
+                tabloading:false,
+                loading:false,
+                shopList:[],
+                doctorList:[],
+                pass:0,
+                currentIndex: 0,
+                baseUrl:baseImgPath,
+                column:"",
+                class1:"",
+                class2:"",
+                class3:"",
+                catLog:"",
+                hospitalList:"",
+                supplierList:"",
+                currentPage:[1,1,1],
+                pageSize:[10,10,10],
+                totalPage:[0,0,0],
+                dialogFormVisible: false,
+                dialogFormVisible1:false,
+                // 弹窗数据绑定
+                form: {},
+                form1:{ textarea:""},
+                formLabelWidth: '100px',
+                // 查询条件数据绑定
+                formInline: {
+                    column: '',
+                    class1: '',
+                    class2: '',
+                    class3: '',
+                    startPrice: '',
+                    endPrice: '',
+                    hospital: '',
+                    supplier:'',
+                    doctor:'',
+                    name:'',
+                    shop:''
+                },
+                // 表格数据
+                tableDataOn: [],
+                tableDataOff: [],
+                tableDataDown:[],
+                multipleSelectionOn:[],
+                multipleSelectionOff:[],
+                multipleSelectionDown:[],
+                state:['待审核','已审核','已驳回']
+            }
+        },
+        computed: {
+            tHeader(){
+                return ['商品编号', '商品名称', '分类', '医院/供方','医生', '售价', '积分抵现',"提交"]
+            },
+            filterVal(){
+                return ['goodsCode', 'name', 'catalogName', 'supplierName', 'serviceName','priceRange','limitAmount','createBy']
+            },
+            tableData1(){
+                if(this.currentIndex == 0){return this.tableDataOff}
+                if(this.currentIndex == 1){return this.tableDataOn}
+                if(this.currentIndex == 2){return this.tableDataDown}
+            },
+            name(){
+               return this.state[this.currentIndex]
+            }
+        },
+        watch:{
+            'formInline.supplier': {
+                handler(curVal,oldVal){
+                    this.formInline.doctor = ""
+                    this.GetServiceManByHspCode({hospitalCode:curVal})
+                },
+                deep: true
+            }
+        },
+        mounted: function () {
+            this.getColumn()
+        },
+        methods: {
+            // 条件查询
+            onSubmit() {
+                this.currentPage[this.currentIndex] = 1
+                this.search()
+            },
+            // 分页页面展示数据条数改变触发事件
+            handleSizeChange(val) {
+                console.log(`每页 ${val} 条`);
+                this.pageSize[this.currentIndex] = val
+                this.search()
+            },
+            // 分页当前页码改变触发事件
+            handleCurrentChange(val) {
+                console.log(`当前页: ${val}`);
+                this.currentPage[this.currentIndex] = val
+                this.search()
+            },
+            // 打开修改窗口
+            handleClick(index, data) {
+               this.form = JSON.parse(JSON.stringify(data[index]))
+                this.dialogFormVisible = true
+                let ApproveState = ""
+                if(this.currentIndex == 0){
+                    ApproveState = 1
+                }
+                if(this.currentIndex == 1){
+                    ApproveState = 2
+                }if(this.currentIndex == 2){
+                    ApproveState = 0
+                }
+            },
+            async GetShopByPage(params){
+                try{
+                    let res = await GetShopByPage(params)
+                    this.shopList = res.data
+                    this.loading = false;
+                }catch(err){
+                    console.log(err)
+                }
+            },
+
+            remoteMethod(query) {
+                if (query !== '') {
+                    this.loading = true;
+                    this.GetShopByPage({
+                        pageIndex: 1,
+                        pageSize: 20,
+                        keywords: query.removeSP()
+                    })
+                } else {
+                    this.options4 = [];
+                }
+            },
+
+            columnChange (){
+                this.formInline.class1 = ""
+                this.getCatelog({code: this.formInline.column})
+            },
+            classChange(){
+                this.formInline.class2 = ""
+                this.class2 = this.parentCode(this.formInline.class1)
+            },
+            class2Change(){
+                this.formInline.class3 = ""
+                this.class3 = this.parentCode(this.formInline.class2)
+            },
+            selectData(mes,data){
+                let len = data.length
+                for(let i =0;i<len;i++){
+
+                }
+            },
+//          获取大类
+            getClass(){
+                this.class1=this.parentCode("")
+            },
+            async getGoods(data){
+                try {
+                    let res = await GetGoodsByConditions(data)
+                    this.totalPage[this.currentIndex] = res.count
+                    this.tableDataCopy(res.data)
+                    this.tabloading = false
+                } catch (err) {
+                    console.log(err)
+                }
+            },
+            async getColumn(){
+                try {
+                    let [res,hos] = await Promise.all([GetColumnAll(),GetDropDownPermission({typeId:"1"})])
+                    this.column = res
+                    this.supplierList = hos.data
+                    this.formInline.supplier = hos.data[0].code
+                    this.search()
+                } catch (err) {
+                    console.log(err)
+                }
+            },
+            async getCatelog(data){
+                try {
+                    let res = await GetCatelogByColumnCode(data)
+                    this.catelog = res.data
+                    this.getClass()
+                } catch (err) {
+                    console.log(err)
+                }
+            },
+            async updateState(data){
+                try {
+                    let res = await UpdateGoodsState(data)
+                    if(res.success){
+                        this.$message({
+                            message: '操作成功',
+                            type: 'success'
+                        });
+                        this.dialogFormVisible = false
+                        this.dialogFormVisible1 = false
+                        this.search()
+                    }else{
+                        this.$message.error('操作失败');
+                    }
+                } catch (err) {
+                    console.log(err)
+                    this.$message.error('操作失败');
+                }
+            },
+            parentCode(code){
+                let arr = []
+                for (let i = 0; i < this.catelog.length; i++) {
+                    if (this.catelog[i].parentCode == code) {
+                        arr.push(this.catelog[i])
+                    }
+                }
+                return arr
+            },
+            search(data){
+                this.tabloading = true
+                let catelog=""
+                if(this.formInline.class3.length !=0){
+                    catelog = this.formInline.class3
+                }else{
+                    if(this.class2.length!=0){
+                        catelog = this.formInline.class2
+                    }else{
+                        catelog = this.formInline.class1
+                    }
+                }
+                this.getGoods({
+                    columnCode:this.formInline.column,
+                    catalogCode: catelog,
+                    startPrice: this.formInline.startPrice,
+                    endPrice: this.formInline.endPrice,
+                    supplierCode: this.formInline.supplier,
+                    serviceMan: this.formInline.doctor,
+                    ApproveState: this.currentIndex,
+                    keyWords:this.formInline.name.removeSP(),
+                    pageSize: this.pageSize[this.currentIndex],
+                    pageIndex: this.currentPage[this.currentIndex]
+                })
+            },
+            select (num) {
+
+                this.currentIndex = num
+                this.search()
+            },
+//            已上架
+            handleSelectionChangeOn(val){
+                this.multipleSelectionOn = val;
+            },
+//            未上架
+            handleSelectionChangeOff(val){
+                this.multipleSelectionOff = val;
+            },
+            handleSelectionChangeDown(val){
+                this.multipleSelectionDown = val;
+            },
+            tableDataCopy(res){
+                let data = this.splitUrl(res)
+                if(this.currentIndex == 1){
+                    this.tableDataOn = data
+                }if(this.currentIndex == 0){
+                    this.tableDataOff = data
+                }
+                if(this.currentIndex == 2){
+                    this.tableDataDown = data
+                }
+            },
+//            审核通过
+            passFirst(data){
+                this.updateState({
+                    id:this.form.id,
+                    state:1,
+                    op:1,
+                    createUserCode:getCookie("userCode"),
+                })
+            },
+//            驳回
+            Reject(){
+                this.dialogFormVisible1 = true
+                this.form1.textarea = ""
+            },
+            sure(){
+                this.updateState({
+                    id:this.form.id,
+                    state:2,
+                    op:1,
+                    describe: this.form1.textarea,
+                    createUserCode:getCookie("userCode"),
+                })
+            },
+            cancel(){
+                this.dialogFormVisible1 = false
+                this.dialogFormVisible = false
+            },
+//            获取医生
+            async GetServiceManByHspCode(data){
+                try {
+                    let res = await GetServiceManByHspCode(data);
+                    this.doctorList = res
+                } catch (err) {
+                    console.log('获取数据失败', err);
+                }
+            },
+            splitUrl(data){
+                data.forEach(row=>{
+                    row.ImgMainUrl = baseImgPath+ row.imgMainUrl
+                    row.class =  row.cloumnName+"/"+row.catalogName
+                })
+                return data
+            },
+        },
+        components: {
+        }
+    }
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+    .commodityAudit {
+        font-size: 12px;
+    }
+</style>

@@ -1,0 +1,454 @@
+<template>
+    <div class="tag selCommon">
+        <el-form :inline="true" :model="formInline" class="demo-form-inline" label-width="80px"
+                 style='background:#f9f9f9;padding:10px 0 0 10px;'>
+            <el-form-item label="医院：" class="form_item_mt10">
+                <el-select v-model="formInline.hospitalCode" style='width:200px;' @change="hosSelect">
+                    <el-option v-for="(item,index) in hospitalList" :key="index" :label="item.supplierName" :value="item.code"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="仓库：" class="form_item_mt10">
+                <el-select v-model="formInline.wareHouse" style='width:200px;'>
+                    <el-option label="全部" value=""></el-option>
+                    <el-option v-for="(item,index) in whList" :key="index" :label="item.warehouseName" :value="item.id"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="类型：" class="form_item_mt10">
+                <el-select v-model="formInline.goodsType" style='width:200px;'>
+                    <el-option label="全部" value=""></el-option>
+                    <el-option label="药品" value="1"></el-option>
+                    <el-option label="物资" value="2"></el-option>
+                    <el-option label="特殊" value="3" v-if="isSpec=='1'"></el-option>
+                </el-select>
+            </el-form-item>
+
+            <el-form-item label="单价：" class="form_item_mt10 form_item_wh280">
+                <el-input v-model="formInline.startAmount" placeholder="" style="width: 92px;"></el-input>
+                <span style="float: left;margin-right: 5px">-</span>
+                <el-input v-model="formInline.endAmount" placeholder="" style="width: 92px;"></el-input>
+            </el-form-item>
+
+            <el-form-item label="关键字：" class="form_item_mt10">
+                <el-input v-model="formInline.keywords" placeholder="请输入" style="width: 200px;" v-on:keyup.enter.native="onSubmit"></el-input>
+            </el-form-item>
+
+            <el-form-item label="状态：" class="form_item_mt10">
+                <el-select v-model="formInline.IsFrozen" style='width:200px;'>
+                    <el-option label="全部" value=""></el-option>
+                    <el-option label="可用" value="0"></el-option>
+                    <el-option label="冻结" value="1"></el-option>
+                </el-select>
+            </el-form-item>
+            
+            <el-form-item label="批号：" class="form_item_mt10">
+                <el-checkbox v-model="checked" @change="checkC"></el-checkbox>
+            </el-form-item>
+            
+            <el-form-item label="零库存：" class="form_item_mt10">
+                <el-checkbox v-model="remainNum" @change="checkC"></el-checkbox>
+            </el-form-item>
+            <el-form-item label="预警天数：" class="form_item_mt10" v-if="checked">
+                <el-input-number v-model="formInline.EffectiveDay" style="width: 200px;" :controls="false" v-on:keyup.enter.native="onSubmit" :debounce='1000'></el-input-number>
+            </el-form-item>
+            
+            <el-form-item label="" class="form_item_mt10">
+                <el-button type="primary" @click="onSubmit" class="searchBtn">查询</el-button>
+                <Export :tHeader="tHeader" :filterVal=' filterVal' :tableData1='tableData1' :name='name'></Export>
+            </el-form-item>
+        </el-form>
+        <!-- 信息表 -->
+        <el-table :data="tableData" border style="width: 100%;margin-top:15px;margin-bottom:10px;" max-height="560" class="smt min_table" 
+        v-loading="loading" show-summary :summary-method="getSummaries" >
+            <el-table-column prop="warehouseName" label="仓库" width="80"></el-table-column>
+            
+            <el-table-column prop="drugName" label="药品名称" min-width="110"></el-table-column>
+            
+            <el-table-column prop="unitName" label="规格" min-width="90"></el-table-column>
+            <el-table-column prop="batchNumber" label="批号" width="90" ></el-table-column>
+            <el-table-column prop="drugId" label="药品编号" width="80"></el-table-column>
+            <el-table-column prop="effectiveDate" label="有效期" width="90" v-if="checked">
+                    <template slot-scope="scope">
+                        <span v-if="scope.row.effectiveDate" class="form_span">{{ scope.row.effectiveDate.substring(0,10)}}</span>
+                    </template>
+                </el-table-column>
+            <el-table-column prop="realPrice" label="单价" width="90"></el-table-column>
+            <el-table-column prop="jiType" label="剂型" width="80"></el-table-column>
+            <el-table-column prop="dwName" label="单位" width="80"></el-table-column>
+            <el-table-column prop="manufacturer" label="厂家" min-width="90" show-overflow-tooltip></el-table-column>
+             <el-table-column prop="originAddress" label="产地" min-width="90"></el-table-column>
+            <el-table-column prop="quantityIn" label="入库总数" width="90" align="right">
+                <template slot-scope="scope">
+                    <el-button type="text" v-if="scope.row.quantityIn&&scope.row.quantityIn>0" @click="showNumDet(scope.row,1,'入库')">{{scope.row.quantityIn}}</el-button>
+                    <span v-else>0</span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="quantityOut" label="出库总数" width="90" align="right">
+                <template slot-scope="scope">
+                    <el-button type="text" v-if="scope.row.quantityOut&&scope.row.quantityOut>0" @click="showNumDet(scope.row,2,'出库')">{{scope.row.quantityOut}}</el-button>
+                    <span v-else>0</span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="remainingCount" label="库存数量" width="90" align="right">
+                <template slot-scope="scope">
+                    <span v-if="scope.row.remainingCount">{{scope.row.remainingCount.toQFW()}}</span>
+                    <span v-else>0</span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="remainingAmount" label="库存金额" width="90" align="right">
+                <template slot-scope="scope">
+                    <span v-if="scope.row.remainingAmount">￥{{scope.row.remainingAmount.toQFW()}}</span>
+                    <span v-else>￥0</span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="isFrozen" label="状态" width="90" align="center">
+                <template slot-scope="scope">
+                    <div v-if="scope.row.isFrozen!=null">
+                        <el-tag type="danger" v-if="scope.row.isFrozen">冻结</el-tag>
+                        <el-tag type="success"  v-else>可用</el-tag>
+                    </div>
+                </template>
+            </el-table-column>
+            <el-table-column prop="remainingCount" label="操作" width="150" align="center">
+                <template slot-scope="scope">
+                    <el-button @click="Frozen(scope.row,1)" type="danger" size="small" :disabled="!checked" v-if="!scope.row.isFrozen">冻结</el-button>
+                    <el-button @click="Frozen(scope.row,0)" type="primary" size="small" :disabled="!checked" v-else>启用</el-button>
+                    
+                </template>
+            </el-table-column>
+        </el-table>
+        <!-- 信息表 -->
+
+        <!-- 分页 -->
+        <div class="block">
+            <el-pagination
+                @size-change="handleSizeChange"
+                @current-change="handleCurrentChange"
+                :current-page="currentPage"
+                :page-sizes="[10, 20, 30, 40]"
+                :page-size="size"
+                layout="total, sizes, prev, pager, next, jumper"
+                :total="total">
+            </el-pagination>
+        </div>
+
+        <!-- <el-button @click="SearchStockException(1)" type="primary" size="small">数据检测</el-button> -->
+        <!-- 分页 -->
+
+        <el-dialog :title="title+'详情'" :visible.sync="inOutDet" size="" >
+            <drugDet :detData='detData' :inOutDet='inOutDet' v-if="inOutDet"></drugDet>
+        </el-dialog>
+        <el-dialog title="错误数据" :visible.sync="errorData" size="" >
+            
+        </el-dialog>
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+    import {baseImgPath} from "@/config/env"
+    import  "@/style/selfCommon.less"
+    import drugDet from "./com/drugDet"
+    import { getCookie, delCookie } from '@/config/mUtils'
+    import {GetDropDownPermission,GetWarehouse,GetStockDrug,GetStockInOutRecord,ModifyIsFrozen,SearchStockException} from "@/api/myData"
+    import Export from '@/components/export'
+    export default {
+        data () {
+            return {
+                errorData:false,
+                isSpec:getCookie('isSpecial'),
+                date:"",
+                editMes:[],
+                loading:false,
+                title:"",
+                inOutDet:false,
+                total:0,
+                size:10,
+                currentPage:1,
+                checked:false,
+                remainNum:false,
+                formInline: {
+                    startAmount:'',
+                    endAmount:'',
+                    startDate:"",
+                    endDate:"",
+                    keywords: '',
+                    typeCode:'',
+                    hospitalCode:"",
+                    wareHouse:"",
+                    goodsType:"",
+                    EffectiveDay:"",
+                    IsFrozen:"",
+                },
+                tableData:[],
+                hospitalList:[],
+                supplierList:[],
+                whList:[],
+                allWhList:[],
+                detData:[],
+                sum:{
+                    quantityIn:"",
+                    quantityOut:'',
+                    remainCount:'',
+                    totalAmountOut:"",
+                },
+                allData:[],
+            }
+        },
+        computed: {
+            /* 导出报表参数 tHeader,filterVal,tableData1*/
+            tHeader(){
+                return ['仓库','批号', '药品编号', '药品名称','有效期', '规格','价格', '剂型', '单位', '厂家', '产地', '入库总数','出库总数',"库存数量",'库存金额']
+            },
+            filterVal(){
+                return ['warehouseName', 'batchNumber', 'drugId', 'drugName', 'effectiveDate','unitName','realPrice','jiType','dwName','manufacturer','originAddress','quantityIn',
+                'quantityOut','remainingCount','remainingAmount']
+            },
+            tableData1(){
+                return this.allData
+            },
+            name(){
+                return '库存'
+            },
+            /*导出报表参数 tHeader,filterVal,tableData1*/
+        },
+        mounted(){
+            this.date = [new Date(),new Date()]
+            this.GetDropDownPermission()
+        },
+        methods:{
+            async ModifyIsFrozen(params){
+                let res = await ModifyIsFrozen(params)
+                if(res.status){
+                    this.$message({message: '操作成功', type: 'success'});
+                    this.search()
+                }else{
+                    this.$message.error('操作失败'+res.errorMessage);
+                }
+            },
+            Frozen(data){
+                this.$confirm('是否冻结该药品?', '提示', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    type: 'warning'
+                }).then(() => {
+                    this.ModifyIsFrozen({
+                        drugId:data.drugId,
+                        isFrozen:data.isFrozen==1?"0":'1',
+                        unitId:data.unitId,
+                        batchNumber:data.batchNumber
+                    })
+                })
+            },
+            getSumDet(param) {
+                const { columns, data } = param;
+                const sums = [];
+                columns.forEach((column, index) => {
+                if (index === 0) {
+                    sums[index] = '合计';
+                    return;
+                }
+                const values = data.map(item => Number(item[column.property]));
+                if (!values.every(value => isNaN(value))) {
+                    sums[index] = values.reduce((prev, curr) => {
+                    const value = Number(curr);
+                    if (!isNaN(value)) {
+                        return prev + curr;
+                    } else {
+                        return prev;
+                    }
+                    }, 0);
+                    sums[index] += '';
+                } else {
+                    sums[index] = '';
+                }
+                });
+                return sums;
+            },
+            getSummaries(param) {
+                let arr = ['总合计'],len=this.checked?10:9
+                 for(let i = 0;i<len;i++){
+                        arr.push("")
+                    }
+                return arr.concat([Math.round(this.sum.quantityIn).toQFW(),Math.round(this.sum.quantityOut).toQFW(),Math.round(this.sum.remainCount).toQFW(),Math.round(this.sum.totalAmountOut).toQFW()]);
+            },
+            hosSelect(){
+                this.formInline.wareHouse = ""
+                this.whList = []
+                this.allWhList.forEach(ele=>{
+                    if(ele.hospitalCode == this.formInline.hospitalCode){
+                        this.whList.push(ele)
+                    }
+                })
+            },
+             dateChange(val){
+                if(val){
+                    val = val.formatDates()
+                    this.formInline.startDate = val.substring(0,10)
+                    this.formInline.endDate = val.substring(13)
+                }else{
+                    this.formInline.startDate = ""
+                    this.formInline.endDate = ""
+                }
+            },
+            async GetDropDownPermission(){
+                let whList = await GetWarehouse({
+                    "hospitalCode": "",
+                    pageIndex:1,
+                    pageSize:100,
+                    keywords:"",
+                    typeId:1//药房
+                })
+                // this.whList =JSON.parse(JSON.stringify(whList.data))
+                
+                if(getCookie('hospitalCode')){
+                    whList.data.forEach(ele=>{
+                        
+                        if(getCookie('hospitalCode') == ele.hospitalCode){
+                            this.whList.push(ele)
+                        }
+                    })
+                    this.allWhList = JSON.parse(JSON.stringify(this.whList))
+                }else{
+                    this.allWhList = JSON.parse(JSON.stringify(whList.data))
+                }
+                let res1 = await GetDropDownPermission({typeId: 1});
+                this.hospitalList = res1.data
+                this.formInline.hospitalCode = res1.data[0].code
+            },
+            // 删除
+            async DeleteDrugInById(params){
+                try{
+                    let res = await DeleteDrugInById(params)
+                    if(res.status){
+                        this.$message({message: '删除成功', type: 'success'});
+                        this.search()
+                    }else{
+                        this.$message.error('删除失败');
+                    }
+                }catch(err){
+                    console.log(err)
+                    this.$message.error('删除失败');
+                }
+            },
+            async GetStockDrug(params){
+                try{
+                    this.loading = true
+                    let res = await GetStockDrug(params)
+                    this.total = res.count
+                    this.allData = res.data
+                    this.loading = false
+                    this.pageChange()
+                    this.getTotal()
+                }catch(err){
+                    console.log(err)
+                }
+            },
+            
+            onSubmit(){
+                this.currentPage = 1
+                this.search()
+            },
+            search(){
+                this.sum = {
+                    quantityIn:0,
+                    quantityOut:0,
+                    remainCount:0,
+                    totalAmountOut:0,
+                }
+                let obj = {
+                    pageIndex:this.currentPage,
+                    pageSize:this.size,
+                    keywords:this.formInline.keywords.removeSP(),
+                    warehouseId:this.formInline.wareHouse,
+                    hospitalCode:this.formInline.hospitalCode,
+                    IsShowBatch:this.checked?1:0,
+                    IsShowZero:this.remainNum?1:0,
+                    goodsType:this.formInline.goodsType,
+                    startAmount:this.formInline.startAmount,
+                    endAmount:this.formInline.endAmount,
+                    IsFrozen:this.formInline.IsFrozen
+                }
+                if(this.checked){
+                    obj.EffectiveDay = this.formInline.EffectiveDay
+                }
+                this.GetStockDrug(obj)
+            },
+            handleSizeChange(val) {
+                this.size = val
+                this.pageChange()
+            },
+            handleCurrentChange(val) {
+                this.currentPage = val
+                this.pageChange()
+            },
+//            删除
+            deleteRow(index,data){
+                this.$confirm('此操作将删除该数据, 是否继续?', '提示', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    type: 'warning'
+                }).then(() => {
+                    this.DeleteDrugInById({
+                        id:data[index].id
+                    })
+                }).catch(() => {
+
+                });
+            },
+            checkC(val){
+                this.search()
+            },
+            showNumDet(data,type,title){
+                this.title = title
+                
+                this.GetStockInOutRecord({
+                    TypeId:type,//1入库 2 出库
+                    WarehouseId:data.warehouseId,
+                    DrugId:data.drugId,
+                    UnitId:data.unitId,
+                    ApprovalNumber:data.approvalNumber?data.approvalNumber:"",
+                    BatchNumber:data.batchNumber
+                })
+            },
+            async GetStockInOutRecord(params){
+                let res = await GetStockInOutRecord(params)
+                this.detData = res.data
+                this.inOutDet = true
+            },
+            pageChange(data){
+                this.tableData = this.allData.slice((this.currentPage-1)*this.size,this.currentPage*this.size)
+            },
+            getTotal(){
+                this.allData.forEach(row=>{
+                    this.sum.quantityIn = row.quantityIn.add( this.sum.quantityIn)
+                    this.sum.quantityOut = row.quantityOut.add( this.sum.quantityOut)
+                    this.sum.remainCount = row.remainingCount.add( this.sum.remainCount)
+                    this.sum.totalAmountOut = row.remainingAmount.add( this.sum.totalAmountOut)
+                //    this.sum.totalAmountOut = this.sum.totalAmountOut.add(row.totalAmountOut)
+               })
+            },
+            // async SearchStockException(ope){//0查询 1修正
+            //     this.errorData = true
+            //     let mes = ope==0?'查询':'修正'
+            //     let res = await SearchStockException({typeId:ope})
+            //     if(res.status){
+            //         if(ope==0){
+
+            //         }else{
+
+            //         }
+            //     }else{
+
+            //     }
+            // },
+        },
+        components: {
+            Export,
+            drugDet
+        }
+    }
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+
+</style>

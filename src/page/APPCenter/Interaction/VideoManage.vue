@@ -1,0 +1,365 @@
+<template>
+    <div class="VideoManage selCommon">
+        <el-form :inline="true" :model="formInline" class="demo-form-inline form_search" label-width="80px"  >
+            <el-form-item label="发布时间：" style='margin-bottom:10px;font-size:12px !important;'>
+                <el-date-picker
+                    v-model="date"
+                    type="daterange"
+                    style="width: 200px"
+                    @change="dateSelect"
+                    placeholder="选择日期范围">
+                </el-date-picker>
+            </el-form-item>
+            <el-form-item label="发布人：" class="form_item_mt10">
+                <el-input v-model="formInline.userName" placeholder="" style="width: 200px;"></el-input>
+            </el-form-item>
+            <el-form-item label="视频类型：" class="form_item_mt10">
+                <el-select v-model="formInline.typeId" placeholder="" style="width: 200px;">
+                    <el-option label="全部" value=""></el-option>
+                    <el-option label="品牌宣传" value="1"></el-option>
+                    <el-option label="项目导购" value="2"></el-option>
+                </el-select>
+            </el-form-item>
+            <!-- <el-form-item label="观看人次：" class="form_item_mt10">
+                <el-input v-model="formInline.viewsStart" placeholder="" style="width: 92px;"></el-input>
+                <span style="float: left;margin-right: 5px">-</span>
+                <el-input v-model="formInline.viewsEnd" placeholder="" style="width: 92px;"></el-input>
+            </el-form-item>
+            <el-form-item label="观看时长：" class="form_item_mt10">
+                <el-input v-model="formInline.durationStart" placeholder="" style="width: 92px;"></el-input>
+                <span style="float: left;margin-right: 5px">-</span>
+                <el-input v-model="formInline.durationEnd" placeholder="" style="width: 92px;"></el-input>
+            </el-form-item>
+            <el-form-item label="转发分享：" class="form_item_mt10">
+                <el-input v-model="formInline.shareStart" placeholder="" style="width: 92px;"></el-input>
+                <span style="float: left;margin-right: 5px">-</span>
+                <el-input v-model="formInline.shareEnd" placeholder="" style="width: 92px;"></el-input>
+            </el-form-item>
+            <el-form-item label="销售额：" class="form_item_mt10">
+                <el-input v-model="formInline.salesVolumeStart" placeholder="" style="width: 92px;"></el-input>
+                <span style="float: left;margin-right: 5px">-</span>
+                <el-input v-model="formInline.salesVolumeEnd" placeholder="" style="width: 92px;"></el-input>
+            </el-form-item>
+            <el-form-item label="商品提成：" class="form_item_mt10">
+                <el-input v-model="formInline.percentageStart" placeholder="" style="width: 92px;"></el-input>
+                <span style="float: left;margin-right: 5px">-</span>
+                <el-input v-model="formInline.percentageEnd" placeholder="" style="width: 92px;"></el-input>
+            </el-form-item><br/> -->
+            <el-form-item label=" " class="form_item_mt10">
+                <el-button type="primary" @click="onSubmit" class="searchBtn" icon="search">查询</el-button>
+                <el-button type="primary" @click="publish" class="searchBtn">发布新视频</el-button>
+            </el-form-item>
+        </el-form>
+        <!-- 信息表 -->
+        <el-table :data="tableData" border style="width: 100%;margin-top:15px;margin-bottom:10px;"  class="smt min_table" max-height="500">
+            <el-table-column prop="picture" width="80" label="封面" >
+                <template slot-scope="scope">
+                    <img :src="scope.row.picture" alt="" width="50px">
+                </template>
+            </el-table-column>
+            <el-table-column prop="title" label="主题" min-width="200" show-overflow-tooltip>
+                <template slot-scope="scope">
+                    <el-button type="text" size="small" @click="play(scope.$index,tableData)">{{scope.row.title}}</el-button>
+                </template>
+            </el-table-column>
+            <el-table-column prop="userRealName" label="发布人" min-width="100"></el-table-column>
+            <el-table-column prop="tab" label="标签" min-width="150" show-overflow-tooltip></el-table-column>
+            <el-table-column prop="typeId" label="视频分类" min-width="100">
+                <template slot-scope="scope">
+                    <span v-if="scope.row.typeId ==1">品牌宣传</span>
+                    <span v-if="scope.row.typeId ==2">项目导购</span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="videoSize" label="视频大小" min-width="100"></el-table-column>
+            <el-table-column prop="createDate" label="发布时间" min-width="100">
+                <template slot-scope="scope">
+                    <span v-if="scope.row.createDate">
+                         {{scope.row.createDate.substring(0,10)}}
+                    </span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="views" label="浏览人次" min-width="100"></el-table-column>
+            <el-table-column prop="commentCount" label="评论量" min-width="80">
+                <template slot-scope="scope">
+                    <el-button type="text" @click="comment(scope.row)" v-if="scope.row.commentCount>0">{{scope.row.commentCount}}</el-button>
+                    <span v-else>0</span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="views" label="审核状态" min-width="100" align="center">
+                <template slot-scope="scope">
+                    <el-tag type="gray" v-if="scope.row.type == 1||scope.row.type == null">未审核</el-tag>
+                    <el-tag type="success" v-if="scope.row.type == 3">通过</el-tag>
+                    <el-tag type="danger" v-if="scope.row.type == 2">拒绝</el-tag>
+                </template>
+            </el-table-column>
+            <el-table-column prop="status" label="操作" min-width="300" >
+                <template slot-scope="scope">
+                    <el-button type="primary" size="small" @click="edit(scope.row)">编辑</el-button>
+                    <el-button type="primary" size="small"  @click="deleteRow(scope.$index,tableData)">删除</el-button>
+                    <!--状态判断-->
+                    <el-button type="primary" size="small" @click="setTop(scope.$index,tableData,1)" v-if="scope.row.status == 2">取消置顶</el-button>
+                    <el-button type="primary" size="small"  @click="setTop(scope.$index,tableData,2)" v-if="scope.row.status == 1">置顶</el-button>
+                    <el-button type="primary" size="small"  @click="AuditVideoType(scope.row)">修改类型</el-button>
+                    <el-button type="primary" size="small"  @click="audit(scope.row,3)">审核</el-button>
+                    <el-button type="danger" size="small"  @click="audit(scope.row,2)">拒绝</el-button>
+                </template>
+            </el-table-column>
+        </el-table>
+        <!-- 信息表 -->
+
+        <!-- 分页 -->
+        <div class="block">
+            <el-pagination
+                @size-change="handleSizeChange"
+                @current-change="handleCurrentChange"
+                :current-page="currentPage"
+                :page-sizes="[10, 20, 30, 40]"
+                :page-size="size"
+                layout="total, sizes, prev, pager, next, jumper"
+                :total="total">
+            </el-pagination>
+        </div>
+        <!-- 分页 -->
+      
+        <el-dialog title="视频" :visible.sync="dialogVideo" size="" top="10%">
+            <div v-if="dialogVideo">
+                <newVideo :videoMes="videoMes" @close="close" style="width: 500px"></newVideo>
+            </div>
+        </el-dialog>
+        <el-dialog title="播放" :visible.sync="playDialog" size="">
+            <video :src="src" width="500px" controls="controls" autoplay="autoplay">
+                您的浏览器不支持 video 标签。
+            </video>
+        </el-dialog>
+        <el-dialog title="评论管理" :visible.sync="dialogComment" size="">
+            <comment  :themeType="4" v-if="dialogComment" :propsId="propsId" style="width:1000px;" @search="search"></comment>
+        </el-dialog>
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+    import {baseImgPath} from "@/config/env"
+    import  "@/style/selfCommon.less"
+    import { getCookie, delCookie } from '@/config/mUtils'
+    import {GetVideo,DeleteVideo,SetVideo,AuditVideo,AuditVideoType} from "@/api/myData"
+    import newVideo from "./components/newVideo.vue"
+    import comment from "./components/commentView.vue"
+    export default {
+        data () {
+            return {
+                src:"",
+                date:"",
+                playDialog:false,
+                dialogComment:false,
+                dialogVideo:false,
+                total:0,
+                size:10,
+                videoMes:{},
+                currentPage:1,
+                formInline: {
+                    date1: '',
+                    date2: '',
+                    userName:"",
+                    typeId:'',
+                    viewsStart:"",
+                    viewsEnd:"",
+                    durationStart:"",
+                    durationEnd:"",
+                    shareStart:"",
+                    shareEnd:"",
+                    salesVolumeStart:"",
+                    salesVolumeEnd:"",
+                    percentageStart:"",
+                    percentageEnd:"",
+                },
+                tableData:[],
+                gridData:[],
+                propsId:'',
+            }
+        },
+        computed: {
+          
+        },
+        mounted(){
+            this.getVideo({
+                pageIndex:1,
+                pageSize:10
+            })
+        },
+        methods:{
+            comment(data){
+                this.propsId = data.id
+                this.dialogComment = true
+            },
+            //       弹窗
+            noteView(data,index){
+                this.dialogComment = true
+            },
+           
+            AuditVideoType(data){
+                let tip = data.typeId == 1?' 项目导购':'品牌宣传',
+                typeId = data.typeId == 1?2:1
+                this.$confirm('此操作将修改视频类型为 '+tip+' , 是否继续?', '提示', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    type: 'warning'
+                }).then(() => {
+                    AuditVideoType({
+                        id:data.id,
+                        TypeId:typeId,
+                    }).then(res=>{
+                        if(res.status == true){
+                            this.$message({message: '操作成功', type: 'success'});
+                            this.search()
+                        }else{
+                            this.$message.error('操作失败');
+                        }
+                    })
+                })
+            },
+            async SetVideo(params){
+                let res = await SetVideo(params)
+                if(res.status == true){
+                    this.$message({message: '操作成功', type: 'success'});
+                    this.search()
+                }else{
+                       this.$message.error('操作失败');
+                }
+            },
+            async deleteVideo(params){
+                let res = await DeleteVideo(params)
+                if(res.status == true){
+                   this.$message({message: '删除成功', type: 'success'});
+                   this.search()
+               }else{
+                   this.$message.error('删除失败');
+                }
+            },
+            async getVideo(params){
+                let res = await GetVideo(params)
+                this.tableData = this.dealData(res.data)
+                this.total = res.count
+            },
+            dateSelect(val){
+                if(val.length!=0){
+                    val = val.formatDates()
+                    this.formInline.date1 = val.substring(0,10)
+                    this.formInline.date2 = val.substring(13)
+                }else{
+                    this.formInline.date1 = ""
+                    this.formInline.date2 = ""
+                }
+                
+            },
+            onSubmit(){
+                this.currentPage = 1
+                this.search()
+            },
+            search(){
+                this.getVideo({
+                    pageIndex:this.currentPage,
+                    pageSize:this.size,
+                    where:this.getConditions()
+                })
+            },
+
+            handleSizeChange(val) {
+                console.log(`每页 ${val} 条`);
+                this.size = val
+                this.search()
+            },
+            handleCurrentChange(val) {
+                console.log(`当前页: ${val}`);
+                this.currentPage = val
+                this.search()
+            },
+//            发布视频
+            publish(){
+                this.dialogVideo = true
+            },
+//            播放
+            play(index,data){
+                this.playDialog = true
+                this.src = data[index].videoUrl
+            },
+//            删除
+            deleteRow(index,data){
+                this.$confirm('此操作将永久删除该数据, 是否继续?', '提示', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    type: 'warning'
+                }).then(() => {
+                    this.deleteVideo({
+                        id:data[index].id
+                    })
+                }).catch(() => {
+
+                });
+            },
+            setTop(index,data,num){
+                let date = new Date()
+//              num  2置顶 1取消置顶
+                this.SetVideo({
+                    modifiedUserName:getCookie("userName"),
+                    modifiedUserId:getCookie("userId"),
+                    id:data[index].id,
+                    status:num
+                })
+            },
+
+            close(val){
+                this.dialogVideo = false
+                this.search()
+            },
+            dealData(data){
+                data.forEach(row=>{//后台上传地址为服务器 app上传为阿里云
+                    row.videoUrl = row.videoUrl.indexOf('http')>=0?row.videoUrl:baseImgPath+row.videoUrl
+                    row.picture = baseImgPath + row.picture
+                })
+                return data
+            },
+            getConditions(){
+                let date1 = this.formInline.date1
+                let date2 = this.formInline.date2
+                let conditions = ''
+                if(date1){conditions+="CreateDate>='"+date1+"'"}
+                if(date2){conditions+=" and CreateDate<='"+date2+"'"}
+                if(this.formInline.userName){conditions+=" and createBy='"+this.formInline.userName+"'"}
+                 if(this.formInline.typeId){conditions+=" and typeId='"+this.formInline.typeId+"'"}
+                return conditions
+            },
+            
+            audit(data,ope){
+                let mes = ope == 3?'通过后该视频将发布到app，是否继续？':'拒绝后该视频将无法在app显示，是否继续？'
+                this.$confirm(mes, '提示', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    type: 'warning'
+                }).then(() => {
+                    this.AuditVideo({
+                        id:data.id,
+                        type:ope,
+                    })
+                })
+            },
+            async AuditVideo(params){
+                let res = await AuditVideo(params)
+                if(res.status == true){
+                    this.$message({message: '操作成功', type: 'success'});
+                    this.search()
+                }else{
+                    this.$message.error('操作失败');
+                }
+            },
+            edit(data){
+                this.videoMes = JSON.parse(JSON.stringify(data))
+                this.dialogVideo = true
+            }
+        },
+        components: {
+            newVideo,comment
+        }
+    }
+</script>
+<style scoped>
+</style>

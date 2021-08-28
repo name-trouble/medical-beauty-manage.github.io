@@ -1,0 +1,309 @@
+<template>
+    <div class="selCommon projectOrder">
+        <el-form :inline="true" :model="formInline" class="demo-form-inline form_search" label-width="80px">
+            <!-- <el-form-item label="订单时间："  class="form_item_mt10 ">
+                <el-date-picker v-model="date1" @change="dateForm1" type="daterange" placeholder="选择日期范围" class="form_item_ipt220"></el-date-picker>
+            </el-form-item>
+            <el-form-item label="关键字：" class="form_item_mt10 form_item_wh280">
+                <el-input v-model="formInline.fxCode" placeholder="订单编号/客户/商品名称/代理商/手机号" class="form_item_ipt220" :maxlength=10000 v-on:keyup.enter.native="onSubmit"></el-input>
+            </el-form-item>
+
+            <el-form-item label="医院：" class="form_item_mt10 form_item_wh280">
+                <el-select v-model="formInline.hospital"  class="form_item_ipt220" @change="onSubmit">
+                    <el-option v-for="(item,index) in hospitalList" :key="index" :label="item.supplierName" :value="item.code"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="销售公司：" class="form_item_mt10 form_item_wh280">
+                <el-select v-model="formInline.branch"  class="form_item_ipt220" @change="onSubmit">
+                    <el-option v-for="(item,index) in branchList" :key="index" :label="item.branchName" :value="item.code"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="状态：" class="form_item_mt10 form_item_wh280">
+                <el-select v-model="formInline.status"  class="form_item_ipt220" @change="onSubmit">
+                    <el-option label="全部" value=""></el-option>
+                    <el-option label="待付款" value="0"></el-option>
+                    <el-option label="已付款" value="1"></el-option>
+                    <el-option label="已确认" value="2"></el-option>
+                    <el-option label="已评价" value="3"></el-option>
+                    <el-option label="已关闭" value="4"></el-option>
+                    <el-option label="已退款" value="5"></el-option>
+                    <el-option label="已取消" value="6"></el-option>
+                </el-select>
+            </el-form-item>
+            <br/> -->
+            <el-form-item label="" class="form_item_mt10 form_item_wh280">
+                <el-button type="primary" @click="onSubmit" class="searchBtn">查询</el-button>
+                <Export ref="exportCom" :tHeader="tHeader" :filterVal=' filterVal' :tableData1='tableData1' :name='name' style="display:none"></Export>
+                <el-button class="searchBtn" @click="exportData">导出报表</el-button>
+            </el-form-item>
+        </el-form>
+        <!--信息表-->
+        <el-table :data="tableData" border style="width: 100%;margin-top:15px;margin-bottom:10px;" class="min_table" show-summary :summary-method="getSummaries">
+            <el-table-column prop="goodsName" label="商品名称" min-width="150" show-overflow-tooltip></el-table-column>
+            <el-table-column prop="minPayAmount" label="最低支付" min-width="100" align="right"></el-table-column>
+             <el-table-column prop="onlineOrderCount" label="线上订单数" min-width="100" align="right"></el-table-column>
+            <el-table-column prop="offlineOrderCount" label="线下订单数" min-width="100" align="right"></el-table-column>
+            <el-table-column prop="realAmount" label="开单金额" min-width="100" align="right"></el-table-column>
+        
+        </el-table>
+        <!-- 分页 -->
+        <div class="block">
+            <el-pagination
+                @size-change="handleSizeChange"
+                @current-change="handleCurrentChange"
+                :current-page="currentPage"
+                :page-sizes="[10, 20, 30, 40]"
+                :page-size="size"
+                layout="total, sizes, prev, pager, next, jumper"
+                :total="total">
+            </el-pagination>
+        </div>
+
+        <!-- 分页 -->
+        <el-dialog size="" :visible.sync="dialogVisible" title="订单详情">
+            <orderDet :code="viewFxCode" :isRefund="IsRefund" v-if="dialogVisible" @close = 'closeReport'></orderDet>
+        </el-dialog>
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+import "@/style/selfCommon.less"
+import Export from '@/components/export'
+import orderDet from './com/orderDet'
+import {GetOnlineCommission,ConfirmReach,ConfirmRefund,GetOrderInfoByCode,GetDropDownPermission} from "@/api/myData"
+import { getCookie, getStore } from '../../../config/mUtils';
+export default {
+        // name:"projectOrder",
+        data () {
+            return {
+                date1:'',
+                typeCode:getStore('typeCode'),
+                IsRefund:false,
+                dialogVisible:false,
+                dialogVisible1:false,
+                currentIndex:0,
+                formInline:{
+                    startTime:"",
+                    endTime:"",
+                    fxCode:"",
+                    name:"",
+                    rec:"",
+                    customer:"",
+                    hospital:"",
+                    branch:'',
+                    status:'',
+                },
+                tableData:[],
+                currentPage:1,
+                size:10,
+                total:0,
+                form:{
+                    createDate:''
+                },
+                hospitalList:[],
+                branchList:[],
+                viewFxCode:"",
+                allData:[],
+                sum:{
+                    minPayAmount:0,
+                    onlineOrderCount:0,
+                    offlineOrderCount:0,
+                    realAmount:0,
+                }
+            }
+        },
+        computed: {
+            /* 导出报表参数 tHeader,filterVal,tableData1*/
+            tHeader(){
+                return ['商品名称','最低支付', '线上订单数','线下订单数','开单金额']
+            },
+            filterVal(){
+                return ['goodsName',  'minPayAmount', 'onlineOrderCount','offlineOrderCount', 'realAmount']
+            },
+            tableData1(){
+                
+                return this.allData
+            },
+            name(){
+                return '医美订单'
+            },
+            /*导出报表参数 tHeader,filterVal,tableData1*/
+        },
+        mounted(){
+            this.getHospital()
+        },
+        methods: {
+       
+           getSummaries(param) {
+                return ['总合计',this.sum.minPayAmount.toQFW(),this.sum.onlineOrderCount.toQFW(),this.sum.offlineOrderCount.toQFW(),this.sum.realAmount.toQFW()];
+            },
+            exportData(){
+                this.getProofOrder({
+                },1)
+            },
+            async getHospital(){
+                let [res, res1] = await Promise.all([GetDropDownPermission({typeId: 1}),GetDropDownPermission({typeId: 2})])
+                this.hospitalList = res.data
+                this.formInline.hospital = this.hospitalList[0].code
+                this.branchList = res1.data
+                if(this.typeCode == '03'){//医院账户需添加全部选项
+                    this.branchList.unshift({
+                        branchName:'全部',
+                        code:'',
+                    })
+                }
+                this.formInline.branch = this.branchList[0].code
+            },
+            
+            closeReport(val){
+                this.dialogVisible = false
+                if(val){
+                    this.search()
+                }
+            },
+//            退款
+            async OnlineOrderRefund(params){
+                try{
+                    let res = await ConfirmRefund(params)
+                    if(res.status){
+                        this.$message({message: '退款成功', type: 'success'});
+                        this.search()
+                    }else{
+                        this.$message.error('退款失败!'+res.errorMessage)
+                    }
+                }catch(err){
+                    this.$message.error('退款失败')
+                }
+            },
+            submit(){
+                this.pageIndex = 1
+                this.search()
+            },
+
+            async getProofOrder(params,ope){
+                try {
+                    let res = await GetOnlineCommission(params)
+                    if(ope){
+                        this.allData = res.data
+                        this.$refs.exportCom.handleDownload()
+                    }else{
+                        this.total = res.count
+                        this.allData = res.data
+                        this.getPageData(res.data)
+                        this.sumData(res.data)
+                    }
+                } catch (err) {
+                    console.log(err)
+                }
+            },
+           
+            dateForm1(val){
+                if(val){
+                    val = val.formatDates()
+                    this.formInline.startTime = val.substring(0,10)
+                    this.formInline.endTime = val.substring(13)
+                }else{
+                    this.formInline.startTime = ""
+                    this.formInline.endTime = ""
+                } 
+                this.onSubmit()
+            },
+            onSubmit(){
+                this.currentPage = 1
+                this.search()
+            },
+            search(){
+                this.getProofOrder({
+                 
+                })
+            },
+            handleSizeChange(val) {
+                console.log(`每页 ${val} 条`);
+                this.size = val
+                this.getPageData()
+            },
+            handleCurrentChange(val) {
+                console.log(`当前页: ${val}`);
+                this.currentPage = val
+                this.getPageData()
+            },
+            view(code){// 查看订单详情
+                this.viewFxCode = code
+                this.dialogVisible = true
+                this.IsRefund = false
+                // this.GetOrderInfoByCode(code)
+                // this.form = data[index]
+            },
+            // async GetOrderInfoByCode(code){
+            //     let res = await GetOrderInfoByCode({code:code})
+            //     this.form = res.data
+            // },
+            refund(index,data){
+                this.viewFxCode = data[index].subOrderCode
+                this.form = data[index]
+                this.IsRefund = true
+                this.dialogVisible = true
+            },
+            editSure(ope){//  退款流程
+                this.dialogVisible = false
+                this.OnlineOrderRefund({
+                    code:this.form.subOrderCode,
+                })
+            },
+            editCancel(ope){
+                if(ope == 'refund'){//  退款流程
+                    this.dialogVisible = false
+                }else {//  修改价格流程
+                    this.dialogVisible1 = false
+                    this.$refs.form.resetFields();
+                }
+            },
+            makeSure(data){
+                this.$confirm('是否确认该订单状态?', '提示', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    type: 'warning'
+                }).then(() => {
+                    this.ConfirmReach(data)
+                })
+            },
+            async ConfirmReach(data){
+                let res =await ConfirmReach({
+                    code : data.subOrderCode,
+                    userId:getCookie("userId")
+                })
+                if(res.status){
+                    this.$message({message: '确认成功', type: 'success'});
+                    this.onSubmit()
+                }else{
+                    this.$message.error('确认失败!'+res.errorMessage)
+                }
+            },
+            sumData(data){
+                this.sum = {
+                    minPayAmount:0,
+                    onlineOrderCount:0,
+                    offlineOrderCount:0,
+                    realAmount:0,
+                }
+                data.forEach(row => {
+                    this.sum.minPayAmount = this.sum.minPayAmount.add(row.minPayAmount)
+                    this.sum.onlineOrderCount = this.sum.onlineOrderCount.add(row.onlineOrderCount)
+                    this.sum.offlineOrderCount = this.sum.offlineOrderCount.add(row.offlineOrderCount)
+                    this.sum.realAmount = this.sum.realAmount.add(row.realAmount)
+                });
+            },
+            getPageData(){
+                this.tableData = this.allData.slice((this.currentPage-1)*this.size,this.currentPage*this.size)
+            }
+        },
+        components: {
+            orderDet,Export
+        }
+    }
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+
+</style>

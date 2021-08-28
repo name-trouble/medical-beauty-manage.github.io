@@ -1,0 +1,149 @@
+<template>
+   <div class="">
+        <el-form :model="ruleForm" :rules="rules" :inline="true" ref="ruleForm" label-width="100px" class="">
+            <el-form-item label="支付方式：" class="form_item_mt10" prop="PayType">
+                <el-select v-model="ruleForm.payType"  style="width:300px;float:none">
+                    <el-option v-for="(item,$index) in payWayList" :key="$index" :label="item.DataName" :value="item.DataCode" ></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="金额：" class="form_item_mt10" prop="realAmount">
+                <el-input  v-model.number="ruleForm.realAmount" style="width:300px"></el-input>
+            </el-form-item>
+            <el-form-item label="预付款余额：" v-if="ruleForm.payType == '018'" class="form_item_mt0">
+               {{RemainAmount}}
+            </el-form-item>
+            <el-form-item label="收款账户：" class="form_item_mt10" v-if="ruleForm.payType != '001'">
+                 <el-select style="width:300px" v-model="ruleForm.receiveAccount"  filterable  allow-create placeholder="请选择">
+                    <el-option v-for="(item,index) in accountList" :label="item.shortName" :value="item.shortName" :key="index"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="支付时间：" class="form_item_mt10">
+                <el-date-picker type="date" placeholder="选择日期" v-model="payDate" style="width: 300px;"></el-date-picker>
+            </el-form-item>
+            
+            <el-form-item label="备注：" class="form_item_mt10">
+                <el-input type="textarea" v-model="ruleForm.memo" :rows="3" style="width:300px"></el-input>
+            </el-form-item>
+        </el-form>
+        <div class="form_footer">
+            <el-button type="primary" @click="submitForm('ruleForm')">确定</el-button>
+            <el-button @click="resetForm('ruleForm')">取消</el-button>
+        </div>
+   </div>
+</template>
+
+<script>
+import { getCookie } from "@/config/mUtils";
+import {getBaseDataByCode,GetHospitalAccountByCode,GetUserAccountByCode} from "@/api/myData"
+import "../lib/ord.less"
+export default {
+    props:{
+        editMes:"",
+        id:"",
+        hospitalCode:"",
+        code:"",
+    },
+    data() {
+        return {
+            debounce:500,
+            payWayList:[],
+            accountList:[],
+            payDate:"",
+            ruleForm: {
+                memo:"",
+                receiveAccount:"",
+                payType:"",
+                payTypeName:"",
+                realAmount:'',
+                payDate:"",
+            },
+            RemainAmount:"0",
+            rules:{
+                payType: [{ required: true, message: '请选择', trigger: 'change' }],
+                realAmount: [{ required: true, type: 'number', message: '请填写', trigger: 'blur' }],
+            }
+        };
+    },
+    
+    mounted(){
+        this.payDate = new Date()
+        this.ruleForm.payDate = new Date()
+        this.getPayWay()
+    },
+    methods: {
+        initData(data){
+            
+            this.ruleForm={
+                memo:data.memo,
+                receiveAccount:data.receiveAccount,
+                payType:data.payType,
+                payTypeName:"",
+                realAmount:data.realAmount,
+                ProcFee:data.procFee,
+                // topBranch:data.receiveBranchName.length>0?data.receiveBranchName+'|'+data.receiveBranchCode:"",
+                // receiveBranchCode:"",
+                // receiveBranchName:"",
+                payDate:"",
+            }
+            
+            this.payDate = data.payDate.length>0?new Date(data.payDate.substring(0,4),data.payDate.substring(5,7)-1,data.payDate.substring(8,10)):new Date()
+        },
+        
+        //获取支付方式
+        async getPayWay() {
+            let [mes,account,res] = await Promise.all([GetUserAccountByCode({branchcode:this.code}),GetHospitalAccountByCode({hospitalCode: this.hospitalCode}),
+            getBaseDataByCode("0006")])
+            this.RemainAmount = mes.RemainAmount
+            this.accountList = account.data;
+            this.payWayList = res
+            if(this.editMes.payDate){
+                this.initData(this.editMes)
+            }
+        },
+        submitForm(formName) {
+            let _this = this
+            this.$refs[formName].validate((valid) => {
+                if (valid) {
+                    for(let item of _this.payWayList){
+                        if(_this.ruleForm.payType == item.DataCode){
+                            _this.ruleForm.payTypeName = item.DataName
+                        }
+                    }
+                    
+                    if(_this.payDate.formatDate("yyyy-MM-dd") == new Date().formatDate("yyyy-MM-dd")){
+                        _this.ruleForm.payDate = new Date().formatDate("yyyy-MM-dd hh:mm:ss")
+                    }else{
+                        _this.ruleForm.payDate = _this.payDate.formatDate("yyyy-MM-dd hh:mm:ss")
+                    }
+                    if(this.editMes.payDate){
+                        if(_this.payDate.formatDate("yyyy-MM-dd") == _this.editMes.payDate.substring(0,10)){
+                            _this.ruleForm.payDate = _this.editMes.payDate
+                        }
+                        _this.$emit("payOpe",_this.ruleForm,false,true)
+                    }else{
+                       _this.$emit("payOpe",_this.ruleForm,true)
+                    }
+                }
+            });
+        },
+        resetForm(formName) {
+            this.$emit("payOpe",this.ruleForm,false,false)
+        },
+    }
+}
+</script>
+
+<style scoped>
+
+.form_footer{
+    text-align: center
+}
+.form_item_ipt153{
+    width: 153px
+}
+.form_item_wt255{
+    width: 253px
+}
+
+</style>
+

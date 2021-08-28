@@ -1,0 +1,200 @@
+<template>
+    <div class="noteView">
+        <el-table :data="gridData" border  class="smt min_table">
+            <el-table-column type="index" label="序号" min-width="40"></el-table-column>
+            <el-table-column property="pictures" label="照片1" min-width="80">
+                <template slot-scope="scope">
+                    <img :src="baseImgPath+scope.row.pictures[0]" alt="" width="50" height="50">
+                </template>
+            </el-table-column>
+            <el-table-column property="name" label="照片2" min-width="80">
+                <template slot-scope="scope">
+                    <img :src="baseImgPath+scope.row.pictures[1]" alt="" width="50" height="50">
+                </template>
+            </el-table-column>
+            <el-table-column property="content" label="日记" min-width="200"></el-table-column>
+            <el-table-column property="createDate" label="发布日期" min-width="100"></el-table-column>
+            <el-table-column property="dateDiff" label="距离手术天数" min-width="100"></el-table-column>
+            <el-table-column prop="views" label="浏览量" min-width="80"></el-table-column>
+            <el-table-column property="praiseCount" label="点赞量" min-width="80"></el-table-column>
+            <el-table-column property="commentCount" label="评论量" min-width="80"></el-table-column>
+            <el-table-column property="commentCount" label="操作" min-width="150">
+                <template slot-scope="scope">
+                    <el-button @click="addRecord(scope.row)" size="small" type="primary">修改</el-button>
+                    <el-button @click="del(scope.row.id)" size="small" type="danger">删除</el-button>
+                </template>
+            </el-table-column>
+        </el-table>
+        <!-- addRecord('') 空参数不要删除 防止出现event参数影响判断 -->
+        <el-button type="primary" style="margin-top:20px;" icon="plus" @click="addRecord('')">添加日记</el-button>
+        <div class="block">
+            <el-pagination
+                @size-change="handleSizeChange"
+                @current-change="handleCurrentChange"
+                :current-page="currentPage"
+                :page-sizes="[10, 20, 30, 40]"
+                :page-size="size"
+                layout="total, sizes, prev, pager, next, jumper"
+                :total="total">
+            </el-pagination>
+        </div>
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+    import {baseImgPath} from "@/config/env"
+    import {delCaseRecord} from "@/api/myData"
+    export default {
+        // name:"noteView",
+        props:{
+            noteMes:{
+                type:Array
+            },
+            operationDate:'',
+        },
+        data () {
+            return {
+                baseImgPath,
+                total: 10,
+                size: 10,
+                currentPage: 1,
+                gridData:[],
+                tableData: []
+            }
+        },
+        mounted(){
+            this.delMes(this.noteMes)
+        },
+        methods:{
+            delMes(data){
+                
+                this.total = data.length
+                this.tableData = this.dealData(data)
+                this.paging(this.tableData,this.currentPage,this.size)
+            },
+            addRecord(data){
+                let obj = {
+                    title:data?'修改日记':'添加日记',
+                    recordMes:data?data:''
+                }
+                this.$emit("addRecord",obj)
+            },
+            del(id,index){
+                this.$confirm('是否确定删除该条日记?', '提示', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    type: 'warning'
+                }).then(() => {
+                    delCaseRecord({
+                        id:id
+                    }).then(res=>{
+                        if(res.status){
+                            this.$message({message: '操作成功', type: 'success'});
+                            
+                            this.gridData.splice(index,1)
+                            this.tableData.splice((this.currentPage-1)*this.size+index,1)
+                            this.$emit("search")
+                        }else{
+                            this.$message.error('操作失败'+res.errorMessage)
+                        }
+                    })
+                })
+                
+            },
+            handleSizeChange(val) {
+                console.log(`每页 ${val} 条`);
+                this.size = val
+                this.paging(this.tableData,this.currentPage,this.size)
+            },
+            handleCurrentChange(val) {
+                console.log(`当前页: ${val}`);
+                this.currentPage = val
+                this.paging(this.tableData,this.currentPage,this.size)
+            },
+            dealData(data){
+                data.forEach(row=>{
+                    if( row.pictures){
+                        row.pictures = row.pictures.split("#")
+                    }
+                    row.dateDiff = row.createDate && row.pictureDate ? this.getDateDiff(row.modifiedDate, this.operationDate) : '当天'
+                })
+                return data
+            },
+           getDateDiff: function(dateStr, startTime) {
+                let startDate = new Date(startTime.substring(0, 4), startTime.substring(5, 7) - 1, startTime.substring(8, 10), startTime.substring(11, 13), startTime.substring(14, 16), startTime.substring(17, 19))
+                let createDate = new Date(dateStr.substring(0, 4), dateStr.substring(5, 7) - 1, dateStr.substring(8, 10), dateStr.substring(11, 13), dateStr.substring(14, 16), dateStr.substring(17, 19))
+
+                var publishTime = startDate / 1000,
+                d_seconds, d_minutes, d_hours, d_days, timeNow = parseInt(createDate / 1000),d,date = new Date(publishTime * 1000),
+                Y = date.getFullYear(),
+                M = date.getMonth() + 1,
+                D = date.getDate(),
+                H = date.getHours(),
+                m = date.getMinutes(),
+                s = date.getSeconds();
+                //小于10的在前面补0
+                if (M < 10) {
+                    M = '0' + M;
+                }
+                if (D < 10) {
+                    D = '0' + D;
+                }
+                if (H < 10) {
+                    H = '0' + H;
+                }
+                if (m < 10) {
+                    m = '0' + m;
+                }
+                if (s < 10) {
+                    s = '0' + s;
+                }
+                d = timeNow - publishTime;
+                d_days = parseInt(d / 86400);
+                d_hours = parseInt(d / 3600);
+                d_minutes = parseInt(d / 60);
+                d_seconds = parseInt(d);
+
+                if (d_days > 0) {
+                    d_days += 1
+                    return '第' + d_days + '天';
+                } else if (d_days <= 0 && d_hours > 0) {
+                    return d_hours + '小时';
+                } else if (d_hours <= 0 && d_minutes > 0) {
+                    return d_minutes + '分钟';
+                } else if (d_seconds < 60) {
+                    if (d_seconds <= 0) {
+                        return '刚刚';
+                    } else {
+                        return d_seconds + '秒';
+                    }
+                }
+            },
+            paging(data,index,size){
+                let min = Number(index-1)*Number(size)
+                let max = Number(index)*Number(size)
+                let arr=[]
+
+                for(let i = min;i<max;i++){
+                    if(data[i]){
+                        arr.push(data[i])
+                    }else{
+                        break
+                    }
+                }
+                this.gridData=arr
+                this.gridData.push()
+            }
+        },
+        components: {}
+    }
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+.noteView{
+
+}
+.block{
+    margin:20px 0;
+}
+</style>

@@ -1,0 +1,284 @@
+<template>
+<!-- 出库明细 -->
+    <div class="tag selCommon">
+        <el-form :inline="true" :model="formInline" class="demo-form-inline form_search" label-width="80px" >
+            <el-form-item label="医院：" class="form_item_mt10">
+                <el-select v-model="formInline.hospitalCode"  style='width:200px;' @change="hosSelect">
+                    <el-option v-for="(item,index) in hospitalList" :key="index" :label="item.supplierName" :value="item.code"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="仓库：" class="form_item_mt10">
+                <el-select v-model="formInline.wareHouse" style='width:200px;'>
+                    <el-option label="全部" value=""></el-option>
+                    <el-option v-for="(item,index) in whList" :key="index" :label="item.warehouseName" :value="item.id"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="供应商：" class="form_item_mt10">
+                <el-select v-model="formInline.stockSupplierCode"  style='width:200px;'>
+                    <el-option label="全部" value=""></el-option>
+                    <el-option v-for="(item,index) in supplierList" :key="index" :label="item.stockSupplierName" :value="item.stockSupplierCode"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="日期：" class="form_item_mt10">
+                <el-date-picker
+                    v-model="date"
+                    style='width:200px;'
+                    type="daterange"
+                    @change="dateChange"
+                    placeholder="选择日期">
+                </el-date-picker>
+            </el-form-item>
+            <el-form-item label="关键字：" class="form_item_mt10">
+                <el-input v-model="formInline.keywords" placeholder="请输入" style="width: 200px;" v-on:keyup.enter.native="onSubmit"></el-input>
+            </el-form-item>
+            <el-form-item label="入库类别：" class="form_item_mt10">
+                <el-select v-model="formInline.inType"  style='width:200px;'>
+                    <el-option label="全部" value=""></el-option>
+                    <el-option v-for="(item,index) in typeList" :key="index" :label="item" :value="item"></el-option>
+                </el-select>
+            </el-form-item>
+            
+            <el-form-item label=" " class="form_item_mt10">
+                <el-button type="primary" @click="onSubmit" class="searchBtn">查询</el-button>
+                <Export :tHeader="tHeader" ref="exportTable" :filterVal=' filterVal' :tableData1='tableData1' :name='name'></Export>
+            </el-form-item>
+        </el-form>
+        <!-- 信息表 -->
+        <el-table :data="tableData" border style="width: 100%;margin-top:15px;margin-bottom:10px;" 
+        max-height="560" show-summary :summary-method="getSummaries" class="smt min_table" v-loading="loading">
+            <el-table-column prop="drugInCode" label="入库编号" min-width="80"></el-table-column>
+            <el-table-column prop="drugId" label="药品编号" min-width="80"></el-table-column>
+            <el-table-column prop="drugName" label="药品名称" min-width="80"></el-table-column>
+            <el-table-column prop="unitName" label="规格" min-width="80"></el-table-column>
+            <el-table-column prop="drugInType" label="入库类别" min-width="80"></el-table-column>
+            <el-table-column prop="stockSupplierName" label="供应商" min-width="80" show-overflow-tooltip></el-table-column>
+            <el-table-column prop="jiType" label="剂型" min-width="80"></el-table-column>
+            <el-table-column prop="dwName" label="单位" min-width="80"></el-table-column>
+            <el-table-column prop="batchNumber" label="批号" min-width="80"></el-table-column>
+            <el-table-column prop="effectiveDate" label="有效期" min-width="80">
+                <template scope="scope">
+                    <span v-if="scope.row.effectiveDate">{{scope.row.effectiveDate.substring(0,10)}}</span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="manufacturer" label="生产厂家" min-width="80" show-overflow-tooltip></el-table-column>
+            <el-table-column prop="quantity" label="进货数量" min-width="80"></el-table-column>
+            <el-table-column prop="realPrice" label="进货单价" min-width="80"></el-table-column>
+            <el-table-column prop="totalAmount" label="进货金额" min-width="80"></el-table-column>
+            <el-table-column prop="salePrice" label="销售单价" min-width="80"></el-table-column>
+            <el-table-column prop="salePriceA" label="销售金额" min-width="80"></el-table-column>
+            <el-table-column prop="diffA" label="进销差额" min-width="80"></el-table-column>
+            <el-table-column prop="drugInDate" label="入库时间" min-width="80">
+                <template scope="scope">
+                    <span v-if="scope.row.drugInDate">{{scope.row.drugInDate.substring(0,10)}}</span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="drugInType" label="入库方式" min-width="80"></el-table-column>
+            <el-table-column prop="warehouseInName" label="入库仓库" min-width="80"></el-table-column>
+        </el-table>
+        <!-- 信息表 -->
+
+        <!-- 分页 -->
+        <div class="block">
+            <el-pagination
+                @size-change="handleSizeChange"
+                @current-change="handleCurrentChange"
+                :current-page="currentPage"
+                :page-sizes="[10, 20, 30, 40]"
+                :page-size="size"
+                layout="total, sizes, prev, pager, next, jumper"
+                :total="total">
+            </el-pagination>
+        </div>
+        <!-- 分页 -->
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+    import { getCookie, delCookie } from '@/config/mUtils'
+    import {GetDropDownPermission,GetWarehouse,GetStockManageInStock,GetSupplier} from "@/api/myData"
+    import Export from '@/components/export'
+    export default {
+        data () {
+            return {
+                typeList:['报增入库','调拨入库','盘盈入库','其他入库','退货入库','退药入库','外购入库','在用物资科室间调拨','自制入库'],
+                date:"",
+                loading:false,
+                total:0,
+                size:10,
+                currentPage:1,
+                formInline: {
+                    startDate:"",
+                    endDate:"",
+                    keywords: '',
+                    typeCode:'',
+                    hospitalCode:"",
+                    wareHouse:"",
+                    bookQuantity:"",
+                    stockSupplierCode:'',
+                    inType:'',
+                },
+                tableData:[],
+                hospitalList:[],
+                supplierList:[],
+                allSupplierList:[],
+                whList:[],
+                allWhList:[],
+                allData:[],
+                sum:{
+                    salePriceA:0,
+                    diffA:0,
+                    quantity:0,
+                    totalAmount:0,
+                }
+            }
+        },
+        computed: {
+            /* 导出报表参数 tHeader,filterVal,tableData1*/
+            tHeader(){
+                return ['入库编号', '药品编号', '药品名称', '规格', '入库类别','供应商', '剂型', '单位', '批号', '有效期','生产厂家',"进货数量",'进货单价','进货金额','销售单价','销售金额','进销差额','入库时间','入库方式','入库仓库']
+            },
+            filterVal(){
+                return ['drugInCode', 'drugId', 'drugName', 'unitName', 'drugInType','stockSupplierName','jiType','dwName','batchNumber','effectiveDate','manufacturer',
+                'quantity','realPrice','totalAmount','salePrice','salePriceA','diffA','createOn','drugInType','warehouseInName']
+            },
+            tableData1(){
+                return this.allData
+            },
+            name(){
+                return '入库明细'
+            },
+            /*导出报表参数 tHeader,filterVal,tableData1*/
+        },
+        mounted(){
+            this.GetDropDownPermission()
+        },
+        methods:{
+            hosSelect(val){
+                
+                this.formInline.wareHouse = ""
+                this.whList = []
+                this.allWhList.forEach(ele => {
+                    
+                    if(ele.hospitalCode == val){
+                        this.whList.push(ele)
+                        this.formInline.wareHouse = ele.id
+                    }
+                });
+                this.formInline.stockSupplierCode = ""
+                this.supplierList = []
+                this.allSupplierList.forEach(ele=>{
+                    if(ele.hospitalCode == val){
+                        this.supplierList.push(ele)
+                        this.formInline.stockSupplierCode = ele.stockSupplierCode
+                    }
+                })
+            },
+            getSummaries(param) {
+                return ['总合计','','','','','','','','','','',Math.round(this.sum.quantity),'',Math.round(this.sum.totalAmount),'',Math.round(this.sum.salePriceA),Math.round(this.sum.diffA)];
+            },
+            dateChange(val){
+                if(val){
+                    this.formInline.startDate = val.substring(0,10)
+                    this.formInline.endDate = val.substring(13)
+                }else{
+                    this.formInline.startDate = ""
+                    this.formInline.endDate = ""
+                }
+            },
+            async GetDropDownPermission(){
+                let res1 = await GetDropDownPermission({typeId: 1});
+                this.hospitalList = res1.data
+                let whList = await GetWarehouse({
+                    "hospitalCode": "",
+                    pageIndex:1,
+                    pageSize:100,
+                    keywords:"",
+                    typeId:1//药房
+                })
+                this.allWhList = JSON.parse(JSON.stringify(whList.data))
+                let sup = await GetSupplier({ hospitalCode:getCookie('hospitalCode'),pageIndex:1,pageSize:1000,keywords:""})
+                this.supplierList = sup.data
+                this.allSupplierList = sup.data
+                // this.whList = whList.data
+                this.formInline.hospitalCode = res1.data[0].code
+                
+            },
+
+            async GetStockManageInStock(params){
+                try{
+                    this.loading = true
+                    let res = await GetStockManageInStock(params)
+                     if(res.status){
+                        this.allData = this.GetTotal(res.data)
+                        this.getPage(res.data)
+                        this.total = res.count
+                    }else{
+                        this.$message.error('查询失败'+res.errorMessage);
+                    }
+                }catch(err){
+                    console.log(err)
+                }
+            },
+            
+            onSubmit(){
+                this.sum = {
+                    salePriceA:0,
+                    diffA:0,
+                    quantity:0,
+                    totalAmount:0,
+                }
+                this.currentPage = 1
+                this.search()
+            },
+            search(){
+                this.GetStockManageInStock({
+                    "startDate": this.formInline.startDate,
+                    "endDate": this.formInline.endDate,
+                    bookQuantity:this.formInline.bookQuantity,
+                    keywords:this.formInline.keywords.removeSP(),
+                    warehouseId:this.formInline.wareHouse,
+                    hospitalCode:this.formInline.hospitalCode,
+                    stockSupplierCode:this.formInline.stockSupplierCode,
+                    drugOutType:this.formInline.inType,
+                })
+            },
+            handleSizeChange(val) {
+                this.size = val
+                this.getPage()
+            },
+            handleCurrentChange(val) {
+                this.currentPage = val
+                this.getPage()
+            },
+
+            GetTotal(data){
+                data.forEach(ele=>{
+                    
+                    ele.salePriceA = ele.salePrice.mul(ele.quantity)
+                    ele.totalAmount = ele.realPrice.mul(ele.quantity)
+                    this.sum.salePriceA = this.sum.salePriceA.add(ele.salePriceA)
+                    ele.diffA = ele.totalAmount.red(ele.salePriceA)
+                    this.sum.diffA = this.sum.diffA.add(ele.diffA)
+                    this.sum.quantity = this.sum.quantity.add(ele.quantity)
+                    this.sum.totalAmount = this.sum.totalAmount.add(ele.totalAmount)
+                })
+                return data
+            },
+            getPage(){
+                this.loading = true 
+                this.tableData = this.allData.slice((this.currentPage-1)*this.size,this.currentPage*this.size)
+                setTimeout(()=>{
+                    this.loading = false
+                },50)
+            },
+        },
+        components: {
+            Export,
+        }
+    }
+</script>
+<style scoped>
+.block{
+    float:right;
+}
+</style>

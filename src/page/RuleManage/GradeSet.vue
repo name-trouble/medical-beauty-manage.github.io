@@ -1,0 +1,291 @@
+<template>
+    <div class="GradeSet selCommon">
+        <!-- 查询信息 -->
+        <el-table :data="tableData" border style="width: 100%">
+            <el-table-column prop="Code" label="等级编号" min-width="150"></el-table-column>
+            <el-table-column prop="BranchGradeName" label="等级名称" min-width="150"></el-table-column>
+            <el-table-column prop="OrderNum" label="等级（数字越小等级越高）" min-width="180"></el-table-column>
+            <el-table-column prop="GroupAward" label="团队奖" min-width="120"></el-table-column>
+            <el-table-column prop="Price" label="会费" min-width="120"></el-table-column>
+            <el-table-column prop="GradeProperty" label="等级属性" min-width="120"></el-table-column>
+            <el-table-column label="操作" min-width="150">
+                <template slot-scope="scope">
+                    <el-button @click="edit(scope.$index,tableData)" type="primary" size="small">编辑</el-button>
+                    <el-button @click="deleteRow(scope.$index,tableData,0)" type="dasnger" size="small">删除</el-button>
+                </template>
+            </el-table-column>
+        </el-table>
+        <!--添加表-->
+        <el-table :data="tableAdd" border style="width: 100%" :show-header="header" v-show="show">
+            <el-table-column prop="num" label="等级编号" min-width="150">
+                <template slot-scope="scope"><span style="color: #999">{{scope.row.code}}</span></template>
+            </el-table-column>
+            <el-table-column prop="name" label="等级名称" min-width="150">
+                <template slot-scope="scope">
+                    <el-input v-model="scope.row.branchGradeName"></el-input>
+                </template>
+            </el-table-column>
+            <el-table-column prop="grade" label="等级" min-width="180">
+                <template slot-scope="scope">
+                    <el-input v-model="scope.row.orderNum"></el-input>
+                </template>
+            </el-table-column>
+            <el-table-column prop="award" label="团队奖" min-width="120">
+                <template slot-scope="scope">
+                    <el-input v-model="scope.row.groupAward"></el-input>
+                </template>
+            </el-table-column>
+            <el-table-column prop="award" label="会费" min-width="120">
+                <template slot-scope="scope">
+                    <el-input v-model="scope.row.price" type="number"></el-input>
+                </template>
+            </el-table-column>
+            <el-table-column prop="attr" label="等级属性" min-width="120">
+                <template slot-scope="scope">
+                    <el-select v-model="scope.row.gradeProperty" placeholder="请选择">
+                        <el-option v-for="item in gradeAttrList" :label="item.DataName" :value="item.DataName" :key="item.DataCode"></el-option>
+                    </el-select>
+                </template>
+            </el-table-column>
+            <el-table-column label="操作" min-width="150">
+                <template slot-scope="scope">
+                    <el-button @click="save(scope.$index,tableAdd)" type="primary" size="small">保存</el-button>
+                    <el-button @click="deleteRow(scope.$index,tableAdd,1)" type="danger" size="small">删除</el-button>
+                </template>
+            </el-table-column>
+        </el-table>
+        <el-button @click="addGrade()" type="primary" icon="plus" style="margin: 10px 0">添加等级属性</el-button>
+        <!--编辑弹窗-->
+
+        <el-dialog title="编辑" :visible.sync="dialogFormVisible" size="">
+            <el-form :model="form" style="width:400px;">
+                <el-form-item label="等级名称：" :label-width="formLabelWidth" class="form_item_mt0">
+                    <el-input v-model="form.BranchGradeName" auto-complete="off" style="width: 260px"></el-input>
+                </el-form-item>
+                <el-form-item label="团队奖：" :label-width="formLabelWidth" class="form_item_mt0">
+                    <el-input v-model="form.GroupAward" auto-complete="off" style="width: 260px">
+                        <template slot="append">%</template>
+                    </el-input>
+                </el-form-item>
+                <el-form-item label="等级属性：" :label-width="formLabelWidth" class="form_item_mt0">
+                    <el-select v-model="form.GradeProperty" auto-complete="off"  style="width: 260px">
+                        <el-option v-for="item in gradeAttrList" :label="item.DataName" :value="item.DataName" :key="item.DataCode"></el-option>
+                    </el-select>
+                </el-form-item>
+            </el-form>
+            <div slot="footer" class="dialog-footer">
+                <el-button type="primary" @click="editSure()" :loading="saveLoading">确 定</el-button>
+                <el-button @click="cancel()">取 消</el-button>
+            </div>
+        </el-dialog>
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+    import "../../style/selfCommon.less"
+    import { getCookie, delCookie } from '../../config/mUtils'
+    import {AddBaranchGrade,UpdateBaranchGrade,GetBranchGradeAll,GetBaseDataAll,DeleteBaranchGrade} from "../../api/myData"
+    export default {
+        // name:"GradeSet",
+        data () {
+            return {
+                saveLoading:false,
+                header:false,
+                show:false,
+                gradeAttrList:[],
+                formLabelWidth:"90px",
+                dialogFormVisible:false,
+                form:{},
+                tableData:[],
+                tableAdd:[]
+            }
+        },
+        watch:{
+            tableAdd:{
+                handler(curVal,oldVal){
+                    if(this.tableAdd.length == 0){
+                        this.show = false
+                    }
+                },
+                deep:true
+            }
+        },
+        computed:{
+            createUserId(){
+                return getCookie("userId")
+            },
+            createBy(){
+                return getCookie("userName")
+            }
+        },
+        mounted(){
+            this.getBranchGradeAll()
+        },
+        methods: {
+//          获取基础信息
+            async getBaseDataAll(data){
+                try {
+                    let res = await GetBaseDataAll(data)
+                    this.gradeAttrList = this.getAttr(res)
+                } catch (err) {
+                    console.log(err)
+                }
+            },
+//            获取所有等级
+            async getBranchGradeAll(){
+                try{
+                    let res = await GetBranchGradeAll()
+                    this.tableData = this.numOrder(res)
+                    this.getBaseDataAll()
+                }catch(err){
+                    console.log(err)
+                }
+            },
+//            添加等级
+            async addBaranchGrade(params,data,index){
+                try{
+                    this.saveLoading = true
+                     let res = await AddBaranchGrade(params)
+                    if(res.success){
+                        this.$message({
+                            message: '添加成功', type: 'success'
+                        });
+                        this.getBranchGradeAll()
+                        data.splice(index,1)
+                    }
+                    this.saveLoading = false
+                }catch(err){
+                    console.log(err)
+                    this.$message.error('添加失败');
+                }
+            },
+//            编辑等级
+            async updateBaranchGrade(data){
+                try{
+                    this.saveLoading = true
+                    let res = await UpdateBaranchGrade(data)
+                    if(res.success){
+                        this.$message({
+                            message: '编辑成功', type: 'success'
+                        });
+                        this.getBranchGradeAll()
+                        this.dialogFormVisible = false
+                    }
+                    this.saveLoading = false
+                }catch(err){
+                    console.log(err)
+                    this.$message.error('编辑失败');
+                }
+            },
+//            删除等级
+            async deleteBaranchGrade(data){
+                try{
+                    let res = await DeleteBaranchGrade(data)
+                    if(res.success){
+                        this.$message({
+                            message: '删除成功', type: 'success'
+                        });
+                        this.getBranchGradeAll()
+                    }
+                }catch(err){
+                    console.log(err)
+                    this.$message.error('删除失败');
+                }
+            },
+//            编辑弹窗
+            edit (index,data){
+                this.dialogFormVisible = true
+                this.form = JSON.parse(JSON.stringify(data[index]))
+            },
+//            编辑确定
+            editSure () {
+                this.updateBaranchGrade({
+                    code:this.form.Code,
+                    id: this.form.Id,
+                    branchGradeName: this.form.BranchGradeName,
+                    groupAward: this.form.GroupAward,
+                    gradeProperty: this.form.GradeProperty,
+                    orderNum:this.form.OrderNum
+                })
+            },
+//            编辑取消
+            cancel(){
+                this.dialogFormVisible = false
+                this.form={}
+            },
+//            删除操作
+            deleteRow(index, data,num){
+                if(num == 0){
+                    this.$confirm('此操作将删除该等级, 是否继续?', '提示', {
+                        confirmButtonText: '确定',
+                        cancelButtonText: '取消',
+                        type: 'warning'
+                    }).then(() => {
+                       this.deleteBaranchGrade({
+                           id:data[index].Id
+                       })
+                    }).catch(() => {
+
+                    });
+                }else{
+                    data.splice(index,1)
+                }
+            },
+//            添加属性
+            addGrade(){
+                this.tableAdd.push({
+                    code:"保存后编号由后台生成",
+                    branchGradeName:"",
+                    orderNum:"6",
+                    gradeProperty:"",
+                    groupAward:"0"
+                    })
+                this.show = true
+            },
+//            添加表保存
+            save(index,data){
+                this.addBaranchGrade({
+                    branchGradeName:data[index].branchGradeName,
+                    orderNum:data[index].orderNum,
+                    gradeProperty:data[index].gradeProperty,
+                    groupAward:data[index].groupAward,
+                    createUserId:this.createUserId,
+                    createBy:this.createBy
+                },data,index)
+            },
+//            筛选等级属性
+            getAttr(data){
+                let arr=[]
+                data.forEach(row=>{
+                    if(row.BusinessCode == "0012"){
+                        arr.push(row)
+                    }
+                })
+                return arr
+            },
+            numOrder(data){
+
+                let len = data.length
+                let arr = []
+                for(let i =0;i<len-1;i++){
+                    for(let j = i+1;j<len;j++){
+                        if(data[i].OrderNum>data[j].OrderNum){
+                            let temp = data[i]
+                            data[i] = data[j]
+                            data[j] = temp
+                        }
+                    }
+                }
+                return data
+            }
+        },
+        components: {
+
+        }
+    }
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+
+</style>

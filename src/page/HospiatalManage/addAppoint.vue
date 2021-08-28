@@ -1,0 +1,332 @@
+<template>
+    <div class="MemberManage">
+        <el-form :inline="true" :model="formInline" class="demo-form-inline form_search" label-width="80px">
+            <el-form-item label="预约时间：" class="form_item_mt10">
+                <el-date-picker
+                    v-model="date"
+                    type="daterange"
+                    class="form_item_ipt220"
+                    @change="dateSelect"
+                    placeholder="选择日期范围">
+                </el-date-picker>
+            </el-form-item>
+            <el-form-item label="客户：" class="form_item_mt10">
+                <el-input v-model="formInline.name" placeholder="" class="form_item_ipt220"  v-on:keyup.enter.native="onSubmit"></el-input>
+            </el-form-item>
+            <el-form-item label="医生：" class="form_item_mt10">
+                 <el-select v-model="formInline.doctor" filterable class="form_item_ipt220" @change="onSubmit">
+                     <el-option label="全部" value=""></el-option>
+                    <el-option v-for="(item,index) in doctorList" :key="index" :label="item.text" :value="item.code"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="状态：" class="form_item_mt10">
+                <el-select v-model="formInline.status" class="form_item_ipt220" @change="onSubmit">
+                    <el-option label="全部" value=""></el-option>
+                    <el-option label="未来院" value="1"></el-option>
+                    <el-option label="手术中" value="2"></el-option>
+                    <el-option label="已完成" value="3"></el-option>
+                </el-select>
+            </el-form-item>
+            <br/>
+            <el-form-item label=" " class="form_item_mt10">
+                <el-button type="primary" @click="onSubmit" class="searchBtn">查询</el-button>
+            </el-form-item>
+        </el-form>
+        <!-- 信息表 -->
+        <el-table :data="tableData" border style="width: 100%;margin-top:15px;margin-bottom:10px;" height="460" v-loading="loading">
+            <el-table-column prop="reservationDate" width="120" label="预约日期" >
+                <template slot-scope="scope">
+                    <span v-if="scope.row.reservationDate">
+                        {{scope.row.reservationDate.substring(0,10)}}
+                    </span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="MemberName" label="时间段" min-width="120">
+                 <template slot-scope="scope">
+                    <span v-if="scope.row.startTime">
+                        {{scope.row.startTime}}-{{scope.row.endTime}}
+                    </span>
+                 </template>
+            </el-table-column>
+            <el-table-column prop="deptName" label="科室" min-width="120"></el-table-column>
+            <el-table-column prop="doctorName" label="预约医生" min-width="120"></el-table-column>
+           <el-table-column prop="designerAssistName" label="设计师助理" min-width="120"></el-table-column>
+            <el-table-column prop="customerName" label="客户" min-width="120">
+                <template slot-scope="scope">
+                    <el-button type="text" @click="view(scope.$index,tableData)">{{scope.row.customerName}}</el-button>
+                </template>
+            </el-table-column>
+            <el-table-column prop="projectName" label="项目" min-width="220"></el-table-column>
+            
+            <el-table-column prop="narcotization" label="麻醉" min-width="80">
+                <template slot-scope="scope">
+                    <span v-if="scope.row.narcotization == 1">局麻</span>
+                    <span v-if="scope.row.narcotization == 2">全麻</span>
+                    <span v-if="scope.row.narcotization == 3">无</span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="memo" label="备注" min-width="120"></el-table-column>
+            <el-table-column prop="reservationStatus" label="状态" min-width="120">
+                <template slot-scope="scope">
+                    <el-tag type="danger" v-if="scope.row.reservationStatus == 1">未来院</el-tag>
+                    <el-tag type="warning" v-if="scope.row.reservationStatus == 2">手术中</el-tag>
+                    <el-tag type="success" v-if="scope.row.reservationStatus == 3">已完成</el-tag>
+                </template>
+            </el-table-column>
+            <el-table-column prop="IsAuth" label="操作" width="200">
+                <template slot-scope="scope">
+                    <el-button @click="update(scope.$index,tableData)" type="primary" size="small" v-if="scope.row.reservationStatus == 1">手术中</el-button>
+                    <el-button @click="update(scope.$index,tableData)" type="primary" size="small" v-if="scope.row.reservationStatus == 2">已完成</el-button>
+                    <el-button @click="addReport(scope.$index,tableData)" type="primary" size="small">添加处方</el-button>
+                </template>
+            </el-table-column>
+        </el-table>
+        <!-- 信息表 -->
+
+        <!-- 分页 -->
+        <div class="block">
+            <el-pagination
+                @size-change="handleSizeChange"
+                @current-change="handleCurrentChange"
+                :current-page="currentPage"
+                :page-sizes="[10, 20, 30, 40]"
+                :page-size="size"
+                layout="total, sizes, prev, pager, next, jumper"
+                :total="total">
+            </el-pagination>
+        </div>
+        <!-- 分页 -->
+        <!-- 添加产品单弹框 -->
+        <el-dialog title="添加处方单" :visible.sync="dialogFormVisible" :close-on-click-modal="false" size="" top="15%">
+            <addOrd ref="addOrd" @addClose="addClose" v-if="dialogFormVisible" style="width:1000px" :mes="mes" @openSelDrug='openSelDrug'></addOrd>
+        </el-dialog>
+        <!-- 添加产品单 -->
+
+        <el-dialog title="选择药品" :visible.sync="dialogSelDrug"  top="20%"  size="" :close-on-click-modal="false">
+            <selDrug :mes="condition" style="width: 640px" @addDrug="addDrug" v-if="dialogSelDrug"></selDrug>
+        </el-dialog>
+
+        <el-dialog title="客户详情" :visible.sync="dialogView"  top="5%"  size="" :close-on-click-modal="false">
+            <CustomerView :mes="cusMes" style="width: 1100px"  v-if="dialogView"></CustomerView>
+        </el-dialog>
+    </div>
+</template>
+<script type="text/ecmascript-6">
+    import selDrug from '@/page/FinanceManage/Ordonnance/com/selDrug'
+    import  "@/style/selfCommon.less"
+    import { getCookie } from "@/config/mUtils";
+    import addOrd from "./com/ordonnance.vue"
+    import CustomerView from "@/page/FinanceManage/ReportManage/com/customerDetail.vue"
+    import {UserRegister,GetDropDownPermission,GetReservation,UpdateReservationStatus, GetServiceManList,getUserById,} from "@/api/myData"
+    export default {
+        // name:"MemberManage",
+        data () {
+            return {
+                dialogSelDrug:false,
+                loading:false,
+                mes:{},
+                cusMes:{},
+                dialogView:false,
+                total:10,
+                size:10,
+                currentPage:1,
+                hospitalList:[],
+                date:"",
+                formInline:{
+                    doctor:"",
+                    date1:"",
+                    date2:"",
+                    status:"",
+                    name:"",
+                    phone:"",
+                    hospital:'',
+                    keywords:""
+                },
+                dialogFormVisible:false,
+                tableData:[],
+                doctorList:[],
+                mes:{},
+                condition:{},
+            }
+        },
+        computed: {
+            /* 导出报表参数 tHeader,filterVal,tableData1*/
+            // tHeader(){
+            //     return ['预约日期','时间段', '科室', '预约医生', '客户', '项目', '状态']
+            // },
+            // filterVal(){
+            //     return ['reservationDate', 'startTime', 'deptName', 'doctorName', 'customerName','projectName','reservationStatus']
+            // },
+            // tableData1(){
+            //     let data = JSON.parse(JSON.stringify(this.tableData))
+            //     data.forEach(row => {
+            //         row.startTime = row.startTime+"-"+row.endTime
+            //         row.reservationStatus = this.getStatus(row.reservationStatus)
+            //     });
+            //     return data
+            // },
+            // name(){
+            //     return '预约管理'
+            // },
+            /*导出报表参数 tHeader,filterVal,tableData1*/
+        },
+        filters:{
+            filterAddr(val){
+                if(val){
+                    let add = val.split(",").join("")
+                    return add
+                }else{
+                    return ""
+                }
+            }
+        },
+       
+        mounted(){
+            let date = new Date()
+            date.setDate("01")
+            this.date = [date,new Date()]
+            this.getServiceMan()
+        },
+        methods:{
+            openSelDrug(status,ope,condition){
+                
+                if(status){//打开选药品窗口
+                    this.dialogSelDrug = true
+                    this.ope = ope
+                    this.condition = condition
+                }else{//选择完毕关闭药品窗口
+                    this.dialogSelDrug = false
+                }
+            },
+            addDrug(status,obj){
+                
+                if(status){//选药确认
+                    if(this.ope == 'add'){
+                        this.$refs.addOrd.addDrugs(obj)
+                    }else{
+                        this.$refs.editOrd.addDrugs(obj)
+                    }
+                }else{//取消
+                    this.dialogSelDrug = false
+                }
+            },
+            view(index,data){
+                this.cusMes = data[index]
+                this.dialogView = true
+            },
+            addClose(val){
+                this.dialogFormVisible = false
+            },
+            getStatus(code){
+                switch(code){
+                    case "1": return "未来院";
+                    case "2": return "手术中";
+                    case "3": return "已完成";
+                }
+            },
+            async UpdateReservationStatus(params){
+                let res = await UpdateReservationStatus(params)
+                if(res.status){
+                     this.$message({
+                        message: '操作成功',
+                        type: 'success'
+                    });
+                    this.search()
+                }else{
+                    this.$message.error('操作失败');
+                }
+            },
+             //获的医护人员
+                async getServiceMan() {
+                
+                    let hospitalCode = getCookie("hospitalCode")
+                    let res = await GetServiceManList();
+                    for (let item of res.data) {
+                        let hosCodes = item.hospitalCode.split(",")//一对多关系筛选
+                        if ((hospitalCode == ""||hosCodes.indexOf(hospitalCode)>=0) &&item.serTypeCode === "001") {//医生
+                            this.doctorList.push({
+                                code: item["code"],
+                                name: item["serviceName"],
+                                text: item["serviceName"] + "(" + item["code"] + ")"
+                            });
+                        }
+                    }
+            },
+            async GetReservation(params){
+                let res =await GetReservation(params)
+                this.loading = false
+                if(res.status){
+                    this.total = res.count
+                    this.tableData = res.data
+                }else{
+                    console.log(res)
+                }
+            },
+         
+            onSubmit(){
+                this.currentPage = 1
+                this.search()
+            },
+            search(){
+                this.loading = true
+                this.GetReservation({
+                    customerName:this.formInline.name,
+                    doctorCode:this.formInline.doctor,
+                    reservationStatus:this.formInline.status,
+                    startDate:this.formInline.date1,
+                    enddate:this.formInline.date2,
+                    pageIndex:this.currentPage,
+                    pageSize:this.size
+                })
+            },
+            dateSelect(val){
+                if(val.length!=0){
+                    val = val.formatDates()
+                    this.formInline.date1 = val.substring(0,10)
+                    this.formInline.date2 = val.substring(13)
+                }else{
+                    this.formInline.date1 = ""
+                    this.formInline.date2 = ""
+                }
+            },
+            handleSizeChange(val) {
+                console.log(`每页 ${val} 条`);
+                this.size = val
+                this.search()
+            },
+            handleCurrentChange(val) {
+                console.log(`当前页: ${val}`);
+                this.currentPage = val
+                this.search()
+            },
+            update(index,data){
+                 this.$confirm('此操作将更改状态, 是否继续?', '提示', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    type: 'warning'
+                }).then(() => {
+                    this.UpdateReservationStatus({
+                        id:data[index].id,
+                        status:Number(data[index].reservationStatus)+1
+                    })
+                }).catch(() => {
+                           
+                });
+            },
+            addReport(index,data){
+                this.dialogFormVisible = true
+                this.mes = data[index]
+            }
+        },
+        components: {
+            selDrug,
+            addOrd,
+            CustomerView
+        }
+    }
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+
+</style>

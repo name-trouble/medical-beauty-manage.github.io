@@ -1,0 +1,239 @@
+<template>
+    <div>
+        <div>
+            <el-form :model="form">
+                <el-form-item label="项目分类">
+                    <el-select v-model="form.first" @change="fchange">
+                        
+                        <el-option v-for="(item,index) in fClass" :key="index" :label="item.name" :value="item"></el-option>
+                    </el-select>
+                     <el-select v-model="form.second" @change="schange">
+                        
+                        <el-option v-for="(item,index) in sClass" :key="index" :label="item.name" :value="item"></el-option>
+                    </el-select>
+                     <el-select v-model="form.third">
+                        
+                        <el-option v-for="(item,index) in tClass" :key="index" :label="item.name" :value="item"></el-option>
+                    </el-select>
+                </el-form-item>
+                <el-form-item label=" "><el-button @click="select" type="primary">选定分类</el-button></el-form-item>
+                <el-form-item label=" ">
+                    <el-table
+                        :data="tableData"
+                        style="width: 100%" max-height="330">
+                        <el-table-column
+                            prop="first"
+                            label="大类"
+                            min-width="100">
+                        </el-table-column>
+                        <el-table-column
+                            prop="second"
+                            label="中类"
+                            min-width="100">
+                        </el-table-column>
+                        <el-table-column
+                            prop="third"
+                            min-width="100"
+                            label="小类">
+                        </el-table-column>
+                        <el-table-column
+                            prop="third"
+                            min-width="100"
+                            label="操作">
+                            <template slot-scope="scope">
+                                <el-button @click="del(scope.$index,tableData)" type="primary" size="small">
+                                    删除
+                                </el-button>
+                            </template>
+                        </el-table-column>
+                    </el-table>
+                </el-form-item>
+            </el-form>
+             
+        </div>
+
+        <div style="float:right;margin:10px 20px;">
+            <el-button type="info" style="width:100px" @click="save(1)">保存</el-button>
+            <el-button style="width:100px" @click="save(0)">取消</el-button>
+        </div>
+    </div>
+</template>
+
+<script>
+import { getSupplierBySupType,GetCatelogByColumnCode } from '@/api/myData'
+
+export default {
+    props:{
+         propClassList:Array,
+         flg:Boolean
+    },
+   
+    data() {
+        return {
+            checkall: false,
+            isIndeterminate: false,
+            checkList: [],
+            list: [],
+            valueList: [],
+            classList:[],
+            fClass:[],
+            sClass:[],
+            tClass:[],
+            form:{
+                first:"",
+                second:"",
+                third:""
+            },
+            tableData:[],
+        };
+    },
+
+    watch:{
+        "flg":{
+            handler(curVal,oldVal){
+                
+                if(curVaL){
+                    this.tableData = []
+                }
+            },
+            deep:true
+        }
+    },
+
+    mounted() {
+        this.getTable(this.propClassList)
+        this.getData()
+    },
+
+    // props: {
+    //     data: Array,
+    //     getHospital: Function
+    // },
+
+    // watch: {
+    //     data:{
+    //         handler(curVal, oldVal) {
+
+    //         },
+    //         deep: true
+    //     },
+
+    // },
+    methods: {
+        getTable(val){
+            this.tableData = []
+            
+            if(val){
+                this.propClassList.forEach(row=>{
+                    
+                    this.tableData.push({
+                        first:row.CatalogPathName.split("/")[0]?row.CatalogPathName.split("/")[0]:"",
+                        second:row.CatalogPathName.split("/")[1]?row.CatalogPathName.split("/")[1]:"",
+                        third:row.CatalogPathName.split("/")[2]?row.CatalogPathName.split("/")[2]:"",
+                        catalogPath:row.CatalogPath,
+                        catalogCode:row.CatalogCode
+                    })
+                })
+            }
+        },
+        fchange(val){
+            
+            this.sClass = this.getNode(val.code)
+            this.tClass = []
+            this.form.second = ""
+        },
+        schange(val){
+            this.tClass = this.getNode(val.code)
+            this.form.third = ""
+        },
+        async getData(index,params) {
+                // this.projectList = await getProjectAll()//xiaoxie
+                let res = await GetCatelogByColumnCode({code: 100})//daxie
+                
+                this.classList = this.deal(res.data)
+                this.fClass = this.getNode("")
+//                编辑传值params
+        },
+
+        deal(data){
+            data.forEach(row=>{
+                row.value =row.code 
+            })
+            return data
+        },
+
+        getNode(Pid){
+            let arr = []
+            this.classList.forEach(row=>{
+                if(row.parentCode == Pid){
+                    arr.push(row)
+                }
+            })
+            return arr
+        },
+        del(index,data){
+            data.splice(index,1)
+        },
+
+        select(){
+            let obj = {}
+            if(this.form.third!=""){
+                obj = this.form.third
+                }else if(this.form.second!=""){
+                    obj = this.form.second
+                }else if(this.form.first!=""){
+                    obj = this.form.first
+                }
+            this.tableData.push({
+                first:this.form.first.name?this.form.first.name:"",
+                second:this.form.second.name?this.form.second.name:"",
+                third:this.form.third.name?this.form.third.name:"",
+                catalogPath:obj.catalogPath,
+                catalogCode:obj.code
+            })
+        },
+
+        save(val) {
+            let arr = []
+            this.tableData.forEach(row=>{
+                arr.push({
+                        catalogPath:row.catalogPath,
+                        catalogCode:row.catalogCode
+                })
+            })
+            this.reset()
+            this.$emit("selectClass",arr,val)
+            
+        },
+        reset(){
+            for(var p in this.form){
+                this.form[p] = ""
+            }
+            this.sClass = []
+            this.tClass = []
+        }
+
+    }
+}
+</script>
+
+<style scoped lang="less">
+.flex-box {
+    display: -webkit-flex;
+    /* Safari */
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.flex-item {
+    margin: 10px;
+}
+
+.hosbox {
+    position: relative;
+    height: 500px;
+    overflow: auto;
+    border: 1px solid #a2b5c4;
+    padding: 10px 20px;
+}
+</style>

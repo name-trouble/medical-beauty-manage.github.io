@@ -1,0 +1,347 @@
+<template>
+    <div class="tag selCommon">
+        <el-form :inline="true" :model="formInline" class="demo-form-inline form_search" label-width="80px">
+            <el-form-item label="盘点日期：" class="form_item_mt10">
+                <el-date-picker
+                    v-model="date"
+                    style="width: 200px;"
+                    type="daterange"
+                    @change="dateChange"
+                    placeholder="选择日期">
+                </el-date-picker>
+            </el-form-item>
+            <el-form-item label="盘点编号：" class="form_item_mt10">
+                <el-input v-model="formInline.keywords" placeholder="请输入" style="width: 200px;" v-on:keyup.enter.native="onSubmit"></el-input>
+            </el-form-item>
+            <el-form-item label="医院：" class="form_item_mt10">
+                <el-select v-model="formInline.hospitalCode"  style='width:200px;'  @change="hosSelect">
+                    <el-option v-for="(item,index) in hospitalList" :key="index" :label="item.supplierName" :value="item.code"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="仓库：" class="form_item_mt10">
+                <el-select v-model="formInline.warehouseId" style='width:200px;'>
+                    <el-option label="全部" value=""></el-option>
+                    <el-option v-for="(item,index) in whList" :key="index" :label="item.warehouseName" :value="item.id"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="供应商：" class="form_item_mt10">
+                <el-select v-model="formInline.supplier"  style='width:200px;'>
+                    <el-option label="全部" value=""></el-option>
+                    <el-option v-for="(item,index) in supplierList" :key="index" :label="item.stockSupplierName" :value="item.stockSupplierCode"></el-option>
+                </el-select>
+            </el-form-item>
+            <!-- <el-form-item label="领用部门：" class="form_item_mt10">
+                <el-select v-model="formInline.hospitalCode"  style='width:200px;'>
+                    <el-option v-for="(item,index) in supplierList" :key="index" :label="item.supplierName" :value="item.code"></el-option>
+                </el-select>
+            </el-form-item> -->
+            <!-- <el-form-item label="更新状态：" class="form_item_mt10">
+                <el-select v-model="formInline.hospitalCode"  style='width:200px;'>
+                    <el-option label="全部" value=""></el-option>
+                    <el-option label="未更新" value="0"></el-option>
+                    <el-option label="已更新" value="1"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="审核状态：" class="form_item_mt10">
+                <el-select v-model="formInline.hospitalCode"  style='width:200px;'>
+                    <el-option label="全部" value=""></el-option>
+                    <el-option label="未审核" value="0"></el-option>
+                    <el-option label="已审核" value="1"></el-option>
+                </el-select>
+            </el-form-item> -->
+            <el-form-item label=" " class="form_item_mt10">
+                <el-button type="primary" @click="onSubmit" class="searchBtn">查询</el-button>
+                <el-button type="primary" class="searchBtn" @click="addTag('添加')">添加盘点</el-button>
+            </el-form-item>
+        </el-form>
+        <!-- 信息表 -->
+        <el-table :data="tableData" border style="width: 100%;margin-top:15px;margin-bottom:10px;" max-height="560" class="smt min_table" v-loading="loading">
+            <el-table-column prop="inventoryCode" label="盘点编号" min-width="90">
+                 <template scope="scope">
+                    <el-button type="text" @click="openView(scope.row)">{{scope.row.inventoryCode}}</el-button>
+                </template>
+            </el-table-column>
+            <el-table-column prop="createOn" label="盘点日期" min-width="90">
+                <template scope="scope">
+                    <span v-if="scope.row.createOn">{{scope.row.createOn.substring(0,10)}}</span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="warehouseName" label="盘点仓库" min-width="90"></el-table-column>
+            <el-table-column prop="hospitalName" label="医院" min-width="90"></el-table-column>
+            <el-table-column prop="bookAmount" label="账面金额" min-width="80"></el-table-column>
+            <el-table-column prop="bookQuantity" label="账面数量" min-width="80"></el-table-column>
+            <el-table-column prop="inventoryAmount" label="盘点金额" min-width="80"></el-table-column>
+            <el-table-column prop="inventoryQuantity" label="盘点数量" min-width="80"></el-table-column>
+            <el-table-column prop="profitLossAmount" label="差异金额" min-width="80"></el-table-column>
+            <el-table-column prop="" label="差异数量" min-width="80">
+                <template scope="scope">
+                    {{scope.row.bookQuantity.red(scope.row.inventoryQuantity)}}
+                </template>
+            </el-table-column>
+            <el-table-column prop="createBy" label="填制人" min-width="80"></el-table-column>
+            <el-table-column prop="address" label="审核人" min-width="80"></el-table-column>
+            <el-table-column prop="address" label="审核日期" min-width="80"></el-table-column>
+            <el-table-column prop="memo" label="备注" min-width="90" show-overflow-tooltip></el-table-column>
+            <el-table-column prop="address" label="更新状态" min-width="90">
+                <!-- <template scope="scope">
+                    <el-tag type="danger"></el-tag>
+                    <el-tag type="success"></el-tag>
+                </template> -->
+            </el-table-column>
+            <el-table-column prop="address" label="审核状态" min-width="90">
+                <!-- <template scope="scope">
+                    <el-tag type="danger"></el-tag>
+                    <el-tag type="success"></el-tag>
+                </template> -->
+            </el-table-column>
+            <el-table-column prop="status" label="操作" width="210" fixed="right">
+                <template scope="scope">
+                    <!-- <el-button @click="account(scope)" type="primary" size="small" style="margin-left:0">更新</el-button>
+                    <el-button @click="approve(scope)" type="primary" size="small" style="margin-left:0">审核</el-button> -->
+                    <el-button @click="addTag('编辑',scope.$index,tableData)" type="primary" size="small" style="margin-left:0">编辑</el-button>
+                    <el-button @click="deleteRow(scope.$index,tableData)" type="primary" size="small" style="margin-left:0">删除</el-button>
+                </template>
+            </el-table-column>
+        </el-table>
+        <!-- 信息表 -->
+
+        <!-- 分页 -->
+        <div class="block">
+            <el-pagination
+                @size-change="handleSizeChange"
+                @current-change="handleCurrentChange"
+                :current-page="currentPage"
+                :page-sizes="[10, 20, 30, 40]"
+                :page-size="size"
+                layout="total, sizes, prev, pager, next, jumper"
+                :total="total">
+            </el-pagination>
+        </div>
+        <!-- 分页 -->
+
+        <el-dialog :title="title" :visible.sync="tag" size="">
+            <add v-if="tag" style="width:1000px" @addDrug="addDrug" ref="addS" @addClose="addClose" :editMes="editMes"></add>
+        </el-dialog>
+        <el-dialog title="选择药品" :visible.sync="isDrug" size="" >
+            <selDrug v-if="isDrug" style="width:640px" @selSure="selSure" :searchMes="searchMes"></selDrug>
+        </el-dialog>
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+    import {baseImgPath} from "@/config/env"
+    import  "@/style/selfCommon.less"
+    import { getCookie, delCookie } from '@/config/mUtils'
+    import add from "./com/addInv"
+    import selDrug from "./com/selDrugInv"
+    import {GetInventory,DeleteInventoryById,GetDropDownPermission,GetSupplier,GetWarehouse} from "@/api/myData"
+    export default {
+        data () {
+            return {
+                date:"",
+                editMes:{},
+                addStore:"盘点",
+                isDrug:false,
+                saveLoading:false,
+                loading:false,
+                title:"",
+                tag:false,
+                total:0,
+                size:10,
+                currentPage:1,
+                formInline: {
+                    warehouseId:"",
+                    supplier:"",
+                    keywords: '',
+                    typeCode:'',
+                    hospitalCode:"",
+                    startDate:"",
+                    endDate:"",
+                },
+                tableData:[],
+                hospitalList:[],
+                supplierList:[],
+                searchMes:{},
+                whList:[],
+                allWhList:[],
+            }
+        },
+        computed: {
+            /* 导出报表参数 tHeader,filterVal,tableData1*/
+            // tHeader(){
+            //     return ['封面', '主题', '发布人', '标签', '视频大小', '发布时间', '浏览人次', '平均浏览时长', '分享','销售额',"商品提成"]
+            // },
+            // filterVal(){
+            //     return ['picture', 'title', 'userName', 'tab', 'videoSize','createDate','views','grade','grade','ReferrerName']
+            // },
+            // tableData1(){
+            //     return this.tableData
+            // },
+            // name(){
+            //     return '视频管理'
+            // },
+            /*导出报表参数 tHeader,filterVal,tableData1*/
+        },
+        mounted(){
+            this.date = [new Date(),new Date()]
+            this.GetDropDownPermission()
+        },
+        methods:{
+            hosSelect(val){
+                
+                this.whList = []
+                this.allWhList.forEach(ele => {
+                    
+                    if(ele.hospitalCode == val){
+                        this.whList.push(ele)
+                    }
+                });
+            },
+             // 详情
+            openView(data){
+                this.editMes = JSON.parse(JSON.stringify(data)) 
+                this.editMes.view = true
+                this.tag = true
+                this.title = '详情'
+            },
+            dateChange(val){
+                if(val){
+                    this.formInline.startDate = val.substring(0,10)
+                    this.formInline.endDate = val.substring(13)
+                }else{
+                    this.formInline.startDate = ""
+                    this.formInline.endDate = ""
+                }
+            },
+            async GetDropDownPermission(){
+                let res1 = await GetDropDownPermission({typeId: 1});
+                this.hospitalList = res1.data
+                let sup = await GetSupplier({ hospitalCode:"",pageIndex:1,pageSize:1000,keywords:""})
+                
+                this.supplierList = sup.data
+                let whList = await GetWarehouse({
+                    "hospitalCode": "",
+                    pageIndex:1,
+                    pageSize:100,
+                    keywords:"",
+                    typeId:1//药房
+                })
+                // this.whList = whList.data
+                this.allWhList = JSON.parse(JSON.stringify(whList.data))
+            },
+            // 删除
+            async DeleteInventoryById(params){
+                try{
+                    let res = await DeleteInventoryById(params)
+                    if(res.status){
+                        this.$message({message: '删除成功', type: 'success'});
+                        this.search()
+                    }else{
+                        this.$message.error('删除失败');
+                    }
+                }catch(err){
+                    console.log(err)
+                    this.$message.error('删除失败');
+                }
+            },
+            async GetInventory(params){
+                try{
+                    this.loading = true
+                    let res = await GetInventory(params)
+                    this.tableData = res.data
+                    this.total = res.count
+                    this.loading = false
+                }catch(err){
+                    console.log(err)
+                }
+            },
+            
+            onSubmit(){
+                this.currentPage = 1
+                this.search()
+            },
+            search(){
+                this.GetInventory({
+                    "warehouseId": this.formInline.warehouseId,
+                    "hospitalCode": this.formInline.hospitalCode,
+                    "stockSupplierCode": this.formInline.supplier,
+                    "startDate": this.formInline.startDate,
+                    "endDate": this.formInline.endDate,
+                    pageIndex:this.currentPage,
+                    pageSize:this.size,
+                    keywords:this.formInline.keywords.removeSP()
+                })
+            },
+            handleSizeChange(val) {
+                this.size = val
+                this.search()
+            },
+            handleCurrentChange(val) {
+                this.currentPage = val
+                this.search()
+            },
+
+//          添加
+            addTag(ope,index,data){
+                this.tag = true
+                this.title = ope
+                if(data){
+                    this.editMes = JSON.parse(JSON.stringify(data[index]))
+                }
+            },
+//            删除
+            deleteRow(index,data){
+                this.$confirm('此操作将删除该数据, 是否继续?', '提示', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    type: 'warning'
+                }).then(() => {
+                    
+                    this.DeleteInventoryById({
+                        id:data[index].id
+                    })
+                }).catch(() => {
+
+                });
+            },
+
+            approve(data){
+
+            },
+            account(data){
+
+            },
+            pay(data){
+
+            },
+            addDrug(val){
+                this.isDrug = true
+                this.searchMes = val
+            },
+            // 药品添加回调
+            selSure(val,data){
+                if(val){
+                    this.$refs.addS.addTable(data)
+                    this.isDrug = false
+                }else{
+                    this.isDrug = false
+                }
+            },
+            addClose(val){
+                this.tag = false
+                if(val){
+                    this.search()
+                }
+            }
+        },
+        components: {
+            add,
+            selDrug
+        }
+    }
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+
+</style>

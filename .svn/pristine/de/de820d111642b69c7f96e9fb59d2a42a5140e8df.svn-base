@@ -1,0 +1,167 @@
+<template>
+    <div class="selCommon">
+        <el-form :inline="true" :model="formInline" class="demo-form-inline form_search" label-width="80px" >
+            <el-form-item :label="dialogMes.label+'：'"  class="form_item_mt10 ">
+                <el-date-picker v-model="date" type="daterange"  @change="dateChange" style='width:200px;' placeholder="选择日期范围"></el-date-picker>
+            </el-form-item>
+            <el-form-item :label="label"  class="form_item_mt10" v-if="dialogMes.type == 5||dialogMes.type == 6||dialogMes.type == 7">
+                <el-input v-model="formInline.project"></el-input>
+            </el-form-item>
+            <el-form-item label="模块：" class="form_item_mt10">
+                <el-select v-model="formInline.module">
+                    <el-option label="全部" value=""></el-option>
+                    <el-option v-for="item in shareModulleList" :key="item" :label="item" :value="item"></el-option>
+                </el-select>
+            </el-form-item>
+
+            <el-form-item label="" class="form_item_mt10 form_item_wh280">
+                <el-button type="primary" @click="submit" class="searchBtn" icon="search">查询</el-button>
+             </el-form-item>
+        </el-form>
+      
+     <!-- 领取数 -->
+        <div v-if="dialogMes.type==3">
+            <el-table :data="tableData" border style="width: 100%;margin-top:15px;margin-bottom:10px;" max-height="500" class="min_table smt" v-loading="loading">
+                <el-table-column prop="receiveTime" label="领取时间" min-width="150" align="center">
+                    <template scope="scope">
+                        <span v-if="scope.row.receiveTime">{{scope.row.receiveTime}}</span>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="invitedCode" label="邀请码" min-width="100" align="center"></el-table-column>
+                <el-table-column prop="mobile" label="手机号" min-width="100" align="center"></el-table-column>
+                <el-table-column prop="shareModule" label="分享模块" min-width="100"></el-table-column>
+            </el-table>
+        </div>
+       
+        <!-- 下单数 -->
+        <div v-if="dialogMes.type==5">
+            <el-table :data="tableData" border style="width: 100%;margin-top:15px;margin-bottom:10px;" max-height="500" class="min_table smt" v-loading="loading">
+                <el-table-column prop="orderCode" label="订单编号" min-width="80" align="center"></el-table-column>
+                <el-table-column prop="orderTime" label="下单时间" min-width="150" align="center">
+                    <template scope="scope">
+                        <span v-if="scope.row.orderTime">{{scope.row.orderTime}}</span>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="createBy" label="用户" min-width="80" align="center"></el-table-column>
+                <el-table-column prop="mobile" label="手机号" min-width="100" align="center"></el-table-column>
+                <el-table-column prop="orderAmount" label="订单金额" min-width="80" align="right">
+                    <template scope="scope">
+                        <span v-if="scope.row.orderAmount">￥{{scope.row.orderAmount.toQFW()}}</span>
+                    </template>
+                </el-table-column>
+                <!-- <el-table-column prop="receiveBranchName" label="分享模块" min-width="80"></el-table-column>
+                <el-table-column prop="referId" label="ID" min-width="80" align="center"></el-table-column>
+                <el-table-column prop="referName" label="名称" min-width="150"></el-table-column> -->
+            </el-table>
+        </div>
+
+        <!-- 分页 -->
+        <div class="block">
+            <el-pagination
+                 @size-change="handleSizeChange"
+                 @current-change="handleCurrentChange"
+                 :current-page="currentPage"
+                 :page-sizes="[10, 30, 50, 100]"
+                 :page-size="size"
+                 layout="total, sizes, prev, pager, next, jumper"
+                 :total="total">
+             </el-pagination>
+        </div>
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+    import {GetViewsList, GetReceivesList, GetLoginsList, GetOrdersList, GetSendsList} from "@/api/myData"
+    import "@/style/selfCommon.less"
+    export default {
+        data () {
+            return {
+                date:"",
+                label:'日期',
+                tableData:[],
+                currentPage:1,
+                size:10,
+                total:1,
+                loading:false,
+                formInline:{
+                    startDate:"",
+                    endDate:"",
+                    module:"",
+                    project:"",
+                },
+                shareModulleList:['设计师列表','体验专区','特惠项目','量贩专区','邀请好友','优选设计','设计师详情','优选组合','案例详情','项目详情'],
+            }
+        },
+        props:{
+            dialogMes:Object,
+        },
+        computed: {
+            
+        },
+       
+        mounted(){
+            
+            this.searchMes(this.dialogMes)
+        },
+        methods: {
+            getData(){
+                
+            },
+            async searchMes(params){
+                let obj = {
+                    date1:this.formInline.startDate,
+                    date2:this.formInline.endDate,
+                    module:this.formInline.module,
+                    pageIndex:this.currentPage,
+                    pageSize:this.size,
+                    invitedCode:this.dialogMes.invitedCode
+                }
+                let res
+                if(params.type == 1){
+                    res = await GetSendsList(obj)
+                }else if(params.type == 2){
+                    res = await GetViewsList(obj)
+                }else if(params.type == 3){
+                    res = await GetReceivesList(obj)
+                }else if(params.type == 4){
+                    res = await GetLoginsList(obj)
+                }else{
+                    res = await GetOrdersList(obj)
+                }
+                this.total = res.count
+                this.tableData = res.data
+            },
+            dateChange(val){
+                if(val){
+                    this.formInline.startDate = val.substring(0,10)
+                    this.formInline.endDate = val.substring(13)
+                }else{
+                    this.formInline.startDate = ""
+                    this.formInline.endDate = ""
+                }
+            },
+            handleSizeChange(val) {
+                this.size = val
+                this.searchMes(this.dialogMes)
+            },
+            handleCurrentChange(val) {
+                this.currentPage = val
+                this.searchMes(this.dialogMes)
+            },
+            
+            submit(){
+                this.currentPage = 1
+                this.searchMes(this.dialogMes)
+            }
+        }
+    }
+</script>
+<style scoped>
+.block{
+    float: right;
+    margin-bottom: 20px;
+}
+.shareUrl{
+    color: #4db3ff
+}
+</style>

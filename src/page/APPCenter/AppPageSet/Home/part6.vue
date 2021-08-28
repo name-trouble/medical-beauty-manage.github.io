@@ -1,0 +1,137 @@
+<template>
+    <div v-if="data.id||data.id==0">
+        <div v-for="(item ,$index) in list" :key="$index">
+        <div class="flex-box home-live">
+                <div class="left flex-box">
+                    <img :src="baseImgPath+item.hospitalName">
+                    <div class="word">
+                        <p>{{item.doctorName}}</p>
+                        <p>{{item.describe}}</p>
+                    </div>
+                </div>
+
+                <div class="right">
+                    <div class="mark">
+                        <span>{{item.tab}}</span>
+                    </div>
+                    <p>{{item.level}}人看过</p>
+                </div>
+                <div class="live-info">
+                    <img class="live-img" :src="baseImgPath+item.pictureUrl">
+                    <div class="live-icon">
+                        <img src="../lib/live.png">
+                        <span>波士邦直播</span>
+                    </div>
+
+                    <span class="foot-word">{{item.name}}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</template>
+
+<script>
+import PartHead from './partHead'
+import { baseImgPath } from '@/config/env'
+export default {
+    components: { PartHead },
+    props: {
+        data: Object
+    },
+    data() {
+        return {
+            list: this.data.widgets,
+            baseImgPath,
+        }
+    },
+
+    methods: {
+        getImg(str, i) {
+            if (!str) return
+            let ars = str.split('#')
+            return baseImgPath + ars[i]
+        }
+    },
+}
+</script>
+
+
+<style lang="less" scoped>
+.home-live {
+    margin: 0.25rem 0.4rem 0 0.4rem;
+}
+
+.left {
+    flex: 1;
+    img {
+        width: 1.07rem;
+        height: 1.07rem;
+        border-radius: 50%;
+    }
+    .word {
+        margin: 0 0.25rem;
+    }
+}
+
+.right {
+    flex: 1;
+    text-align: right;
+    .mark {
+        margin-top: -0.25rem;
+        margin-bottom: 0.25rem;
+        span {
+            margin-top: -60px;
+            padding: 0.05rem 0.15rem;
+            background: rgba(253, 220, 202, 0.50);
+            font-size: 0.27rem;
+            color: #DAA589;
+        }
+    }
+
+    p {
+        color: #999999;
+        font-size: 0.32rem;
+    }
+}
+
+.live-info {
+    width: 100%;
+    margin: 0.25rem 0;
+    position: relative;
+    text-align: center;
+    .live-img {
+        height: 10.8rem;
+        width: 100%;
+    }
+
+    .live-icon {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 2; //  width: 1.34rem;
+        img {
+            width: 1.33rem;
+            height: 0.83rem;
+        }
+
+        span {
+            display: block;
+            font-size: 0.37rem;
+            color: #FFFFFF;
+            letter-spacing: 2px;
+        }
+    }
+
+
+    .foot-word {
+        position: absolute;
+        z-index: 2;
+        letter-spacing: 1px;
+        bottom: 0.35rem;
+        left: 0.4rem;
+        font-size: 0.32rem;
+        color: #FFFFFF;
+    }
+}
+</style>

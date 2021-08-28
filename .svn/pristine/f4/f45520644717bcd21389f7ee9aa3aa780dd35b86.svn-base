@@ -1,0 +1,384 @@
+<template>
+    <div class="selCommon projectOrder">
+        <el-form :inline="true" :model="formInline" class="demo-form-inline form_search" label-width="80px" >
+            <el-form-item label="申请时间："  class="form_item_mt10 ">
+                <el-date-picker v-model="date1" @change="dateForm1" type="daterange" placeholder="选择日期范围" class="form_item_ipt220"></el-date-picker>
+            </el-form-item>
+            <el-form-item label="关键字：" class="form_item_mt10 form_item_wh280">
+                <el-input v-model="formInline.keywords" placeholder="APP昵称/手机号" class="form_item_ipt220"  v-on:keyup.enter.native="onSubmit"></el-input>
+            </el-form-item>
+
+            <el-form-item label="状态：" class="form_item_mt10 form_item_wh280">
+                <el-select v-model="formInline.status"  class="form_item_ipt220" @change="onSubmit">
+                    <el-option label="全部" value=""></el-option>
+                    <el-option label="未审核" value="1"></el-option>
+                    <el-option label="已审核" value="2"></el-option>
+                    <el-option label="拒绝" value="3"></el-option>
+                    <el-option label="已发放" value="4"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="支付类型：" class="form_item_mt10 form_item_wh280">
+                <el-select v-model="formInline.payType"  class="form_item_ipt220" @change="onSubmit">
+                    <el-option label="全部" value=""></el-option>
+                    <el-option label="支付宝" value="1"></el-option>
+                    <el-option label="银行卡" value="2"></el-option>
+                    <el-option label="微信" value="3"></el-option>
+                </el-select>
+            </el-form-item><br/>
+            <el-form-item label=" " class="form_item_mt10 form_item_wh280">
+                <el-button type="primary" @click="onSubmit" class="searchBtn">查询</el-button>
+                <Export ref="exportCom" :tHeader="tHeader" :filterVal='filterVal' :tableData1='tableData1' :name='name' style="display:none"></Export>
+                <el-button class="searchBtn" @click="exportData">导出报表</el-button>
+                <!-- <span style="color:red">（提示：支付宝、微信提现方式审核后将直接发放到账户，银行卡需人工转账）</span> -->
+            </el-form-item>
+        </el-form>
+        <!--信息表-->
+        <el-table :data="tableData" border style="width: 100%;margin-top:15px;margin-bottom:10px;" class="min_table" :summary-method="getSummaries" show-summary>
+            <el-table-column prop="createOn" label="申请日期" min-width="110" show-overflow-tooltip></el-table-column>
+            <el-table-column prop="realName" label="申请人" min-width="80" show-overflow-tooltip></el-table-column>
+            <el-table-column prop="mobile" label="手机号" min-width="90"></el-table-column>
+            <el-table-column prop="applyAmount" label="申请提现金额" min-width="90"></el-table-column>
+            <el-table-column prop="extFee" label="手续费" min-width="90"></el-table-column>
+            <el-table-column prop="recevieAmount" label="到账金额" min-width="90"></el-table-column>
+            <el-table-column prop="bankCardHolder" label="持卡人" min-width="90" show-overflow-tooltip></el-table-column>
+            <el-table-column prop="cardId" label="提现方式" min-width="80">
+                <template scope="scope">
+                    <div style="color:#13ce66" v-if="scope.row.payType == 1">支付宝</div>
+                    <div v-if="scope.row.payType == 2">银行卡</div> 
+                    <div style="color:#13ce66" v-if="scope.row.payType == 3">微信</div> 
+                </template>
+            </el-table-column>
+            <el-table-column prop="cardId" label="申请账户" min-width="200">
+                <template scope="scope">
+                    <div v-if="scope.row.payType == 1">
+                        <span>支付宝账户：{{scope.row.cardId}}</span>
+                    </div>
+                    <div v-if="scope.row.payType == 2">
+                        <span>银行：{{scope.row.bankName}}</span><br/>
+                        <span>开户行：{{scope.row.bankDetailName}}</span><br/>
+                        <span>卡号：{{scope.row.cardId}}</span>
+                    </div>
+                    <div v-if="scope.row.payType == 3">
+                        <span>微信账户：{{scope.row.cardId}}</span>
+                    </div>
+                </template>
+            </el-table-column>
+            <el-table-column prop="status" label="状态" min-width="80" align="center">
+                <template scope="scope">
+                    <el-tag type="gray" v-if="scope.row.applyStatus == 1">未审核</el-tag>
+                    <el-tag type="warining" v-if="scope.row.applyStatus == 2">已审核</el-tag>
+                    <el-tag type="danger" v-if="scope.row.applyStatus == 3">拒绝</el-tag>
+                    <el-tag type="success" v-if="scope.row.applyStatus == 4">已发放</el-tag>
+                    <!-- <el-tag type="success" v-if="scope.row.applyStatus == 5">发放失败</el-tag> -->
+                </template>
+            </el-table-column>
+            <el-table-column prop="modifiedOn" label="审核时间" min-width="120" show-overflow-tooltip></el-table-column>
+            <el-table-column prop="confirmPayDate" label="发放时间" min-width="120" align="center" show-overflow-tooltip></el-table-column>
+            <el-table-column prop="alipayBizNo" label="流水号" min-width="120" show-overflow-tooltip></el-table-column>
+            <el-table-column prop="memo" label="备注" min-width="100" show-overflow-tooltip></el-table-column>
+            <el-table-column prop="grade" label="操作" min-width="250" align="center">
+                <template scope="scope">
+                    <el-button @click="approve(scope.row,2)" type="primary" :disabled="scope.row.applyStatus !=1" size="small">审核</el-button>
+                    <el-button @click="reject(scope.row,3)" type="danger" :disabled="scope.row.applyStatus !=1" size="small">拒绝</el-button>
+                    <el-button @click="grant(scope.row)" type="success" :disabled="scope.row.applyStatus != 2" size="small">发放</el-button>
+                    <el-button @click="ReverseApproveCashApply(scope.row)" type="danger" :disabled="scope.row.applyStatus != 2" size="small">发放失败</el-button>
+                </template>
+            </el-table-column>
+        </el-table>
+        <!-- 分页 -->
+        <div class="block">
+            <el-pagination
+                @size-change="handleSizeChange"
+                @current-change="handleCurrentChange"
+                :current-page="currentPage"
+                :page-sizes="[10, 20, 30, 40]"
+                :page-size="size"
+                layout="total, sizes, prev, pager, next, jumper"
+                :total="total">
+            </el-pagination>
+        </div>
+
+        <!-- 分页 -->
+        <el-dialog size="" :visible.sync="dialogVisible" title="审核" top="20%">
+            <el-form :model="formInline" label-width="80px" style="width:350px;">
+                <el-form-item label="提现金额："  class="form_item_mt10 ">
+                     <span>{{approveData.applyAmount}}</span>
+                </el-form-item>
+                <el-form-item label="手续费："  class="form_item_mt10">
+                     <el-input-number :controls="false" v-model="formInline.extFee"  @change="extFeeChange" class="form_item_ipt220"></el-input-number>
+                </el-form-item>
+                <el-form-item label="实发金额："  class="form_item_mt10 ">
+                    <span>{{approveData.recevieAmount}}</span>
+                </el-form-item>
+                <el-form-item label="提现方式："  class="form_item_mt10 ">
+                    <div v-if="approveData.payType == 1">支付宝</div>
+                    <div v-if="approveData.payType == 2">银行卡</div> 
+                    <div v-if="approveData.payType == 3">微信</div> 
+                </el-form-item>
+                <el-form-item label="银行："  class="form_item_mt10 ">
+                    <span>{{approveData.bankName}} ({{approveData.bankDetailName}})</span>
+                </el-form-item>
+                <el-form-item label="卡号："  class="form_item_mt10 ">
+                    <span>{{approveData.cardId}}</span>
+                </el-form-item>
+                <el-form-item label="备注："  class="form_item_mt10 ">
+                     <el-input type="textarea" :rows="4" v-model="formInline.memo"  class="form_item_ipt220"></el-input>
+                </el-form-item>
+                <el-form-item label="" label-width="0px" class="form_item_mt10 form_item_wh280" style="text-align:center">
+                    <el-button type="primary" @click="sure">确定</el-button>
+                    <el-button @click="dialogVisible = false">取消</el-button>
+                </el-form-item>
+            </el-form>
+        </el-dialog>
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+import "@/style/selfCommon.less"
+import Export from '@/components/export'
+// import orderDet from './com/orderDet'
+import {CashApplyList,ApproveCashApply,ConfirmPayStatus,ReverseApproveCashApply} from "@/api/myData"
+import { getCookie, getStore } from '../../../config/mUtils';
+export default {
+        // name:"projectOrder",
+        data () {
+            return {
+                dialogVisible:false,
+                date1:'',
+                currentIndex:0,
+                formInline:{
+                    startTime:"",
+                    endTime:"",
+                    keywords:"",
+                    status:'',
+                    extFee:'',
+                    memo:'',
+                    payType:'',
+                },
+                tableData:[],
+                currentPage:1,
+                size:10,
+                total:0,
+                allData:[],
+                sumdata:{
+                    applyAmount:0,
+                    extFee:0,
+                    recevieAmount:0,
+                },
+                approveData:{},
+            }
+        },
+        computed: {
+            /* 导出报表参数 tHeader,filterVal,tableData1*/
+            tHeader(){
+                return ['申请日期','申请人', '手机号','持卡人','申请提现金额','手续费','实发金额','提现方式','银行','开户行','卡号',]
+            },
+            filterVal(){ 
+                return ['createOn',  'realName', 'mobile','bankCardHolder','applyAmount','extFee','recevieAmount','payType','bankName','bankDetailName','cardId',]
+            },
+            tableData1(){
+                let data = JSON.parse(JSON.stringify(this.allData))
+                data.forEach(ele=>{
+                    for(let key in ele){
+                        if(ele[key] == null){
+                            ele[key] = ''
+                        }
+                    }
+                    ele.status = this.getStatus(ele.applyStatus)
+                    if(ele.payType == 1){
+                        ele.payType = '支付宝'
+                    }else if(ele.payType == 2){
+                        ele.payType = '银行卡'
+                    }else if(ele.payType == 3){
+                        ele.payType = '微信'
+                    }
+                })
+                return data
+            },
+            name(){
+                return '提现审核'
+            },
+            /*导出报表参数 tHeader,filterVal,tableData1*/
+        },
+        mounted(){
+            // this.getHospital()
+        },
+        methods: {
+            grant(data){
+                this.$confirm('是否确定该体现申请已发放?', '提示', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    type: 'warning'
+                }).then(() => {
+                    ConfirmPayStatus({id:data.id}).then(res=>{
+                        if(res.status){
+                            this.$message({message: '操作成功', type: 'success'});
+                            this.search()
+                        }else{
+                            this.$message.error('操作失败!'+res.errorMessage)
+                        }
+                    })
+                })
+                
+            },
+            ReverseApproveCashApply(data){
+                this.$prompt('备注', '提示', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                }).then(({ value }) => {
+                    ReverseApproveCashApply({
+                    "id": data.id,
+                    "applyStatus": 3,
+                    "extFee": data.extFee,
+                    "modifiedBy": getCookie("userName"),
+                    "memo": value?value:''}).then(res=>{
+                        if(res.status){
+                            this.$message({message: '操作成功', type: 'success'});
+                            this.search()
+                        }else{
+                            this.$message.error('操作失败!'+res.errorMessage)
+                        }
+                    })
+                })
+            },
+            
+            getSummaries(param) {
+                return ['总合计：','','',this.sumdata.applyAmount,this.sumdata.extFee,this.sumdata.recevieAmount];
+            },
+            reject(data,status){
+                this.$prompt('请输入原因', '拒绝提现', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                }).then(({ value }) => {
+                    this.approveStatus({
+                        "id":data.id ,
+                        "applyStatus": status,
+                        "memo": value?value:'',
+                        'modifiedUserId':getCookie("userId"),
+                        'modifiedBy':getCookie("userName"),
+                    })
+                })
+            },
+            approve(data,status){
+                this.formInline.memo = ''
+                this.formInline.extFee = Number(data.applyAmount.mul(0.1))
+                this.dialogVisible = true
+                this.approveData = JSON.parse(JSON.stringify(data))
+                this.approveData.recevieAmount = Number(this.formInline.extFee.red(data.applyAmount))
+            },
+            extFeeChange(val){
+                this.approveData.recevieAmount = Number(val.red(this.approveData.applyAmount))
+            },
+            sure(){
+                this.approveStatus({
+                    "id":this.approveData.id ,
+                    "applyStatus": 2,
+                    'extFee':this.formInline.extFee,
+                    "memo": this.formInline.memo,
+                    'modifiedUserId':getCookie("userId"),
+                    'modifiedBy':getCookie("userName"),
+                })
+            },
+            async approveStatus(params){
+                let res = await ApproveCashApply(params)
+                if(res.status){
+                    this.$message({message: '操作成功', type: 'success'});
+                    this.search()
+                    this.dialogVisible = false
+                }else{
+                    this.$message.error('操作失败!'+res.errorMessage)
+                }
+            },
+             getStatus(status){
+                 debugger
+                switch(status){
+                    case 1:return '未审核';break;
+                    case 2:return '已审核';break;
+                    case 3:return '拒绝';break;
+                    case 4:return '已发放';break;
+                }
+            },
+            exportData(){
+                this.CashApplyList({
+                    'pageIndex': 1,
+                    'pageSize': this.total,
+                    'Keyword':this.formInline.keywords,
+                    'applyStatus':this.formInline.status,
+                    "startDate": this.formInline.startTime,
+                    "endDate": this.formInline.endTime,
+                    'payType':this.formInline.payType
+                },1)
+            },
+            
+
+            submit(){
+                this.pageIndex = 1
+                this.search()
+            },
+            async CashApplyList(params,ope){
+                try {
+                    let res = await CashApplyList(params)
+                    debugger
+                    if(ope){
+                        this.allData = res.data
+                        setTimeout(()=>{
+                            this.$refs.exportCom.handleDownload()
+                        },100)
+                        
+                    }else{
+                        this.total = res.count
+                        this.tableData = res.data
+                        this.sumdata = res.sumdata[0]
+                    }
+                } catch (err) {
+                    console.log(err)
+                }
+            },
+            dateForm1(val){
+                if(val){
+                    this.formInline.startTime = val.substring(0,10)
+                    this.formInline.endTime = val.substring(13)
+                }else{
+                    this.formInline.startTime = ""
+                    this.formInline.endTime = ""
+                } 
+                this.onSubmit()
+            },
+            onSubmit(){
+                this.currentPage = 1
+                this.search()
+            },
+            search(){
+                this.CashApplyList({
+                    'pageIndex': this.currentPage,
+                    'pageSize': this.size,
+                    "applyStatus":this.formInline.status,
+                    "keywords": this.formInline.keywords,
+                    "startDate": this.formInline.startTime,
+                    "endDate": this.formInline.endTime,
+                    'payType':this.formInline.payType
+                })
+            },
+            handleSizeChange(val) {
+                console.log(`每页 ${val} 条`);
+                this.size = val
+                this.search()
+            },
+            handleCurrentChange(val) {
+                console.log(`当前页: ${val}`);
+                this.currentPage = val
+                this.search()
+            },
+
+        },
+        components: {
+            // orderDet,
+            Export
+        }
+    }
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+
+</style>

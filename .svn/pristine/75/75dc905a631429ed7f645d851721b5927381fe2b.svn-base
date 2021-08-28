@@ -1,0 +1,360 @@
+4<template>
+    <div class="selCommon AgentManage">
+        <!-- 查询信息 -->
+        <el-form :inline="true" :model="formInline" class="demo-form-inline form_search" label-width="90px">
+            <el-form-item label="关键字：" class="form_item_mt10">
+                <el-input v-model="formInline.keywords" placeholder="消费商" style="width: 200px;" v-on:keyup.enter.native="onSubmit"></el-input>
+            </el-form-item>
+            <el-form-item label="启用状态：" class="form_item_mt10">
+                <el-select v-model="formInline.isEnable"  style='width:200px;' @change="onSubmit">
+                    <el-option label="全部" value=""></el-option>
+                    <el-option label="未启用" value="0"></el-option>
+                    <el-option label="已启用" value="1"></el-option>
+                    <el-option label="已退款" value="3"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label=" " class="form_item_mt10">
+                <el-button type="primary" @click="onSubmit" style='background:#cda382;
+                border-radius:2px;color:#fff;border-color:#d6d4d4'>查询</el-button>
+            </el-form-item>
+        </el-form>
+        <!-- 查询信息 -->
+
+        <!-- 信息表 -->
+        <el-table :data="tableData" border style="width: 100%;margin-top:15px;margin-bottom:10px;" class="min_table smt" v-loading="loading">
+            <el-table-column prop="Code" label="消费商" min-width="120">
+                <template scope="scope">
+                    <span class="table_btn" @click="DetailMes(scope.$index,tableData)" type="text">{{scope.row.branchName}}<br/>{{scope.row.branchCode}}</span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="createOn" label="申请日期" width="110">
+                <template scope="scope">
+                    <span v-if="scope.row.createOn">
+                         {{scope.row.createOn.substring(0,10)}}
+                    </span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="ReferrerName" label="推荐人" min-width="130">
+                <template scope="scope">
+                    <span v-if="scope.row.referrerName">{{scope.row.referrerName}}</span><br/>
+                    <span v-if="scope.row.referrerCode">[{{scope.row.referrerCode}}]</span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="hospitalName" label="医院" min-width="130"></el-table-column>
+
+            <el-table-column prop="branchGradeName" label="当前等级" min-width="130"></el-table-column>
+            <el-table-column prop="targetBranchGradeName" label="目标等级" min-width="130"></el-table-column>
+            <el-table-column prop="currentAmount" label="缴纳会费" min-width="90">
+                <template scope="scope">
+                    <span v-if="scope.row.currentAmount||scope.row.currentAmount==0">￥{{scope.row.currentAmount.toQFW()}}</span>
+                </template>
+            </el-table-column>
+             <el-table-column prop="payAmount" label="已支付" min-width="90">
+                 <template scope="scope">
+                   <span v-if="scope.row.payAmount||scope.row.payAmount==0">￥{{scope.row.payAmount.toQFW()}}</span>
+                </template>
+             </el-table-column>
+            <el-table-column prop="isPayOff" label="是否结清" width="90">
+                <template scope="scope">
+                    <el-tag type="warning" v-if="scope.row.isPayOff == 0">未结清</el-tag>
+                    <el-tag type="success" v-if="scope.row.isPayOff == 1">已结清</el-tag>
+                </template>
+            </el-table-column>
+            <el-table-column prop="isEnable" label="状态" width="80">
+                <template scope="scope">
+                   <el-tag type="warning" v-if="scope.row.isEnable==0">未启用</el-tag>
+                    <el-tag type="success" v-if="scope.row.isEnable==1">已启用</el-tag>
+                    <el-tag type="success" v-if="scope.row.isEnable==2">已启用</el-tag>
+                    <el-tag type="danger" v-if="scope.row.isEnable==3">已退款</el-tag>
+                </template>
+            </el-table-column>
+            <el-table-column prop="grade" label="操作" width="150">
+                <template scope="scope">
+                    <!-- <el-button @click="open(scope.row,'open')" type="primary" size="small"
+                               :disabled="scope.row.isEnable != 0">启用</el-button>
+                    <el-button @click="open(scope.row,'edit')" type="primary" size="small"
+                               :disabled="scope.row.isEnable != 0">续交订金</el-button>
+                    <el-button @click="del(scope.row)" type="primary" size="small"
+                               :disabled="scope.row.isPayOff == 1">删除</el-button>
+                    <el-button @click="refund(scope.row)" type="primary" size="small" :disabled="scope.row.isEnable!=0">退款</el-button> -->
+                    <el-dropdown @command="handleCommand">
+                        <el-button type="primary">操作<i class="el-icon-caret-bottom el-icon--right"></i></el-button>
+                        <el-dropdown-menu slot="dropdown">
+                            <el-dropdown-item  :command="composeValue(scope.row,0,'编辑','edit')" :disabled="scope.row.isEnable != 0&&type!='01'">编辑</el-dropdown-item>
+                            <!-- 未结清可启用 -->
+                            <el-dropdown-item :command="composeValue(scope.row,0,'启用','open')" :disabled="scope.row.isEnable != 0">启用</el-dropdown-item>
+                            <el-dropdown-item :command="composeValue(scope.row,0,'续交订金','edit')" :disabled="scope.row.isEnable == 3||scope.row.isPayOff==1">续交订金</el-dropdown-item>
+                            <el-dropdown-item :command="composeValue(scope.row,1,'','')" :disabled="scope.row.isPayOff == 1">删除</el-dropdown-item>
+                            <el-dropdown-item :command="composeValue(scope.row,2,'','')" :disabled="scope.row.isEnable!=0">退款</el-dropdown-item>
+                        </el-dropdown-menu>
+                    </el-dropdown>
+                </template>
+            </el-table-column>
+        </el-table>
+        <!-- 信息表 -->
+        <!-- 分页 -->
+        <div class="block">
+            <el-pagination
+                @size-change="handleSizeChange"
+                @current-change="handleCurrentChange"
+                :current-page="currentPage"
+                :page-sizes="[10, 20, 30, 40]"
+                :page-size="size"
+                layout="total, sizes, prev, pager, next, jumper"
+                :total="total">
+            </el-pagination>
+        </div>
+        <!-- 分页 -->
+
+        <el-dialog title="代理详情" :visible.sync="dialogFormVisible" size='' top="5%">
+            <div v-if="dialogFormVisible">
+                <agentDetail ref="detail" :detailCode="detailCode"  style="width: 920px"></agentDetail>
+            </div>
+        </el-dialog>
+        <el-dialog :title="title" :visible.sync="dialogOpen" size='' top="5%">
+            <div v-if="dialogOpen">
+                <openDialog ref="detail" :title="ope" :detailCode="detailCode" :branchCode='branchCode'  style="width: 920px" @upClose="upClose"></openDialog>
+            </div>
+        </el-dialog>
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+    import "@/style/selfCommon.less"
+    import agentDetail from "./components/agentDetail.vue"
+    import openDialog from "./components/opendialog"
+    import {GetBranchGradeAll,GetDropDownPermission,GetBranchUpgradeApply,DeleteBranchUpgradeApply,RefundUpgradeApply} from "../../../api/myData"
+    import { getStore } from '../../../config/mUtils';
+    export default {
+        // name: 'AgentManage',
+        data() {
+            return {
+                type:getStore('typeCode'),
+                title:"",
+                ope:"",//用于子组件内部区分操作类型
+                dialogOpen:false,
+                hospitalList:"",
+                hosForm:[],
+                opeMes:{},
+                loading:false,
+                referList:[],
+                baseData:"",
+                bankList:[],//004
+                eduList:[],//001
+                industryList:[],//002
+                origionList:[],//003来源
+                gradeList:[],
+                currentPage: 1,
+                detailCode:"",
+                branchCode:'',
+                dialogFormVisible:false,
+                total: 0,
+                size: 10,
+                formInline: {
+                    keywords:"",
+                    isEnable:"",
+                },
+                tableData: [],
+                loading:false,
+            }
+        },
+        computed: {
+            /* 导出报表参数 tHeader,filterVal,tableData1*/
+            // tHeader(){
+            //     return ['代理编号', '注册日期', '代理人', '联系电话', '身份证号', '来源渠道', '代理等级', '缴纳会费','已缴会费','是否结清', '缴纳押金','推荐人','状态']
+            // },
+            // filterVal(){
+            //     return ['Code', 'RegistDate', 'BranchName', 'PhoneNumber', 'IDCard','SourcWayeCode','BranchGradeName','PayAmount','RealPayAmount','IsPayOff','Pledge','ReferrerName','IsEnable']
+            // },
+            // tableData1(){
+            //     this.tableData.forEach(row=>{
+            //         if(row.RegistDate){
+            //             row.RegistDate = row.RegistDate.substring(0,10)
+            //         }else{
+            //             row.RegistDate = ""
+            //         }
+            //     })
+            //     this.tableData.push()
+            //     return this.tableData
+            // },
+            // name(){
+            //     return '代理管理'
+            // },
+            /*导出报表参数 tHeader,filterVal,tableData1*/
+        },
+        mounted: function () {
+            this.getBranchGradeAll()
+        },
+        filters:{
+            filterFun(val){
+                let num = 0
+                val.forEach(row=>{
+                    num += Number(row.Bonus)
+                })
+                return num
+            }
+        },
+        methods: {
+            composeValue(item,status,title,ope) {
+                return {
+                    'data': item,
+                    'status': status,
+                    'title':title,
+                    'ope':ope
+                }
+            },
+            handleCommand(command){
+                if(command.status == 0){
+                    this.open(command.data,command.status,command.title,command.ope)
+                }else if(command.status == 1){
+                    this.del(command.data)
+                }else if(command.status == 2){
+                    this.refund(command.data)
+                }
+            },
+            refund(data){
+                this.$confirm('是否确定进行退款操作?', '提示', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    type: 'warning'
+                }).then(() => {
+                    this.RefundUpgradeApply({id:data.id})
+                })
+            },
+            async RefundUpgradeApply(data){
+                let res = await RefundUpgradeApply(data)
+                if(res.status){
+                    this.$message({message: '退款成功', type: 'success'});
+                    this.getTableDate()
+                }else{
+                    this.$message.error('退款失败'+res.errorMessage);
+                }
+            },
+            del(data){
+                this.$confirm('确认删除此条消费商升级信息吗?', '提示', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    type: 'warning'
+                }).then(() => {
+                    this.delData({id:data.id})
+                })
+            },
+            async delData(params){
+                let res = await DeleteBranchUpgradeApply(params)
+                if(res.status){
+                    this.$message({message: '删除成功', type: 'success'});
+                    this.getTableDate()
+                }else{
+                    this.$message.error('删除失败'+res.errorMessage);
+                }
+            },
+
+            async GetBranchUpgradeApply(params){
+                this.loading = true
+                let res  =await GetBranchUpgradeApply(params)
+                this.tableData = res.data
+                this.total = res.count
+                this.loading = false
+            },
+            async getBranchGradeAll(){
+                try{
+                    let [res1,res] = await Promise.all([GetDropDownPermission({typeId: 1}),GetBranchGradeAll()])
+                    this.hospitalList = res1.data
+                    this.formInline.hospital = this.hospitalList[0].code
+                    this.gradeList = res
+                }catch(err){
+                    console.log(err)
+                }
+            },
+//            条件查询
+            async getBranchByConditions(params){
+                try{
+                    this.loading = true
+                    let res = await GetBranchByConditions(params)
+                    this.loading = false
+                    this.tableData = res
+                    this.tableData.push()
+                    if(res.length!=0){
+                        this.total = res[0].RecordCount
+                    }
+                }catch(err){
+                    console.log(err)
+                }
+            },
+
+            dateSelect(val){
+                if(val.length!=0){
+                    this.formInline.date1 = val.substring(0,10)
+                    this.formInline.date2 = val.substring(13)
+                }else{
+                    this.formInline.date1 = ""
+                    this.formInline.date2 = ""
+                }
+                
+            },
+            // 条件查询
+            onSubmit() {               
+                this.currentPage = 1
+                this.getTableDate(1)
+            },
+
+            // 分页页面展示数据条数改变触发事件
+            handleSizeChange(val) {
+                console.log(`每页 ${val} 条`);
+                this.size = val
+                this.getTableDate()
+            },
+
+            // 分页当前页码改变触发事件
+            handleCurrentChange(val) {
+                console.log(`当前页: ${val}`);
+                this.currentPage = val
+                this.getTableDate()
+            },
+
+            DetailMes(index,data){
+                this.detailCode = data[index].branchCode
+                this.dialogFormVisible = true
+            },
+//            启用
+            open(data,status,title,ope){
+                this.title = title
+                this.ope = ope
+                this.detailCode = data.id
+                this.branchCode = data.branchCode
+                this.dialogOpen = true
+            },
+             upClose(){
+                 this.dialogOpen = false
+                 this.getTableDate()
+            },
+
+            getTableDate(){
+                this.GetBranchUpgradeApply({
+                    pageIndex: this.currentPage,
+                    pageSize: this.size,
+                    keywords:this.formInline.keywords.removeSP(),
+                    isEnable:this.formInline.isEnable
+                })
+            },
+        },
+        components: {
+            agentDetail,
+            openDialog
+        }
+    }
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+    .AgentManage {
+        font-size: 12px;
+    }
+
+    .inventory {
+        margin-bottom: 10px;
+    }
+    .form_footer{
+        text-align: center
+    }
+</style>

@@ -1,0 +1,330 @@
+<template>
+    <div class=" selCommon desAssist">
+        <el-form :inline="true" :model="formInline" class="demo-form-inline form_search" label-width="80px" >
+            <el-form-item label="执行时间："  class="form_item_mt10 form_item_wh280">
+                <el-date-picker
+                    v-model="formInline.date"
+                    type="daterange"
+                    @change="dateChange"
+                    placeholder="选择日期范围">
+                </el-date-picker>
+            </el-form-item>
+             <el-form-item label="医院:" class="form_item_mt10">
+                <el-select v-model="formInline.hospital"  style='width:200px;' @change="selHos">
+                    <el-option v-for="(item,index) in hospitalList" :key="index" :label="item.supplierName" :value="item.code"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="科室:" class="form_item_mt10">
+                <el-select v-model="formInline.deptCode"  style='width:200px;'>
+                    <el-option v-for="(item,index) in deptList" :key="index" :label="item.deptName" :value="item.deptCode"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label=" " class="form_item_mt10 ">
+                <el-button type="primary" @click="onSubmit" class="searchBtn">查询</el-button>
+                <Export :tHeader="tHeader" :filterVal='filterVal'
+                        :tableData1='tableData1' :name='name'></Export>
+            </el-form-item>
+        </el-form>
+        <!-- 信息表 -->
+        <el-table :data="tableData" border style="width: 100%;margin-top:15px;margin-bottom:10px;" v-loading.body="loading"
+         show-summary class="min_table"  :summary-method="getSummaries">
+            <el-table-column prop="serviceName" label="设计师助理" min-width="50">
+                <template slot-scope="scope">
+                    <span>{{scope.row.serviceName}}</span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="RegistDate" label="第一次" min-width="50">
+                <el-table-column prop="fst_RealPrice" label="消费金额" min-width="50" align="right">
+                     <template slot-scope="scope">
+                        {{scope.row.fst_RealPrice.toQFW()}}
+                    </template>
+                </el-table-column>
+                <!-- <el-table-column prop="fst_RealPriceWu" label="无" min-width="50" align="right">
+                    <template slot-scope="scope">
+                        <span v-if="scope.row.fst_RealPriceWu == null">0</span>
+                        <span v-else>
+                            {{scope.row.fst_RealPriceWu.toQFW()}}
+                        </span>
+                    </template>
+                </el-table-column>  -->
+                <el-table-column prop="fst_RealPriceJiFen" label="积分" min-width="50" align="right">
+                   <template slot-scope="scope">
+                        {{scope.row.fst_RealPriceJiFen.toQFW()}}
+                    </template>
+                </el-table-column>
+                <el-table-column prop="fst_RealPriceZhuan" label="消转代" min-width="50" align="right">
+                    <template slot-scope="scope">
+                        {{scope.row.fst_RealPriceZhuan.toQFW()}}
+                    </template>
+                </el-table-column>
+                 <el-table-column prop="fst_RealPrice6" label="6折" min-width="50" align="right">
+                    <template slot-scope="scope">
+                        {{scope.row.fst_RealPrice6.toQFW()}}
+                    </template>
+                </el-table-column>
+                <el-table-column prop="fst_RealPrice4" label="4折" min-width="50" align="right">
+                    <template slot-scope="scope">
+                        {{scope.row.fst_RealPrice4.toQFW()}}
+                    </template>
+                </el-table-column>
+                  <el-table-column prop="fst_RealPrice2_5" label="2.5折" min-width="50" align="right">
+                    <template slot-scope="scope">
+                        {{scope.row.fst_RealPrice2_5.toQFW()}}
+                    </template>
+                </el-table-column>
+                 <el-table-column prop="fst_MPCount" label="门票" min-width="35" align="right">
+                   
+                </el-table-column>
+            </el-table-column>
+            <el-table-column prop="RegistDate" label="第二次"  min-width="50">
+               <el-table-column prop="sec_RealPrice" label="消费金额" min-width="50" align="right" >
+                  <template slot-scope="scope">
+                        {{scope.row.sec_RealPrice.toQFW()}}
+                    </template>
+                </el-table-column>
+                <!-- <el-table-column prop="sec_RealPriceWu" label="无" min-width="50" align="right">
+                    <template slot-scope="scope">
+                        <span v-if="scope.row.sec_RealPriceWu == null">0</span>
+                        <span v-else>
+                            {{scope.row.sec_RealPriceWu.toQFW()}}
+                        </span>
+                    </template>
+                </el-table-column>  -->
+                <el-table-column prop="sec_RealPriceJiFen" label="积分" min-width="50" align="right" >
+                     <template slot-scope="scope">
+                        {{scope.row.sec_RealPriceJiFen.toQFW()}}
+                    </template>
+                </el-table-column>
+                <el-table-column prop="sec_RealPriceZhuan" label="消转代" min-width="50" align="right" >
+                    <template slot-scope="scope">
+                        {{scope.row.sec_RealPriceZhuan.toQFW()}}
+                    </template>
+                </el-table-column>
+                 <el-table-column prop="sec_RealPrice6" label="6折" min-width="50" align="right" >
+                    <template slot-scope="scope">
+                        {{scope.row.sec_RealPrice6.toQFW()}}
+                    </template>
+                </el-table-column>
+                <el-table-column prop="sec_RealPrice4" label="4折" min-width="50" align="right" >
+                     <template slot-scope="scope">
+                        {{scope.row.sec_RealPrice4.toQFW()}}
+                    </template>
+                </el-table-column>
+                  <el-table-column prop="sec_RealPrice2_5" label="2.5折" min-width="50" align="right" >
+                     <template slot-scope="scope">
+                        {{scope.row.sec_RealPrice2_5.toQFW()}}
+                    </template>
+                </el-table-column>
+                <el-table-column prop="sec_MPCount" label="门票" min-width="35" align="right">
+                   
+                </el-table-column>
+            </el-table-column>
+            <el-table-column prop="RegistDate" label="第三次及以上"  min-width="50" >
+               <el-table-column prop="thr_RealPrice" label="消费金额" min-width="50" align="right" >
+                    <template slot-scope="scope">
+                        {{scope.row.thr_RealPrice.toQFW()}}
+                    </template>
+                </el-table-column>
+                <!-- <el-table-column prop="thr_RealPriceWu" label="无" min-width="50" align="right">
+                    <template slot-scope="scope">
+                        <span v-if="scope.row.thr_RealPriceWu == null">0</span>
+                        <span v-else>
+                            {{scope.row.thr_RealPriceWu.toQFW()}}
+                        </span>
+                    </template>
+                </el-table-column>  -->
+                <el-table-column prop="thr_RealPriceJiFen" label="积分" min-width="50" align="right" >
+                    <template slot-scope="scope">
+                        {{scope.row.thr_RealPriceJiFen.toQFW()}}
+                    </template>
+                </el-table-column>
+                <el-table-column prop="thr_RealPriceZhuan" label="消转代" min-width="50" align="right" >
+                   <template slot-scope="scope">
+                        {{scope.row.thr_RealPriceZhuan.toQFW()}}
+                    </template>
+                </el-table-column>
+                 <el-table-column prop="thr_RealPrice6" label="6折" min-width="50" align="right" >
+                    <template slot-scope="scope">
+                        {{scope.row.thr_RealPrice6.toQFW()}}
+                    </template>
+                </el-table-column>
+                <el-table-column prop="thr_RealPrice4" label="4折" min-width="50" align="right" >
+                    <template slot-scope="scope">
+                        {{scope.row.thr_RealPrice4.toQFW()}}
+                    </template>
+                </el-table-column>
+                  <el-table-column prop="thr_RealPrice2_5" label="2.5折" min-width="50" align="right" >
+                    <template slot-scope="scope">
+                        {{scope.row.thr_RealPrice2_5.toQFW()}}
+                    </template>
+                </el-table-column>
+                <el-table-column prop="thr_MPCount" label="门票" min-width="35" align="right">
+                   
+                </el-table-column>
+                
+            </el-table-column>
+            <el-table-column prop="amount" label="合计" min-width="75" align="right" >
+                <template slot-scope="scope">
+                        {{Math.round(scope.row.amount).toQFW()}}
+                    </template>
+            </el-table-column>
+        </el-table>
+        <!-- 信息表 -->
+        <span style="color:red">（合计数据已四舍五入）</span>
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+    import "./lib/achieve.less"
+    import "@/style/selfCommon.less"
+    import Export from '@/components/export'
+    import {GetDropDownPermission,GetDesAssistPerform,GetDeptAllByHospitalCode} from "@/api/myData"
+    export default {
+        // name:"actingLedger",
+        data () {
+            return {
+                loading:false,
+                tableData:[],
+                hospitalList:[],
+                formInline:{
+                    hospital:"",
+                    date:"",
+                    startDate:"",
+                    endDate:"",
+                    command:"",
+                    deptCode:"",
+                },
+                deptList:[],
+            }
+        },
+        computed: {
+            /* 导出报表参数 tHeader,filterVal,tableData1*/
+            tHeader(){
+                return ['设计师助理', '（第一次）消费金额', '（第一次）积分', '（第一次）消转代', '（第一次）6折', '（第一次）4折', '（第一次）2.5折', '（第一次）门票',
+                 '（第二次）消费金额', '（第二次）积分', '（第二次）消转代', '（第二次）6折', '（第二次）4折', '（第二次）2.5折', '（第二次）门票',
+                  '（第三次）消费金额', '（第三次）积分', '（第三次）消转代', '（第三次）6折', '（第三次）4折', '（第三次）2.5折', '（第三次）门票','合计']
+            },
+            filterVal(){
+                return ['serviceName', 'fst_RealPrice', 'fst_RealPrice', 'fst_RealPriceJiFen', 'fst_RealPriceZhuan','fst_RealPrice6','fst_RealPrice4','fst_RealPrice2_5','fst_MPCount',
+                   'sec_RealPrice', 'sec_RealPriceJiFen', 'sec_RealPriceZhuan', 'sec_RealPrice6', 'sec_RealPrice4', 'sec_RealPrice2_5.5折', 'sec_MPCount',
+                   'thr_RealPrice', 'thr_RealPriceJiFen', 'thr_RealPriceZhuan', 'thr_RealPrice6', 'thr_RealPrice4', 'thr_RealPrice2_5.5折', 'thr_MPCount','amount']
+            },
+            tableData1(){
+                let data = JSON.parse(JSON.stringify(this.tableData))
+                // data.forEach(row=>{
+                    
+                // })
+                return data
+            },
+            name(){
+                return '设计师助理'
+            },
+            /*导出报表参数 tHeader,filterVal,tableData1*/
+        },
+        mounted(){
+            let date = new Date()
+            date.setDate("1")
+            this.formInline.date = [date,new Date()]
+            this.GetDropDownPermission()
+        },
+        methods: {
+            async selHos(){
+                this.formInline.deptCode = ""
+                if(this.formInline.hospital.length>0){
+                    let resDep = await GetDeptAllByHospitalCode({
+                        HospitalCode:this.formInline.hospital
+                    })
+                    this.deptList = resDep.data
+                }
+            },
+            getSummaries(param) {
+                const { columns, data } = param;
+                const sums = [];
+                columns.forEach((column, index) => {
+                    if (index === 0) {
+                        sums[index] = '合计';
+                        return;
+                    }
+                    const values = data.map(item => Number(item[column.property]));
+                    if (!values.every(value => isNaN(value))) {
+                        sums[index] = values.reduce((prev, curr) => {
+                            const value = Number(curr);
+                            if (!isNaN(value)) {
+                                return prev.add(curr) ;
+                            } else {
+                                return prev;
+                            }
+                        }, 0);
+                        sums[index] = Math.round(sums[index]).toQFW();
+                    } else {
+                        sums[index] = "";
+                    }
+                });
+
+                return sums;
+            },
+            
+            dateChange(val){
+                if(val){
+                    val = val.formatDates()
+                    this.formInline.startDate = val.substring(0,10)
+                    this.formInline.endDate = val.substring(13)
+                }else{
+                    this.formInline.startDate = ""
+                    this.formInline.endDate = ""
+                }
+                // this.onSubmit()
+            },
+            async GetDropDownPermission(){
+                let res = await GetDropDownPermission({typeId: 1})
+                this.hospitalList = res.data
+                this.formInline.hospital = res.data[0].code
+                // this.search()
+            },
+        
+            onSubmit(){
+                this.currentPage = 1
+                this.search()
+            },
+             async GetDesAssistPerform(params){
+                let res = await GetDesAssistPerform(params)
+                this.loading = false
+                if(res.status){
+                     this.tableData = this.getAmount(res.data)
+                }else{
+                    this.$message({ type: 'warning', message: '添加失败!'+res.errorMessage })
+                }
+            
+            },
+            getAmount(data){
+                data.forEach(row => {
+                    
+                    row.fst_RealPrice = row.fst_RealPrice.add(row.fst_RealPriceWu)
+                    row.sec_RealPrice = row.sec_RealPrice.add(row.sec_RealPriceWu)
+                    row.thr_RealPrice = row.thr_RealPrice.add(row.thr_RealPriceWu)
+                    row.amount = row.fst_RealPrice + row.fst_RealPriceJiFen + row.fst_RealPriceZhuan + row.fst_RealPrice6 + row.fst_RealPrice4 +  row.fst_RealPrice2_5 + row.fst_MPCount +
+                                 row.sec_RealPrice + row.sec_RealPriceJiFen + row.sec_RealPriceZhuan + row.sec_RealPrice6 + row.sec_RealPrice4 +  row.sec_RealPrice2_5 + row.sec_MPCount +
+                                 row.thr_RealPrice + row.thr_RealPriceJiFen + row.thr_RealPriceZhuan + row.thr_RealPrice6 + row.thr_RealPrice4 +  row.thr_RealPrice2_5 + row.thr_MPCount 
+                });
+                return data
+            },
+            search(){
+                this.loading = true
+                this.GetDesAssistPerform({  
+                     HospitalId:this.formInline.hospital,
+                    StartDate:this.formInline.startDate,
+                    endDate:this.formInline.endDate,
+                    commandState:this.formInline.command,
+                    deptCode:this.formInline.deptCode
+                })
+            }
+        },
+        components: {
+            Export
+        }
+    }
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+</style>

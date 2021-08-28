@@ -1,0 +1,175 @@
+<template>
+    <div class="settled selCommon">
+        <el-form :inline="true" :model="formInline" class="demo-form-inline form_search" label-width="80px">
+            <el-form-item label="日期："  class="form_item_mt10 ">
+                <el-date-picker
+                    v-model="date"
+                    type="daterange"
+                    @change="dateChange"
+                    placeholder="选择日期范围">
+                </el-date-picker>
+            </el-form-item>
+            <el-form-item label="医院：" class="form_item_mt10">
+                <el-select v-model="formInline.Hospital"  style='width:200px;' @change="search">
+                    <el-option v-for="(item,index) in HospitalList" :key="index" :label="item.supplierName" :value="item.code"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="支付类型：" class="form_item_mt10">
+                <el-select v-model="formInline.payType"  style='width:200px;' @change="search">
+                    <el-option v-for="(item,index) in payTypeList" :key="index" :label="item.DataName" :value="item.DataCode"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="关键字：" class="form_item_mt10">
+                <el-input v-model="formInline.keyWords" style='width:200px;'></el-input>
+            </el-form-item>
+            <el-form-item label=" " class="form_item_mt10 form_item_wh280">
+                <el-button type="primary" @click="search" class="searchBtn">查询</el-button>
+            </el-form-item>
+        </el-form>
+        <el-table :data="tableData" border style="width: 100%;margin-top:15px;margin-bottom:10px;" max-height="640"  
+            show-summary  class="min_table smt" v-loading="loading" :summary-method="getSummaries">
+            <el-table-column prop="customerName" min-width="120" label="消费商" ></el-table-column>
+            <el-table-column prop="fxCode" min-width="120" label="单号" ></el-table-column>
+            <el-table-column prop="payTypeName" min-width="120" label="支付方式" ></el-table-column>
+            <el-table-column prop="realAmount" label="支付金额" min-width="150" align="right" sortable>
+                <template scope="scope">
+                    {{scope.row.realAmount.toQFW()}}
+                </template>
+            </el-table-column>
+            <el-table-column prop="receiveAccount" min-width="120" label="收款账户" ></el-table-column>
+        </el-table>
+        <!-- 分页 -->
+        <div class="block">
+            <el-pagination
+                 @size-change="handleSizeChange"
+                 @current-change="handleCurrentChange"
+                 :current-page="currentPage"
+                 :page-sizes="[10, 30, 50, 100]"
+                 :page-size="size"
+                 layout="total, sizes, prev, pager, next, jumper"
+                 :total="total">
+             </el-pagination>
+            <!-- 共{{total}}条数据 -->
+        </div>
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+    import {GetEveryDayPayAmount,GetDropDownPermission,GetEveryDayPayAmountDetail,GetPayTypeDetail,getBaseDataByCode} from "@/api/myData"
+    import "@/style/selfCommon.less"
+    export default {
+        data () {
+            return {
+                date:"",
+                mes:{},
+                dialogFormVisible:false,
+                total:0,
+                size:10,
+                currentPage:1,
+                HospitalList:[],
+                branchList:[],
+                formInline: {
+                    branch:"",
+                    Hospital:"",
+                    startDate:"",
+                    endDate:"",
+                    type:"",
+                    payType:'',
+                    keyWords:'',
+                },
+                payTypeList:[],
+                agentList:[],
+                tableData:[],
+                loading:false,
+                title:"",
+                totalAmount:0,
+                allData:[],
+            }
+        },
+        computed: {
+
+        },
+       
+        mounted(){
+            let date1 = new Date()
+            date1.setDate(1)
+            this.date = [date1,new Date()]
+            this.getSupplierByPage()
+        },
+        methods: {
+            getSummaries(param) {
+                return ['综总合计：','','',Math.round(this.totalAmount),''];
+            },
+            dateChange(val){
+                if(val){
+                    this.formInline.startDate = val.substring(0,10)
+                    this.formInline.endDate = val.substring(13)
+                }else{
+                    this.formInline.startDate = ""
+                    this.formInline.endDate = ""
+                }
+                
+            },
+            async GetEveryDayPayAmount(params){
+                try {
+                    let res = await GetPayTypeDetail(params)
+                    this.loading = false
+                    this.total = res.count
+
+                    res.data.forEach(row=>{
+                        this.totalAmount += row.realAmount
+                    })
+                    this.allData = res.data
+                    this.getPage()
+                } catch (err) {
+                    console.log(err)
+                }
+            },
+            async getSupplierByPage(){
+                let res0 = await GetDropDownPermission({typeId:2})
+                this.branchList = res0.data
+                this.formInline.branch = res0.data[0].code
+                let res = await GetDropDownPermission({typeId:1})
+                this.formInline.Hospital = res.data[0].code
+                this.HospitalList = res.data
+                this.payTypeList = await getBaseDataByCode("0006")
+                this.formInline.payType = this.payTypeList[0].DataCode
+            },
+            search(){
+                this.currentPage = 1
+                this.submit()
+            },
+            submit(){
+                this.totalAmount = 0
+                this.loading = true
+                this.GetEveryDayPayAmount({
+                   StartPayDate :this.formInline.startDate,
+                   EndPayDate:this.formInline.endDate,
+                   Keywords:this.formInline.keyWords,
+                   payType:this.formInline.payType,
+                   hospitalId:this.formInline.Hospital,
+                })
+            },
+
+            handleSizeChange(val) {
+                this.size = val
+                this.getPage()
+             },
+             handleCurrentChange(val) {
+                this.currentPage = val
+                this.getPage()
+             },
+            getPage(){
+                 this.tableData = this.allData.slice((this.currentPage-1)*this.size,this.currentPage*this.size)
+            },
+        },
+        components: {
+        
+        }
+    }
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+
+</style>

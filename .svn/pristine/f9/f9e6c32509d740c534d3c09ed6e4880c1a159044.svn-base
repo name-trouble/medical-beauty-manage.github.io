@@ -1,0 +1,540 @@
+<template>
+    <div class="reportManage">
+        <div>
+            <p style="font-size:16px;font-weight:bold">项目信息</p>
+            <div class="flex-box">
+                <div class="flex-item">
+                    <el-form label-position="right" label-width="120px" :model="formData" ref="formAdd1">
+                        <el-form-item label="订单日期：" class="form_item_mt0">
+                            <span>{{ formData.OrderDate.substring(0,10) }} </span>
+                        </el-form-item>
+
+                        <el-form-item label="类型：" class="form_item_mt0">
+                            <span>{{ formData.ConsumeTypeName }}</span>
+                        </el-form-item>
+
+                        <el-form-item label="客户：" class="form_item_mt0">
+                            <span>{{ formData.customerName }}[{{formData.customerId}}]</span>
+                        </el-form-item>
+
+                        <el-form-item label="项目：" class="form_item_mt0">
+                            <span>{{ formData.projectName }}</span>
+
+                        </el-form-item>
+                        <el-form-item label="项目类型：" class="form_item_mt0">
+                            <span v-if="formData.projectType == 0">年卡/疗程</span>
+                            <span v-if="formData.projectType == 1">单次</span>
+                        </el-form-item>
+
+                        <el-form-item label="疗程：" prop="refrenceBranchCode" class="form_item_mt0">
+                            <span>{{ formData.course }}</span>
+                        </el-form-item>
+
+                        <!-- <el-form-item label="医生：" prop="serviceManName" class="form_item_mt0">
+                            <span v-show="formData.serviceManId!=''">{{ formData.serviceManName +'[' + formData.serviceManId +']' }}</span>
+                        </el-form-item> -->
+
+                        <el-form-item label="医院：" prop="hospitalName" class="form_item_mt0">
+                            <span>{{ formData.hospitalName }}</span>
+                        </el-form-item>
+
+                        <el-form-item label="咨询师：" class="form_item_mt0">
+                            <span>{{ formData.MarketConsultantName}}</span>
+                            <span v-if="formData.MarketConsultantCode">[{{formData.MarketConsultantCode}}]</span>
+                        </el-form-item>
+
+                        <el-form-item label="设计师：" prop="refrenceBranchCode" class="form_item_mt0">
+                            <span>{{ formData.designerName }}</span>
+                        </el-form-item>
+                         <el-form-item label="实际价格：" prop="refrenceBranchCode" class="form_item_mt10" v-if="serTypeCode!='001'&&serTypeCode!='003'">
+                            <span>{{ formData.RealPrice }}</span>
+                        </el-form-item>
+                        
+                    </el-form>
+                </div>
+
+                <div class="flex-item">
+                    <el-form label-position="right" label-width="120px" :model="formData" ref="formAdd2">
+                        <el-form-item label="订单编号" class="form_item_mt0">
+                            <span>{{formData.fxCode}}</span>
+                        </el-form-item>
+                        <el-form-item label="支付类型：" class="form_item_mt0">
+                            <span>{{ formData.MedicalTypeName }}</span>
+                        </el-form-item>
+                        <el-form-item label="纸质单号：" prop="formNO" class="form_item_mt0">
+                            <span>{{ formData.formNO }}</span>
+                        </el-form-item>
+                        <el-form-item label="推荐人：" prop="refrenceBranchCode" class="form_item_mt0">
+                            <div v-show="formData.refrenceBranchCode!==''">{{ formData.refrenceBranchName +'[' + formData.refrenceBranchCode +']' }}
+                                <span v-if="formData.RefrenceBranchTags">({{formData.RefrenceBranchTags}})</span>
+                            </div>
+                            <div>医院：{{formData.RefrenceHospitalName}}</div>
+                        </el-form-item>
+
+                        <el-form-item label="规格：" class="form_item_mt0">
+                            <span>{{ formData.goodsUnitName}}</span>
+                        </el-form-item>
+
+                        <el-form-item label="项目价格：" prop="price" class="form_item_mt0">
+                            <span v-show="formData.price!=''">
+                                <span style="font-size:15px;color:black">￥</span>{{ formData.price }}</span>
+                        </el-form-item>
+
+                        <el-form-item label="专家费：" prop="serviceFare" class="form_item_mt0">
+                            <span v-show="formData.serviceFare!=''">{{ formData.serviceFare }}元</span>
+                        </el-form-item>
+
+                        <el-form-item label="医生助理：" prop="doctorAssist" class="form_item_mt0">
+                            <span>{{ formData.doctorAssistName }}</span>
+                        </el-form-item>
+
+                        <el-form-item label="设计师助理：" prop="designerAssist" class="form_item_mt0">
+                            <span>{{ formData.designerAssistName }}</span>
+                        </el-form-item>
+                        <el-form-item label="订单来源：" prop="designerAssist" class="form_item_mt0">
+                            <span v-text="formData.orderType==1?'app订单':'线下订单'"></span>
+                        </el-form-item>
+                    </el-form>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex-box" style="margin-top:-30px" v-if="serTypeCode!='001'&&serTypeCode!='003'">
+            <div class="flex-item" style="margin:20px 0px 0 30px;padding-left:30px;flex:0 100%">
+                <el-table :data="attachList" border min-width="500">
+                    <el-table-column type="index" label="序号" width="70">
+                    </el-table-column>
+
+                    <el-table-column prop="ProofDesc" label="附加项名称" min-width="60"></el-table-column>
+
+                    <el-table-column prop="TypeName" label="费用类型" min-width="60"></el-table-column>
+
+                    <el-table-column prop="Amount" label="单价" min-width="60">
+                        ￥{{ formData.Amount }}
+                    </el-table-column>
+
+                    <el-table-column prop="Quantity" label="数量" min-width="60"></el-table-column>
+
+                    <el-table-column prop="Course" label="总期数" min-width="65"></el-table-column>
+                        <el-table-column prop="CurrentCourse" label="支付期数" min-width="65"></el-table-column>
+                        <el-table-column prop="SubTotal" label="总额" min-width="65">
+                            ￥{{ formData.SubTotal }}
+                        </el-table-column>
+                        <el-table-column prop="StageAmount" label="分期总额" min-width="65"></el-table-column>
+
+                    <el-table-column prop="IsEffective" label="是否提成">
+                        <template scope="scope">
+                            <span v-if="scope.row.IsEffective">是</span>
+                            <span v-else>否</span>
+                        </template>
+                    </el-table-column>
+                </el-table>
+
+                <p v-if="formData.OrderAmount!=''" style="margin: 10px 0" >订单金额: ￥{{formData.OrderAmount}} </p>
+            </div>
+        </div>
+
+        <div v-if="serTypeCode!='001'&&serTypeCode!='003'">
+            <p style="font-size:16px;font-weight:bold">支付信息</p>
+            <div class="flex-box">
+                <div class="flex-item" style="margin:10px 0px 0 30px;padding-left:30px;flex:0 100%">
+                    <el-table :data="payInfoList" border min-width="500">
+                        <el-table-column type="index" label="序号" width="70">
+                        </el-table-column>
+                        <el-table-column prop="PayTypeName" label="支付方式" min-width="100">
+                            <template scope="scope">
+                                <span>{{scope.row.PayTypeName}}</span>
+                                <span v-if="scope.row.PayType == '009'">{{scope.row.TypeId|filterTypeId}}</span>
+                              </template>
+                        </el-table-column>
+                        <el-table-column prop="OnlineOrderCode" label="app订单号" min-width="80"></el-table-column>
+                        <el-table-column prop="PayDate" label="支付日期" min-width="110">
+                            <template scope="scope">
+                                <span v-if="scope.row.PayDate">{{scope.row.PayDate.substring(0,10)}} {{scope.row.PayDate.substring(11,19)}}</span>
+                            </template>
+                        </el-table-column>
+                        <el-table-column prop="TicketsCode" label="券号" min-width="110"></el-table-column>
+                        <el-table-column prop="ReceiveAccount" label="收款账户" min-width="110"></el-table-column>
+                        <el-table-column prop="RealAmount" label="支付金额" min-width="120">
+                            <template scope="scope">
+                                <span v-if="scope.row.RealAmount">
+                                    {{scope.row.RealAmount.toQFW()}}
+                                </span>
+                            </template>
+                        </el-table-column>
+                        
+                         <el-table-column prop="Memo" label="备注" min-width="120" show-overflow-tooltip></el-table-column>
+                    </el-table>
+                    <div style="margin: 5px">
+                        尾款金额：{{Retainage}}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div>
+            <p style="font-size:16px;font-weight:bold">执行信息</p>
+            <div class="flex-box">
+                <div class="flex-item" style="margin:10px 0px 0 30px;padding-left:30px;flex:0 100%">
+                    <el-table :data="commandList" border min-width="500">
+                        <el-table-column type="index" label="序号" width="70"></el-table-column>
+                        <el-table-column prop="DoctorName" label="执行医生" min-width="100"></el-table-column>
+                        <el-table-column prop="NurseName" label="执行护士" min-width="100"></el-table-column>
+                        <el-table-column prop="DoctorAssistName" label="医生助理" min-width="100"></el-table-column>
+                        <el-table-column prop="ExecDate" label="执行时间" min-width="100">
+                            <template scope="scope">
+                                <span v-if="scope.row.ExecDate">
+                                    {{scope.row.ExecDate.substring(0,10)}}
+                                </span>
+                            </template>
+                        </el-table-column>
+                        <el-table-column prop="Memo" label="备注" min-width="170" show-overflow-tooltip></el-table-column>
+                    </el-table>
+                </div>
+            </div>
+        </div>
+        <div v-if="formData.ConsumeTypeId =='7'">
+            <p style="font-size:16px;font-weight:bold">返款信息</p>
+            <div class="flex-box">
+                <div class="flex-item" style="margin:10px 0px 0 30px;padding-left:30px;flex:0 100%">
+                    <el-table :data="refundList" border min-width="500">
+                        <el-table-column type="createOn" label="返款时间" min-width="100">
+                            <template scope="scope">
+                                <span v-if="scope.row.createOn">{{scope.row.createOn.substring(0,10)}}</span>
+                            </template>
+                        </el-table-column>
+                        <el-table-column prop="payType" label="返款方式" min-width="100">
+                            <template scope="scope">
+                                <span v-if="scope.row.payType == '001'">现金</span>
+                                <span v-if="scope.row.payType == '009'">积分</span>
+                                <span v-if="scope.row.payType == '008'">卡券</span>
+                                <span v-if="scope.row.payType == '018'">预付款</span>
+                            </template>
+                        </el-table-column>
+                        <el-table-column prop="worthAmount" label="返款金额" min-width="100"></el-table-column>
+                        <el-table-column prop="pointAmount" label="返款积分" min-width="100"></el-table-column>
+                        
+                        <el-table-column prop="ticketsCode" label="返款券号" min-width="100"></el-table-column>
+                        <el-table-column prop="createBy" label="操作人" min-width="100"></el-table-column>
+                        <el-table-column prop="memo" label="备注" min-width="150" show-overflow-tooltip></el-table-column>
+                    </el-table>
+                </div>
+            </div>
+        </div>
+        <div  v-if="serTypeCode!='001'&&serTypeCode!='003'">
+            <p style="font-size:16px;font-weight:bold">退款信息</p>
+            <div class="flex-box">
+                <div class="flex-item" style="margin:10px 0px 0 30px;padding-left:30px;flex:0 100%">
+                    <el-table :data="backList" border min-width="500">
+                        <el-table-column type="createOn" label="退款时间" min-width="100">
+                            <template scope="scope">
+                                <span v-if="scope.row.createOn">{{scope.row.createOn.substring(0,10)}}</span>
+                            </template>
+                        </el-table-column>
+                        <el-table-column prop="payType" label="退款方式" min-width="110">
+                            <template scope="scope">
+                                <span v-if="scope.row.payType == '001'">现金</span>
+                                <span v-if="scope.row.payType == '009'">积分</span>
+                                <span v-if="scope.row.payType == '008'">卡券</span>
+                                <span v-if="scope.row.payType == '018'">预付款</span>
+                            </template>
+                        </el-table-column>
+                        <el-table-column prop="ticketsCode" label="退款券号" min-width="110"></el-table-column>
+                        <el-table-column prop="refundAmount" label="退款金额" min-width="120"></el-table-column>
+                        <el-table-column prop="createBy" label="操作人" min-width="110"></el-table-column>
+                        <el-table-column prop="memo" label="备注" min-width="200" show-overflow-tooltip></el-table-column>
+                    </el-table>
+                </div>
+            </div>
+        </div>
+        <div>
+            <p style="font-size:16px;font-weight:bold">其它信息</p>
+            <div class="foot-div">
+                <el-form label-position="right" label-width="120px" :model="formData" ref="formAdd3">
+                    <el-form-item label="错误信息："  class=" form_item_mt10">
+                          <el-table :data="errorList" border min-width="500">
+                            <el-table-column type="index" label="" min-width="70"></el-table-column>
+                            <el-table-column prop="recordName" label="录单人" min-width="110"></el-table-column>
+                            <el-table-column prop="errorReason" label="错误原因" min-width="110"></el-table-column>
+                            <el-table-column prop="approverName" label="审核人" min-width="110"></el-table-column>
+                            <el-table-column prop="approverDate" label="审核时间" min-width="110">
+                               <template scope="scope">
+                                 <span v-if="scope.row.approverDate">
+                                   {{scope.row.approverDate.substring(0,10)}}
+                                 </span>
+                                </template>
+                            </el-table-column>
+                        </el-table>
+                    </el-form-item>
+                    <el-form-item label="备注：">
+                        <el-input :disabled="true" v-model="formData.Memo" type="textarea" :rows="2"></el-input>
+                    </el-form-item>
+                    <el-form-item label="图片">
+                            <img v-for="(item,$index) in fileList" :key="$index" width="100" height="" :src="item.url" @click="viewPhoto(item.url)">
+                    </el-form-item>
+                </el-form>
+            </div>
+        </div>
+        <el-dialog title="查看图片"  :visible.sync="photoDialog" :modal="false" size="" top="40%">
+            <img :src="dialogImg" width="600"  alt="">
+        </el-dialog>
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+import { baseImgPath } from '@/config/env'
+import { getBaseDataByCode, GetBaseDataAll,getProofOrderDetail,GetProofOrderErrorByFxCode ,GetCashOutList,GetProofOrderRefundList,GetBranchByCode} from '@/api/myData'
+import { getCookie } from '../../../../config/mUtils';
+export default {
+    props: {
+        data: Object
+    },
+    data() {
+        return {
+            fileList: [],
+            formData: {
+                MedicalTypeId:"",
+                OrderDate: "",  //订单日期
+                formNO: "",  //单号
+                customerId: "",
+                customerName: "",
+
+                refrenceBranchCode: "",   //推荐人 branchCode
+                refrenceBranchName: "",
+
+                projectId: "",
+                projectName: "",
+
+                goodsUnitId: "", //商品规格
+                goodsUnitName: "",
+
+                OrderAmount:0,
+
+                hospitalId: "",  //医院信息
+                hospitalName: "",
+
+                serviceManId: "",  //服务者信息
+                serviceManName: "",
+
+                designer: "",    //设计师
+                designerName: "",
+
+                designerAssist: "", //设计师助理
+                designerAssistName: "",
+
+                doctorAssist: "",   //医生助理
+                doctorAssistName: "",
+
+                price: '', //项目价格
+                course: '',  //项目疗程
+
+                //currentCourse: 1, //当前疗程
+                serviceFare: '',   //专家费比例
+                Memo: "",   //	备注
+                RealAmount: "", //  实际支付金额 = 项目金额 + 医生服务费 + 附加费用
+                ConsumeTypeId: "", //  提成类型
+                ConsumeTypeName: "",
+                RefrenceHospitalName:"",
+            },
+            baseImgPath,//配置文件读取路径
+            attachList: [],  //附加信息 列表
+            payInfoList: [], //支付信息列表，
+            commandList:[],//执行信息
+            errorList:[],//错误信息
+            refundList:[],//返款信息
+            backList:[],
+            MedicalTypeList:[],
+            typeList:[],
+            imgList:[],
+            dialogImg:'',
+            photoDialog:false,
+            serTypeCode:getCookie("serTypeCode"),//当前用户职位 护士医生限制查看某些内容
+        }
+    },
+
+    created() {
+        // this.initAll()
+        let code = ""
+        
+        if(this.data.FxCode){
+            code = this.data.FxCode
+        }else{
+
+            code = this.data.fxCode
+        }
+        this.getDetail(code)
+    },
+
+    computed:{
+        Retainage(){
+            let num = this.formData.OrderAmount
+            if(this.payInfoList.length>0){
+                this.payInfoList.forEach(row=>{
+                    
+                    num = (Number(row.RealAmount)).red(Number(num))
+                    
+                })
+            }
+            return num
+        },
+    },
+    filters: {
+        filterTypeId: function (value) {
+        switch(value){
+            case 2: return '医院积分';
+            case 3: return '纹绣积分';
+            case 4: return '皮肤科积分';
+        }
+        }
+    },
+
+    methods: {
+        viewPhoto(url){
+            
+            this.dialogImg = url
+            this.photoDialog = true
+        },
+        //获取列表
+        async getDetail(fxCode) {//payTypes
+        
+            let [error,baseDataList,res,refund,back] = await Promise.all([GetProofOrderErrorByFxCode({fxCode:fxCode}),GetBaseDataAll(),
+            getProofOrderDetail(fxCode),GetCashOutList({fxcode:fxCode}),GetProofOrderRefundList({fxcode:fxCode})])
+            this.errorList = error.data
+            let payTypes = []
+            baseDataList.forEach(ele=>{
+                if(ele.BusinessCode == '0017'){
+                    this.typeList.push(ele)
+                }
+                if(ele.BusinessCode == '0022'){
+                    this.MedicalTypeList.push(ele)
+                }
+                if(ele.BusinessCode == '0006'){
+                    payTypes.push(ele)
+                }
+            })
+            if(back.status){
+                this.backList = back.data
+            }
+            if(refund.status){
+                this.refundList = refund.data.orderCashOutList
+            }
+            this.initAll(res.ProofOrder)
+            let imgs = ["ImgUrl1", "ImgUrl2", "ImgUrl3", "ImgUrl4", "ImgUrl5"];
+            imgs.forEach((ele,index)=>{
+                if(res.ProofOrder[imgs[index]]){
+                    this.imgList.push(baseImgPath+res.ProofOrder[imgs[index]])
+                }
+            })
+            console.log(this.imgList)
+            this.commandList = res.OrderCommandList
+            if (res.ProofOrderExtList && res.ProofOrderExtList.length > 0) {  // 附加费用信息 列表
+                this.attachList = res.ProofOrderExtList
+            }
+            if (res.ProofOrderPayList && res.ProofOrderPayList.length > 0) {  //支付信息 列表
+                for (let item of res.ProofOrderPayList) {
+                    for (let data of payTypes) {
+                        if (item.PayType === data.DataCode) {
+                            item.PayTypeName = data.DataName
+                        }
+                    }
+                }
+                this.payInfoList = res.ProofOrderPayList
+            }
+        },
+
+        getName(id,typeList){
+            
+                for (let item of typeList) {
+                    if (item.DataCode == id) {
+                        return item.DataName
+                    }
+                }
+        },
+        
+
+        initAll(data) {
+            let res = data
+            
+            this.formData = {
+                projectType:res.ProjectType,
+                OrderDate: res.OrderDate,  //订单日期
+                fxCode: res.FxCode,
+                Id: res.Id,
+                ConsumeTypeId:res.ConsumeTypeId,
+                ConsumeTypeName:this.getName(res.ConsumeTypeId,this.typeList),
+                MedicalTypeName:this.getName(res.MedicalTypeId,this.MedicalTypeList),
+                formNO: res.FormNO, //单号
+                customerId: res.CustomerId,
+                customerName: res.CustomerName,
+                refrenceBranchCode: res.RefrenceBranchCode? res.RefrenceBranchCode:"",//推荐人 branchCode
+                refrenceBranchName: res.RefrenceBranchName? res.RefrenceBranchName:"",
+                RefrenceBranchTags:res.RefrenceBranchTags?res.RefrenceBranchTags:"",
+                projectId: res.ProjectId,
+                projectName: res.ProjectName,
+                hospitalId: res.HospitalId, //医院信息
+                hospitalName: res.HospitalName,
+                serviceManId: res.ServiceManId, //服务者信息
+                serviceManName: res.ServiceManName,
+                designer: res.Designer || "",   //设计师
+                OrderAmount:res.OrderAmount,
+                designerName: res.DesignerName || "",
+                designerAssist: res.DesignerAssist || "",  //设计师助理
+                designerAssistName: res.DesignerAssistName || "",
+                doctorAssist: res.DoctorAssist || "",  //医生助理
+                doctorAssistName: res.DoctorAssistName || "",
+                price: res.Price, //项目价格
+                course: res.Course,   //项目疗程
+                goodsUnitId: res.GoodsUnitId + "", //商品规格
+                goodsUnitName: res.GoodsUnitName, //商品规格
+                serviceFare: res.ServiceFare + '',   //服务费比例
+                Memo: res.Memo || "",  //	备注
+                RealAmount: res.RealAmount, //  实际支付金额 = 项目金额 + 医生服务费 + 附加费用
+                MarketConsultantName:res.MarketConsultantName,
+                MarketConsultantCode:res.MarketConsultantCode,
+                RealPrice:res.RealPrice,
+                RefrenceHospitalName:"",
+                orderType:res.OrderType,
+            }
+            for (let i = 1; i <= 5; i++) {
+                if (res['ImgUrl' + i] && res['ImgUrl' + i] !== '') {
+                    let obj = { name: 'ImgUrl' + i, url: baseImgPath + res['ImgUrl' + i] }
+                    this.fileList.push(obj)
+                }
+            }
+            this.GetBranchByCode(res.RefrenceBranchCode)
+        },
+        async GetBranchByCode(code,type){
+            let res = await GetBranchByCode({ branchcode:code})
+            this.formData.RefrenceHospitalName = res.Branch.HospitalName?res.Branch.HospitalName:""
+        },
+    }
+}
+</script>
+
+<style scoped lang="less">
+.flex-box {
+    display: flex;
+    flex-wrap: wrap; //justify-content: center;
+    width: 100%; //height: 300px;
+    margin-bottom: 5px; //padding-right: 30px;
+    background: rgb(249, 249, 249);
+    .flex-item {
+        flex: 0 50%;
+        margin-top: 10px;
+    }
+}
+
+.foot-div {
+    background: rgb(249, 249, 249);
+}
+
+.reportManage {
+    font-size: 12px;
+    position: relative;
+    // height: 800px;
+    margin: 0;
+    padding: 0;
+    overflow: auto;
+}
+</style>
+

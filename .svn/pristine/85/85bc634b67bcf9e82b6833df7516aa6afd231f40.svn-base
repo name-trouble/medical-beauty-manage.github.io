@@ -1,0 +1,496 @@
+<template>
+    <div class="ConsumeDiscount selCommon">
+        <ul style="margin-bottom: 20px">
+            <li class="shelve" :class="{'active':currentIndex===0}" @click="select(0)">总代理折扣</li>
+            <li class="shelve" :class="{'active':currentIndex===1}" @click="select(1)">默认折扣</li>
+        </ul>
+        <div v-show="currentIndex == 0">
+            <el-form :inline="true" :model="formInline" class="" label-width="90px" style='background:#f9f9f9;padding-top:10px;margin-bottom: 20px'>
+                <el-form-item label="总代理：">
+                    <el-input v-model="formInline.name" placeholder=""  v-on:keyup.enter.native="onSubmit"></el-input>
+                </el-form-item>
+                <el-form-item label="等级序号：">
+                    <el-select placeholder="请选择" v-model="formInline.grade" @change="onSubmit">
+                        <el-option value="" label="全部"></el-option>
+                        <el-option v-for="(item,index) in gradeList" :label="item" :value="item" :key="index"></el-option>
+                    </el-select>
+                </el-form-item>
+                <el-form-item>
+                    <el-button type="primary" @click="onSubmit" class="searchBtn">查询</el-button>
+                </el-form-item>
+            </el-form>
+            <el-table :data="tableData" border style="width: 1200px" height="500">
+                <el-table-column prop="BranchCode" label="总代编号" min-width="120"></el-table-column>
+                <el-table-column prop="BranchName" label="总代" min-width="120"></el-table-column>
+                <el-table-column prop="OrderNum" label="等级序号" min-width="100"></el-table-column>
+                <el-table-column prop="Price" label="等级" min-width="120">
+                    <template scope="scope">
+                        {{scope.row.GradeName}}
+                    </template>
+                </el-table-column>
+                <el-table-column prop="Price" label="价格" min-width="120"></el-table-column>
+                <el-table-column prop="Pledge" label="押金" min-width="120"></el-table-column>
+                <el-table-column prop="Discount" label="进货折扣" min-width="120"></el-table-column>
+                <el-table-column prop="StockPrice" label="进货价格" min-width="120"></el-table-column>
+                <el-table-column label="操作" min-width="130">
+                    <template scope="scope">
+                        <el-button @click="edit(scope.$index,tableData)" type="primary" size="small">修改折扣</el-button>
+                       <!-- <el-button @click="deleteRow(scope.$index,tableData)" type="text" size="small">删除</el-button>-->
+                    </template>
+                </el-table-column>
+            </el-table>
+            <el-button type="primary" @click="add" style="float: left;margin-top: 20px">添加总代理</el-button>
+            <div class="block" style="float: left;margin-top: 20px">
+                <el-pagination
+                    @size-change="handleSizeChange"
+                    @current-change="handleCurrentChange"
+                    :current-page="currentPage"
+                    :page-sizes="[10, 20, 30, 40]"
+                    :page-size="pageSize"
+                    layout="total, sizes, prev, pager, next, jumper"
+                    :total="total">
+                </el-pagination>
+            </div>
+        </div>
+        <div v-show="currentIndex == 1">
+            <el-table :data="defaultData" border style="width: 750px">
+                <el-table-column prop="OrderNum" label="等级序号" min-width="120"></el-table-column>
+                <el-table-column prop="Price" label="等级" min-width="120">
+                    <template scope="scope">
+                        {{scope.row.GradeName}}
+                    </template>
+                </el-table-column>
+                <el-table-column prop="Price" label="价格" min-width="120">
+                    <template scope="scope">
+                        <el-input v-model="scope.row.Price" @change="numberCheck(scope.row.Price,defaultData,scope.$index)"></el-input>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="Pledge" label="押金" min-width="120">
+                    <template scope="scope">
+                        <el-input v-model="scope.row.Pledge" @change="numberCheck(scope.row.Pledge,defaultData,scope.$index)"></el-input>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="Discount" label="进货折扣" min-width="120">
+                    <template scope="scope">
+                        <el-input v-model="scope.row.Discount" @change="numberCheck(scope.row.Discount,defaultData,scope.$index)"></el-input>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="StockPrice" label="进货价格" min-width="120">
+                    <template scope="scope">
+                        <el-input v-model="scope.row.StockPrice" @change="numberCheck(scope.row.Discount,defaultData,scope.$index)"></el-input>
+                    </template>
+                </el-table-column>
+            </el-table>
+            <el-button @click="saveDefault" type="primary" style="margin-top: 10px">保存</el-button>
+        </div>
+        <!--编辑弹窗-->
+        <el-dialog title="修改折扣" :visible.sync="dialogFormVisible" size="">
+            <el-form :model="form" style="width:350px;">
+                <el-form-item label="总代理：" :label-width="formLabelWidth" class="dialog_form_item">
+                    <span>{{form.BranchName}}</span>
+                </el-form-item>
+                <el-form-item label="等级序号：" :label-width="formLabelWidth" class="dialog_form_item">
+                    <span>{{form.OrderNum}}</span>
+                </el-form-item>
+                <el-table-column prop="Price" label="等级" min-width="120">
+                    <template scope="scope">
+                        {{scope.row.GradeName}}
+                    </template>
+                </el-table-column>
+                <el-form-item label="金额：" :label-width="formLabelWidth" class="dialog_form_item">
+                    <el-input v-model="form.Price" style="width: 200px"></el-input>
+                </el-form-item>
+                <el-form-item label="押金：" :label-width="formLabelWidth" class="dialog_form_item">
+                    <el-input v-model="form.Pledge" auto-complete="off" style="width: 200px"></el-input>
+                </el-form-item>
+                <el-form-item label="进货折扣：" :label-width="formLabelWidth" class="dialog_form_item">
+                    <el-input v-model="form.Discount" auto-complete="off" style="width: 200px">
+                        <template slot="append">%</template>
+                    </el-input>
+                </el-form-item>
+                <el-form-item label="进货价格：" :label-width="formLabelWidth" class="dialog_form_item">
+                    <el-input v-model="form.StockPrice" auto-complete="off" style="width: 200px"></el-input>
+                </el-form-item>
+            </el-form>
+            <div slot="footer" class="dialog-footer">
+                <el-button type="primary" @click="editSure()">确 定</el-button>
+                <el-button @click="cancel()">取 消</el-button>
+            </div>
+        </el-dialog>
+        <!--设置弹窗-->
+        <el-dialog title="添加总代理" :visible.sync="dialogDefaultVisible" size="">
+            <el-form :model="form" style="width:650px;">
+                <el-form-item label="总代理：" :label-width="formLabelWidth" class="dialog_form_item">
+                    <el-select v-model="form.branch" filterable >
+                        <el-option v-for="item in topBranchList" :label="item.Code+'|'+item.BranchName" :value="item.Code" :key="item.Code"></el-option>
+                    </el-select>
+                </el-form-item>
+                <el-form-item label="设置折扣：" :label-width="formLabelWidth" class="dialog_form_item">
+                    <el-table :data="defaultData" border style="width: 550px">
+                        <el-table-column prop="OrderNum" label="等级序号" min-width="80"></el-table-column>
+                        <el-table-column prop="Price" label="等级" min-width="120">
+                            <template scope="scope">
+                                {{scope.row.GradeName}}
+                            </template>
+                        </el-table-column>
+                         <!--   <el-table-column prop="Discount" label="等级名称" min-width="100">
+                            <template scope="scope">
+                                <el-input v-model="scope.row.Discount"
+                                          @change="numberCheck(scope.row.Discount,defaultData,scope.$index)">
+                                    <template slot="append">%</template>
+                                </el-input>
+                            </template>
+                        </el-table-column>-->
+                       <!-- <el-table-column prop="Discount" label="进货价格" min-width="100">
+                            <template scope="scope">
+                                <el-input v-model="scope.row.StockPrice"
+                                        @change="numberCheck(scope.row.StockPrice,defaultData,scope.$index)"></el-input>
+                            </template>
+                        </el-table-column>-->
+                        <el-table-column prop="Price" label="金额" min-width="120">
+                            <template scope="scope">
+                                <el-input v-model="scope.row.Price"
+                                          @change="numberCheck(scope.row.Price,defaultData,scope.$index)"></el-input>
+                            </template>
+                        </el-table-column>
+                        <el-table-column prop="Pledge" label="押金" min-width="120">
+                            <template scope="scope">
+                                <el-input v-model="scope.row.Pledge"
+                                          @change="numberCheck(scope.row.Pledge,defaultData,scope.$index)"></el-input>
+                            </template>
+                        </el-table-column>
+                    
+                    </el-table>
+                </el-form-item>
+            </el-form>
+            <div slot="footer" class="dialog-footer">
+                <el-button type="primary" @click="addSure()">确 定</el-button>
+                <el-button @click="addCancel()">取 消</el-button>
+            </div>
+        </el-dialog>
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+    import "../../style/selfCommon.less"
+    import { getCookie, delCookie } from '../../config/mUtils'
+    import {GetBranchGradeAll,GetGradeFareSet,AddBranchFareSet,getTopBranch,UpdateBranchFareSet} from "../../api/myData"
+    export default {
+        // name:"ConsumeDiscount",
+        data () {
+            return {
+                topBranchList:[],
+                gradeList:[],
+                pageSize:10,
+                total:0,
+                currentPage: 1,
+                currentIndex:0,
+                formInline: {
+                    name: '',
+                    grade: ''
+                },
+                formLabelWidth:"90px",
+                dialogFormVisible:false,
+                dialogDefaultVisible:false,
+                form:{branch:""},
+                tableData:[],
+                defaultData:[],
+                loading:true
+            }
+        },
+        computed:{
+            tHeader(){
+                return ['总代编号', '总代', '等级序号', '价格', '押金','进货折扣','进货价格']
+            },
+            filterVal(){
+                return ['BranchCode', 'BranchName', 'OrderNum', 'Price', 'Pledge','Discount','StockPrice']
+            },
+            tableData1(){
+                return this.tableData
+            },
+            name(){
+                return "代理会费折扣"
+            }
+        },
+        watch:{
+            "defaultData": {
+                handler(curVal,oldVal){
+                    curVal.forEach(row=>{
+
+                    })
+                },
+                deep: true
+            },
+        },
+        mounted(){
+            this.getBranchGradeAll()
+        },
+        methods:{
+//            更新代理会费折扣
+            async updateFareSet(params){
+                try{
+                    let res = await UpdateBranchFareSet(params)
+                    if(res.success){
+                        this.$message({message: '更新成功', type: 'success'});
+                        this.getGradeFare(-1,0)
+                        this.dialogFormVisible = false
+                        // this.getGradeFareSet({branchName:this.formInline.name, branchCode:-1,BranchGradeCode:"", pageIndex:this.currentPage, pageSize:this.pageSize},0)
+                    }else{
+                        this.$message.error('更新失败');
+                    }
+                }catch(err){
+                    console.log(err)
+                    this.$message.error('更新失败');
+                }
+            },
+            async getTopBranch(){
+                try {
+                    let res = await getTopBranch()
+                    this.topBranchList = res
+                } catch (err) {
+                    console.log(err)
+                }
+            },
+            async addBranchFareSet(params){
+                try{
+                    let res = await AddBranchFareSet(params)
+                    if(res.success){
+                        this.$message({message: '操作成功', type: 'success'});
+                        if(this.currentIndex == 0){
+                            this.getGradeFare(-1,0)
+                            // this.getGradeFareSet({branchName:this.formInline.name, branchCode:-1, BranchGradeCode:this.formInline.grade, pageIndex:this.currentPage, pageSize:this.pageSize},0)
+                            this.dialogDefaultVisible = false
+                        }else{
+                            this.getGradeFare(0,1)
+                            // this.getGradeFareSet({branchName:"", branchCode:0, pageIndex:1, pageSize:30},1)
+                        }
+                    }else{
+                        this.$message.error('操作失败');
+                    }
+                }catch(err){
+                    console.log(err)
+                    this.$message.error('操作失败');
+                }
+            },
+            getGradeFare(branch,index){
+                this.getGradeFareSet({
+                    branchName:this.formInline.name,
+                    branchCode:branch,
+                    BranchGradeCode:index ==1?"":this.formInline.grade,
+                    pageIndex:this.currentPage,
+                    pageSize:this.pageSize
+                },index)
+            },
+//            获取默认等级
+            async getGradeFareSet(params,index){
+                try{
+                    let data =await GetGradeFareSet(params)
+                    let res = []
+                    data.forEach(row=>{
+                            if(row.OrderNum != 0){
+                                res.push(row)
+                            }
+                        })
+                    if(index == 0){
+                        this.tableData = res
+                        if(res.length!=0){
+                            this.total = res[0].RecordCount
+                        }else{
+                            this.total = 0
+                        }
+                    }else{
+                        this.defaultData  = this.sortData(res)
+                    }
+                    this.getTopBranch()
+                }catch(err){
+                    console.log(err)
+                }
+            },
+//            获取所有等级
+            async getBranchGradeAll(){
+                try {
+                    let res = await GetBranchGradeAll()
+                    this.gradeList = this.getOrderNum(res)
+ //            -1是总代理，0是平台默认
+                    this.getGradeFare(-1,0)
+                    // this.getGradeFareSet({branchName:this.formInline.name, branchCode:-1, BranchGradeCode:this.formInline.grade, pageIndex:this.currentPage, pageSize:this.pageSize},0)
+                } catch (err) {
+                    console.log(err)
+                }
+            },
+       
+//            编辑折扣弹窗
+            edit (index,data){
+                this.dialogFormVisible = true
+                this.form = JSON.parse(JSON.stringify(data[index]))
+            },
+//            编辑确定
+            editSure () {
+                this.dialogFormVisible = false
+                this.updateFareSet({
+                    id:this.form.Id,
+                    branchCode:this.form.BranchCode,
+                    branchTypeCode:this.form.BranchTypeCode,
+                    price:this.form.Price,
+                    pledge: this.form.Pledge,
+                    discount: this.form.Discount,
+                    stockPrice: this.form.StockPrice,
+                    CreateUserId:getCookie("userId"),
+                    CreateBy:getCookie("userName"),
+                })
+            },
+//            编辑取消
+            cancel () {
+                this.dialogFormVisible = false
+            },
+            onSubmit() {
+                this.currentPage = 1
+                this.search()
+            },
+            search(){
+                this.getGradeFare(-1,0)
+                // this.getGradeFareSet({
+                //     branchName:this.formInline.name,branchCode:-1, BranchGradeCode:this.formInline.grade,
+                //     pageIndex:this.currentPage, pageSize:this.pageSize
+                // },0)
+            },
+            addSure(){
+                let arr = this.attrSplit(this.defaultData)
+                this.addBranchFareSet({
+                    jsonStr:JSON.stringify(arr)
+                })
+            },
+            addCancel(){
+                this.dialogDefaultVisible = false
+            },
+            select(num){
+                this.currentIndex = num
+                if(num == 0){
+                    this.getGradeFare(-1,0)
+                    // this.getGradeFareSet({branchName:"", branchCode:-1, BranchGradeCode:this.formInline.grade, pageIndex:this.currentPage, pageSize:this.pageSize},0)
+                }else{
+                    this.getGradeFare(0,1)
+                    // this.getGradeFareSet({branchName:"", branchCode:0, pageIndex:1,pageSize:10},1)
+                }
+            },
+            saveDefault(){
+                let data = this.defaultData
+                let len = this.defaultData.length
+                for(let i = 0;i<len;i++ ){
+                    if(data[i].BranchCode.length == 0){
+                        data[i].BranchCode = 0
+                    }
+                    if(data[i].BranchTypeCode.length == 0){
+                        data[i].BranchTypeCode = data[i].Code
+                    }
+                }
+                this.addBranchFareSet({
+                    jsonStr:JSON.stringify(this.defaultData)
+                })
+            },
+            numberCheck(mes,data,index){
+
+               let vm = this
+                if (data.length >= 1) {
+                    setTimeout(()=> {
+                        if (data[index].Price) {
+                            data[index].Price = Number(String(data[index].Price).replace(/\D/g, ""))
+                        }
+                        if (data[index].Pledge) {
+                            data[index].Pledge = Number(String(data[index].Pledge).replace(/\D/g, ""))
+                        }
+                        if (data[index].Discount) {
+                            data[index].Discount = Number(String(data[index].Discount).replace(/\D/g, ""))
+                           if(data[index].Discount>100){
+                               data[index].Discount = 100
+                           }else if(data[index].Discount<0){
+                               data[index].Discount = 0
+                           }
+                            data[index].Discount
+                        }
+                    }, 50)
+                }
+            },
+            handleSizeChange(val) {
+                console.log(`每页 ${val} 条`);
+                this.pageSize = val
+                this.getGradeFare(-1,0)
+                // this.getGradeFareSet({branchName:this.formInline.name, branchCode:-1, BranchGradeCode:this.formInline.grade, pageIndex:this.currentPage, pageSize:this.pageSize},0)
+            },
+            handleCurrentChange(val) {
+                console.log(`当前页: ${val}`);
+                this.currentPage = val
+                this.getGradeFare(-1,0)
+                // this.getGradeFareSet({branchName:this.formInline.name, branchCode:-1, BranchGradeCode:this.formInline.grade, pageIndex:this.currentPage, pageSize:this.pageSize},0)
+            },
+            add(){
+                this.dialogDefaultVisible = true
+                this.getGradeFare(0,1)
+                // this.getGradeFareSet({branchName:"", branchCode:0, pageIndex:1, pageSize:10},1)
+            },
+            attrSplit(data){
+
+                let arr = []
+                data.forEach(row=>{
+                    arr.push({
+                        branchCode:this.form.branch,
+                        BranchTypeCode:row.BranchTypeCode,
+                        price: row.Price,
+                        pledge: row.Pledge,
+                        discount: row.Discount,
+                        stockPrice: row.StockPrice,
+                        CreateUserId:getCookie("userId"),
+                        CreateBy:getCookie("userName"),
+                    })
+                })
+                return arr
+            },
+//            等级排序
+            sortData(data){
+
+                let temp
+                for(let i = 0;i<data.length;i++){
+                    for(let j = i+1;j<data.length;j++){
+                        if(data[i].OrderNum>data[j].OrderNum){
+                            temp = data[j]
+                            data[j] = data[i]
+                            data[i] = temp
+                        }
+                    }
+                }
+                return data
+            },
+            getOrderNum(data){
+
+                let arr= []
+                let arr1 = []
+                data.forEach(row =>{
+                    arr.push(row.OrderNum)
+                })
+                arr.sort()
+                for(let i = 0;i<arr.length-1;i++){
+                    if(arr[i]!=arr[i+1]){
+                        arr1.push(arr[i])
+                    }
+                    if(i>=arr.length-2){
+                        arr1.push(arr[i+1])
+                        break
+                    }
+                }
+                return arr1
+            },
+            deleteRow(index,data){
+
+            }
+        },
+        components: {
+        }
+    }
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+    .dialog_form_item{
+        margin-bottom: 0px;
+    }
+</style>

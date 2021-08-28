@@ -1,0 +1,339 @@
+<template>
+    <div class="edit">
+        <el-form :model="form" style="width: 400px" ref="form">
+            <el-form-item label="" class="form_item_mt0">
+                <span style="font-weight: bold;font-size: 14px">活动信息</span>
+            </el-form-item>
+            <el-form-item label="活动名称：" class="form_item_mt0" prop="name" label-width="90px">
+                <el-input v-model="form.name" placeholder="" class="form_item_ipt_260"></el-input>
+            </el-form-item>
+            <el-form-item label="生效时间：" class="form_item_mt0" label-width="90px">
+                <dateLink @getDate="getDate" :date="date"></dateLink>
+            </el-form-item>
+            <el-form-item label="标签图片：" class="form_item_mt0" label-width="90px">
+                <el-upload
+                    :accept="acceptImage"
+                    :action="action"
+                    class="avatar-uploader"
+                    :show-file-list="false"
+                    :on-success="handleAvatarSuccess"
+                    :before-upload="beforeAvatarUpload">
+                    <img v-if="imageUrl" :src="imageUrl" class="avatar">
+                    <i v-else class="el-icon-plus avatar-uploader-icon"></i>
+                </el-upload>
+            </el-form-item>
+            <el-form-item label="" class="form_item_mt0">
+                <span style="font-weight: bold;font-size: 14px">返现设置</span>
+            </el-form-item>
+            <el-form-item label="返现方式：" class="form_item_mt0" label-width="90px">
+                <el-radio class="radio" v-model="form.type" label="1" style="float: left;margin-right: 5px">固定返现</el-radio>
+                <el-input-number v-model="form.ReturnPoint" :min="0" :controls="false"
+                                 class="form_item_ipt_60" style="float: left"></el-input-number>%
+                <!--<el-radio class="radio" v-model="form.type" label="2">随机返现</el-radio>-->
+            </el-form-item>
+            <el-form-item label="返现限制：" class="form_item_mt0" label-width="90px">
+                <el-radio class="radio" v-model="form.IsLimitTimes" label="true" style="float: left;margin-right: 10px">限制</el-radio>
+                <span style="float: left;margin-right: 5px;line-height: 39px">前</span>
+                <el-input-number v-model="form.ReturnTimes" :min="1" :controls="false"
+                                 class="form_item_ipt_60" style="float: left"></el-input-number>
+                笔订单可使用（活动时间内每个买家在该店的前N笔订单）
+                <el-radio class="radio" v-model="form.IsLimitTimes" label="false">不限</el-radio>
+            </el-form-item>
+            <el-form-item label="" class="form_item_mt0">
+                <span style="font-weight: bold;font-size: 14px">选择活动范围</span>
+            </el-form-item>
+            <el-form-item label="适用商户：" class="form_item_mt0" label-width="90px">
+                <el-radio class="radio" v-model="form.isAllSupplyer" label="true">所有商户</el-radio>
+                <el-radio class="radio" v-model="form.isAllSupplyer" label="false">部分商户</el-radio>
+                <el-checkbox-group v-model="checkList" v-if="form.isAllSupplyer == 'false'">
+                    <el-checkbox v-for="(item,index) in userList" :key="index" :label="item.Code">{{item.BranchName}}</el-checkbox>
+                </el-checkbox-group>
+            </el-form-item>
+            <el-form-item label="适用栏目：" class="form_item_mt0" label-width="90px">
+                <el-radio class="radio" v-model="form.CatalogType" label="1">医美</el-radio>
+                <el-radio class="radio" v-model="form.CatalogType" label="2">商城</el-radio>
+            </el-form-item>
+            <el-form-item label="适用商品：" class="form_item_mt0" label-width="90px">
+                <el-radio class="radio" v-model="form.IsAllGoods" label="true">全部</el-radio>
+                <el-radio class="radio" v-model="form.IsAllGoods" label="false">部分</el-radio>
+                <span v-if="form.IsAllGoods == 'false'">
+                     <el-button @click="add" type="text">+添加项目</el-button>
+                已选择{{selectProject.length}}个<br/>
+                </span>
+                <el-tag v-for="(item,index) in selectProject" type="primary" class="tag" :title="item.Name"
+                        :key="index">{{item.Name}}
+                </el-tag>
+            </el-form-item>
+        </el-form>
+        <div class="footer_ope">
+            <el-button @click="save('form')" type="primary" :loading="saveLoading">保存</el-button>
+            <el-button @click="cancel">取消</el-button>
+        </div>
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+    import {baseImgPath} from "@/config/env"
+    import { acceptImage } from '@/config/common'
+    import { getCookie } from '@/config/mUtils'
+    import dateLink from "@/page/APPCenter/components/DateLinkage.vue"
+    import { getProjectCount, getProjectAll , GetReturnPointRule,getTopBranch,EditReturnPointRule,DelImg} from '@/api/myData'
+    export default {
+        // name: "edit",
+        props: {
+            selectProject: {
+                type: Array
+            },
+            ProjectId:{
+                type: Array
+            },
+            editMes:{},
+        },
+        data () {
+            return {
+                saveLoading:false,
+                acceptImage:"",
+                action:"",
+                imageUrl:"",
+                goodsMes:[],
+                date:"",
+                radio: "1",
+                radio1: "100",
+                checkList: [],
+                userList:[],
+                goodsIds:[],
+                projectList:[],
+                form: {
+                    amount:"",
+                    name:"",
+                    startDate: "",
+                    endDate: "",
+                    CatalogType:"",
+                    limitAmount:"",
+                    type:"",
+                    ProjectId:[],
+                    limitCount:"",
+                    limitUser:"",
+                    IsAllGoods:"",
+                    isAllSupplyer:"",
+                    image:"",
+                    ReturnTimes:"",
+                    ReturnPoint:0,
+                    IsLimitTimes:"",
+                },
+                rule:[
+
+                ]
+            }
+        },
+        watch:{
+            "selectProject":{
+                handler(curVal,oldVal){
+
+                    this.goodsIds = this.getArray(curVal)
+                },
+                deep:true
+            },
+            "form.isAllSupplyer":{
+                handler(curVal,oldVal){
+
+                    if (curVal == 'true') {
+                        this.checkList = []
+                    }
+                },
+                deep:true
+            }
+        },
+        mounted(){
+            this.action = baseImgPath + "/api/Image/UploadImg?op=activity"
+            this.acceptImage = acceptImage
+            this.getTopBranch()
+        },
+        methods: {
+            async getTopBranch(){
+                try{
+                    let res = await getTopBranch()
+                    this.goodsMes = await GetReturnPointRule({id:this.editMes.id})
+                    this.goodsIds = this.goodsMes.data.goodsIds
+                    this.userList = res
+
+                    this.getGoods()
+                    this.copyWorth(this.editMes)
+                }catch(err){
+                    console.log(err)
+                }
+            },
+            async EditReturnPointRule(params){
+                try{
+                    this.saveLoading = true
+                    let res = await EditReturnPointRule(params)
+                    if (res.status == true) {
+                        this.$message({type: 'success', message: '添加成功!'})
+                        this.$emit("closeAdd")
+                        this.$refs['form'].resetFields();
+                    } else {
+                        this.$message({type: 'error', message: '添加失败!'})
+                    }
+                    this.saveLoading = false
+                }catch(err){
+                    console.log(err)
+                    this.$message({ type: 'error', message: '添加失败!' })
+                }
+            },
+
+            dateForm(val){
+                val = val.formatDates()
+                this.form.startDate = val.substring(0, 10)+" 00:00:00"
+                this.form.endDate = val.substring(13)+" 00:00:00"
+            },
+            save(){
+                if(this.selectProject.length!=0){
+                    this.goodsIds = this.getArray(this.selectProject)
+                }
+                this.EditReturnPointRule({
+                    id: this.editMes.id,
+                    number: this.editMes.number,
+                    "name": this.form.name,//名字
+                    "startDate": this.form.startDate + " 00:00:00",//开始时间
+                    "endDate": this.form.endDate + " 00:00:00",//结束时间
+                    "returnType": this.form.type,//红包金额类型
+                    CatalogType: this.form.CatalogType,//栏目
+                    agentId: this.checkList.join("|"),//适用用户
+                    "goodsIds": this.goodsIds,
+                    IsAllGoods: this.form.IsAllGoods,//全部商品
+                    "pcCreateUserId": getCookie("userId"),
+                    image:this.form.image,
+                    isAllSupplyer:this.form.isAllSupplyer,
+                    ReturnTimes:this.form.ReturnTimes,
+                    ReturnPoint:this.form.ReturnPoint,
+                    IsLimitTimes:this.form.IsLimitTimes,
+                })
+            },
+            cancel(){
+                this.$emit("closeAdd",'cancel')
+            },
+            add(){
+                this.$emit("selectP",[this.form.CatalogType,this.goodsIds])
+            },
+            getArray(data){
+                let arr = []
+                data.forEach(row=>{
+                    arr.push(row.Code)
+                })
+                return arr
+            },
+            copyWorth(data){
+
+                this.form.image = data.image
+                this.form.name = data.name
+                this.date = data.startDate.substring(0,10)+" - "+data.endDate.substring(0,10)
+                this.form.CatalogType = data.catalogType+""
+                this.form.limitAmount = data.limitAmount
+//                this.form.limitCount = data.limitCount
+                this.form.isAllSupplyer = data.isAllSupplyer+""
+                this.form.type = data.returnType+""
+                this.form.ReturnPoint = data.returnPoint+""
+                this.form.IsLimitTimes = data.isLimitTimes+""
+                this.form.ReturnTimes = data.returnTimes+""
+//                this.form.ProjectId = data.amount
+                setTimeout(()=>{
+                    this.checkList = data.agentId.split("|")
+                },100)
+                this.form.IsAllGoods = data.isAllGoods+""
+                this.imageUrl = baseImgPath + data.image
+            },
+            getDate(val1,val2){
+                this.form.startDate = val1
+                this.form.endDate = val2
+            },
+            async getGoods(){
+                try{
+                    //                1项目 2商城
+                    if(this.editMes.catalogType == 1){
+                        this.projectList = await getProjectAll()
+                    }else{
+                        this.projectList = await getProjectAll({IsMall: 1})
+                    }
+                    if(this.projectList.length!=0){
+                        let arr = this.goodsIds
+                        this.projectList.forEach(row=>{
+                            for(let i=0;i<arr.length;i++){
+                                if(row.Code == arr[i]){
+                                    this.selectProject.push(row)
+                                }
+                            }
+                        })
+                    }
+                }catch(err){
+                    console.log(err)
+                }
+
+            },
+            handleAvatarSuccess(res, file) {
+                if(this.form.image!=''){
+                    this.DelImg(this.form.image)
+                }
+                this.imageUrl = URL.createObjectURL(file.raw);
+                this.form.image = res
+            },
+
+            // 删除原图片/视频
+            async DelImg(filepath){
+                let res = await DelImg({filepath:filepath})
+                if(!res.status){
+                    this.$message({message: '原图片删除失败！'+res.errorMessage,type: 'warning'});
+                }
+                
+            },
+            beforeAvatarUpload(file) {
+                const isLt2M = file.size / 1024 / 1024 < 2;
+
+                if (!isLt2M) {
+                    this.$message.error('上传图片大小不能超过 2MB!');
+                }
+                return isLt2M;
+            }
+        },
+        components: {
+            dateLink
+        }
+    }
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+    .form_item_ipt_260 {
+        width: 260px;
+    }
+
+    .form_item_ipt_60 {
+        width: 80px;
+    }
+
+    .form_item_mt0 {
+        width: 800px;
+    }
+
+    .tag {
+        text-overflow: ellipsis;
+        overflow: hidden;
+        white-space: nowrap;
+        width: 160px;
+        margin: 5px 5px 0 0;
+        float: left;
+        cursor: pointer;
+    }
+    .avatar-uploader-icon {
+        font-size: 28px;
+        color: #8c939d;
+        width: 108px;
+        height: 108px;
+        line-height: 108px;
+        text-align: center;
+    }
+    .avatar {
+        width: 108px;
+        height: 108px;
+        display: block;
+    }
+</style>

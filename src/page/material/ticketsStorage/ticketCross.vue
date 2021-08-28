@@ -1,0 +1,289 @@
+<template>
+    <div class="tag selCommon">
+        <el-form :inline="true" :model="formInline" class="demo-form-inline form_search" label-width="80px">
+            <el-form-item label="日期：" class="form_item_mt10">
+                <el-select v-model="formInline.year" style='width:95px;'>
+                    <el-option v-for="item in yearList" :key="item" :label="item" :value="item"></el-option>
+                </el-select>
+                <el-select v-model="formInline.month" style='width:95px;'>
+                    <el-option v-for="item in monthList" :key="item" :label="item" :value="item"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="医院：" class="form_item_mt10">
+                <el-select v-model="formInline.inHospitalCode" style='width:200px;'>
+                    <el-option v-for="(item,index) in inHospitalList" :key="index" :label="item.SupplierName" :value="item.Code"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="调往医院：" class="form_item_mt10">
+                <el-select v-model="formInline.outHospitalCode" style='width:200px;'>
+                    <el-option v-for="(item,index) in outHospitalList" :key="index" :label="item.SupplierName" :value="item.Code"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label=" " class="form_item_mt10">
+                <el-button type="primary" @click="onSubmit" class="searchBtn">查询</el-button>
+                <span style="color:red">(查询结果只返回与本院相关数据)</span>
+            </el-form-item>
+        </el-form>
+        <!-- 信息表 -->
+        <el-table :data="tableData" border style="width: 100%;margin-top:15px;margin-bottom:10px;" max-height="560" class="smt min_table" v-loading="loading">
+            <el-table-column prop="drugOutDate" label="出库日期" min-width="90">
+                <template slot-scope="scope">
+                    <span v-if="scope.row.drugOutDate">{{scope.row.drugOutDate.substring(0,10)}}</span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="hospitalName" label="出库医院" min-width="90"></el-table-column>
+            <el-table-column prop="customerName" label="调往医院" min-width="90"></el-table-column>
+            <el-table-column prop="payAmount" label="金额" min-width="90" align="right">
+                <template slot-scope="scope">
+                    <el-button v-if="scope.row.payAmount>0" @click="pay(scope.row)" type="text">￥{{scope.row.payAmount}}</el-button>
+                    <span v-else>￥0</span>
+                </template>
+            </el-table-column>
+        </el-table>
+        <!-- 信息表 -->
+
+        <!-- 分页 -->
+        <div class="block">
+            <el-pagination
+                @size-change="handleSizeChange"
+                @current-change="handleCurrentChange"
+                :current-page="currentPage"
+                :page-sizes="[10, 20, 30, 40]"
+                :page-size="size"
+                layout="total, sizes, prev, pager, next, jumper"
+                :total="total">
+            </el-pagination>
+        </div>
+        <!-- 分页 -->
+
+        <el-dialog title="详情" :visible.sync="dialogDet" size="">
+            <dialogCross v-if="dialogDet" :propMonth='formInline.month' :dialogData="dialogData" style="width:900px;"></dialogCross>
+        </el-dialog>
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+    import {baseImgPath} from "@/config/env"
+    import  "@/style/selfCommon.less"
+    import { getCookie, delCookie } from '@/config/mUtils'
+    import dialogCross from "./com/dialogCross.vue"
+    import {GetSupplierBySupTypeCode,GetTicketPay,UpdateDrugPayFinished} from "@/api/myData"
+    import Export from '@/components/export'
+    export default {
+        // name: "VideoManage",
+        data () {
+            return {
+                date:'',
+                loading:false,
+                total:0,
+                size:10,
+                currentPage:1,
+                formInline: {
+                    keywords: '',
+                    orderState:"",
+                    outHospitalCode:"",
+                    inHospitalCode:"",
+                    year:'',
+                    month:'',
+                },
+                yearList:[],
+                monthList:['01','02','03','04','05','06','07','08','09',10,11,12],
+                dialogDet:false,
+                tableData:[],
+                dialogData:[],
+                hospitalList:[],
+                outHospitalList:[],
+                inHospitalList:[],
+            }
+        },
+        computed: {
+            /* 导出报表参数 tHeader,filterVal,tableData1*/
+            tHeader(){
+                return ['出库日期', '出库医院', '入库医院', '入库金额', '操作人',  '备注','付款状态']
+            },
+            filterVal(){
+                return ['createOn', 'hospitalName', 'toHospitalName', 'orderAmount', 'createBy','memo','orderState']
+            },
+            tableData1(){
+                let data = JSON.parse(JSON.stringify(this.allData))
+                data.forEach(ele=>{
+                    if(ele.orderState === 0){
+                        ele.orderState = '待付款'
+                    }
+                    if(ele.orderState === 1){
+                        ele.orderState = '已付款'
+                    }
+                    if(ele.orderState === 2){
+                        ele.orderState = '已入库'
+                    }
+                    
+                })
+                return data
+            },
+            name(){
+                return '付款'
+            },
+            /*导出报表参数 tHeader,filterVal,tableData1*/
+        },
+        mounted(){
+            let year = new Date().getFullYear()
+            let month = new Date().getMonth()+1
+            this.formInline.year = year
+            this.formInline.month =  month>=10?month:'0'+month
+            this.date = new Date()
+            this.GetDropDownPermission()
+        },
+        methods:{
+            // hosChange(val){
+            //     if(val){
+                    
+            //     }
+            // },
+            async UpdateMemo(){
+                
+            },
+            toHosChange(val){
+
+            },
+            exportTable(){
+                this.GetTicketPay({
+                    "hospitalCode": this.formInline.inHospitalCode,
+                    "toHospitalCode": this.formInline.outHospitalCode,
+                    ticketOutDate:this.formInline.year+'-'+this.formInline.month,
+                    type:1,
+                    // "orderState": this.formInline.orderState,
+                    // pageIndex:1,
+                    // pageSize:this.total,
+                    // keywords:this.formInline.keywords
+                },'export')
+            },
+            hosChange(val){
+                this.outHospitalList=[]
+                if(getCookie('hospitalCode') == val){
+                    this.hospitalList.forEach(ele=>{
+                        if(ele.Code!=val){
+                             this.outHospitalList.push(ele)
+                        }
+                    })
+                }else{
+                   
+                    this.hospitalList.forEach(ele=>{
+                        if(ele.Code == getCookie('hospitalCode')){
+                            this.outHospitalList.push(ele)
+                        }
+                    })
+                }
+            },
+            dateChange(val){
+                if(val){
+                    this.formInline.startDate = val
+                    // this.formInline.endDate = val.substring(13)
+                }else{
+                    this.formInline.startDate = ""
+                    // this.formInline.endDate = ""
+                }
+            },
+            async GetDropDownPermission(){
+                let res1 = await GetSupplierBySupTypeCode({SupTypeCode:"001,002,003"});
+                this.hospitalList = JSON.parse(JSON.stringify(res1))
+                this.hospitalList.unshift({SupplierName:'全部',Code:''}) 
+                // this.hosChange()
+                this.inHospitalList =  JSON.parse(JSON.stringify(this.hospitalList))
+                this.outHospitalList = JSON.parse(JSON.stringify(this.hospitalList))
+            },
+            async GetTicketPay(params,ope){
+                try{
+                    let res = await GetTicketPay(params)
+                    if(ope){
+                        this.dialogData = res.data
+                        this.dialogDet = true
+                    }else{
+                        this.tableData = res.data
+                        this.total = res.count
+                    }
+                    this.loading = false
+                }catch(err){
+                    console.log(err)
+                }
+            },
+            
+            onSubmit(){
+                this.currentPage = 1
+                this.search()
+            },
+            search(){
+                this.loading = true
+                this.GetTicketPay({
+                    "hospitalCode": this.formInline.inHospitalCode,
+                    "toHospitalCode": this.formInline.outHospitalCode,
+                    ticketOutDate:this.formInline.year+'-'+this.formInline.month,
+                    type:1,
+                })
+            },
+            handleSizeChange(val) {
+                this.size = val
+                this.search()
+            },
+            handleCurrentChange(val) {
+                this.currentPage = val
+                this.search()
+            },
+
+            // approve(data){
+            //     this.$confirm('此操作将永久删除该文件, 是否继续?', '提示', {
+            //         confirmButtonText: '确定',
+            //         cancelButtonText: '取消',
+            //         type: 'warning'
+            //     }).then(() => {
+            //         
+            //         this.UpdateDrugPayApproved({
+            //             id:data.id,
+            //             StockType:data.stockType,
+            //             ticketOutDate:data.drugInOutId
+            //         })
+            //     }).catch(() => {
+                        
+            //     });
+            // },
+
+            pay(data){
+                this.GetTicketPay({
+                    "hospitalCode": data.hospitalCode,
+                    "toHospitalCode": data.customerId,
+                    ticketOutDate:data.drugOutDate,
+                    type:2,
+                },2)
+            },
+            // // 审核
+            // async UpdateDrugPayApproved(params){
+            //     
+            //     let res = await UpdateDrugPayApproved(params)
+            //         if(res.status){
+            //             this.$message({message: '操作成功', type: 'success'});
+            //             this.search()
+            //         }else{
+            //             this.$message.error('操作失败');
+            //         }
+            // },
+            // 收款状态
+            // async UpdateDrugPayFinished(params){
+            //     let res = await UpdateDrugPayFinished(params)
+            //     if(res.status){
+            //         this.$message({message: '操作成功', type: 'success'});
+            //         this.search()
+            //     }else{
+            //         this.$message.error('操作失败');
+            //     }
+            // }
+        },
+        components: {
+            Export,
+            dialogCross
+        }
+    }
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+
+</style>

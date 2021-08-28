@@ -1,0 +1,211 @@
+<template>
+    <div class="">
+        <ul class="tabs">
+            <li class="tabs-list" :class="{'active':currentIndex=='0'}" @click='index'>
+                <router-link class='index' to="/menu/index">首页</router-link>
+            </li>
+            <li v-for='(item, index) in tabs' class="tabs-list" :key="index" :class="{'active':currentIndex==item.code}">
+                <span class="tabc " @click='go(item)' :title="item.text">{{item.text}}</span>
+                <span class="del" @click='del(item,index)'><i class="icon iconfont icon-guanbi" style=" "></i></span>
+            </li>
+        </ul>
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+    import { getCookie,setCookie,getSStore,setSStore} from '@/config/mUtils'
+    export default {
+        name: 'hello',
+        data () {
+            return {
+                tabs:[],
+                currentIndex:0
+            }
+        },
+        props:{
+            flg:{
+                type:Object
+            },
+        },
+        mounted(){
+            getSStore
+            this.tabs = JSON.parse(getSStore('tabs'))? JSON.parse(getSStore('tabs')):[]
+            // this.$store.commit('tabsChange', JSON.stringify(this.tabs))
+            this.tabs.push()
+            this.currentIndex = getSStore('index')
+        },
+        computed: {
+            pages(){
+                return this.$store.state.SavePages
+            },
+            stateTabs(){
+                return this.$store.state.tabs
+            },
+            tabCurrentIndex(){
+                return this.$store.state.index
+            }
+        },
+        watch:{
+            "flg":{//可去除
+                handler(curVal,oldVal){
+                    this.tabs = JSON.parse(getSStore('tabs'))
+                    this.currentIndex = getSStore('index')
+                    this.tabs.push()
+                }
+            },
+            // 'stateTabs':{//路由页内部转跳存储
+            //     handler(curVal,oldVal){
+            //         setSStore('tabs', curVal)
+            //         this.tabs = JSON.parse(curVal)
+            //     },
+            //     deep:true
+            // },
+            // 'tabCurrentIndex':{//路由页内部转跳修改当前index值
+            //     handler(curVal,oldVal){
+            //         this.currentIndex = curVal+''
+            //     },
+            //     deep:true
+            // }
+        },
+        methods: {
+            index () {
+                setCookie('index', '0')
+                this.currentIndex = 0
+                setSStore('index', '0')
+                this.$emit('tabChange',{code:false})
+                setSStore('lastPage', {code:false,index:"index"})
+            },
+            /********关闭选项卡*******/
+            del(item, index){
+                let tabs = this.tabs;
+                let arr = JSON.parse(JSON.stringify(this.pages))
+                for(var i = 0;i<arr.length;i++){
+                    if(arr[i] == item.index){
+                        arr.splice(i,1)
+                        this.$store.commit('save', arr)
+                        break;
+                    }
+                }
+                tabs.splice(index, 1);
+                setSStore('tabs',JSON.stringify(tabs))
+                let nextTab = tabs[index] || tabs[index - 1];
+                if (nextTab) {
+                    setSStore('index', ''+nextTab.code)
+                    this.$router.push( nextTab.index)
+                    this.currentIndex = nextTab.code
+                    this.$emit('tabChange',nextTab)
+                } else {
+                    setCookie('index', '0')
+                    this.$router.push('index')
+                    this.currentIndex = 0
+                    this.$emit('tabChange',{code:false})
+                }
+            },
+
+            /*******切换选项卡********/
+            go(item){
+                this.currentIndex = item.code
+                setSStore('index', ''+item.code)
+                this.$router.push('/menu/' + item.index)
+                setSStore('lastPage', item)
+                this.$emit('tabChange',item)
+            },
+        }
+    }
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+    .index {
+        display: inline-block;
+        width: 60px;
+        height: 30px;
+        font-size: 12px;
+        border-radius: 3px;
+        color: #fff;
+        text-align: center;
+        line-height: 30px;
+    }
+
+    .tabs {
+            /*选项卡自适应*/
+            display: flex;
+    }
+    .tabs-list:first-child{
+        max-width: 50px;
+    }
+    .tabs-list {
+        display: inline-block;
+        background: #666;
+        padding-right: 20px;
+        flex: 1;
+        max-width: 100px;
+        text-align: center;
+        border-radius: 3px 3px 0 0;
+        margin-left: 10px;
+        cursor: pointer;
+        color: #fff;
+        font-size: 12px;
+        height: 30px;
+        line-height: 30px;
+        position:relative;
+        overflow: hidden;
+    }
+
+    .tabs-list:hover {
+        background: #fff;
+        color: #333333;
+    }
+
+    .tabs-list:hover .index {
+        background: #fff;
+        color: #333333;
+    }
+
+    .tabs-list.active {
+        background: #fff;
+        color: #333333;
+    }
+
+    .tabs-list.active .index {
+        background: #fff;
+        color: #333333;
+    }
+
+    .tabc {
+        display: inline-block;
+        padding: 0 0 0 10px;
+        height: 100%;
+        line-height: 30px;
+        white-space: nowrap;
+    }
+
+    .del {
+        right:7px;
+        top: 7px;
+        position: absolute;
+        display: inline-block;
+        vertical-align: top;
+        font-size: 12px;
+        width: 15px;
+        height: 15px;
+        border-radius: 15px;
+        text-align: center;
+        line-height: 15px;
+    }
+
+    .tabs-list:hover .del {
+        vertical-align: top;
+        background: #fff;
+        color: #333;
+        opacity: .5;
+        text-align: center;
+        line-height: 15px;
+    }
+
+    .icon-guanbi {
+        display: inline-block;
+        -webkit-transform: scale(0.4);
+        -o-transform: scale(1);
+    }
+</style>

@@ -1,0 +1,208 @@
+<template>
+    <div class="selCommon AgentManage">
+        <!-- 查询信息 -->
+        <el-form :inline="true" :model="formInline" class="demo-form-inline form_search" label-width="90px" @submit.native.prevent>
+            <el-form-item label="关键字：" class="form_item_mt10">
+                <el-input v-model="formInline.keywords" placeholder="姓名/编号/卡号/手机号" style="width: 200px;"  v-on:keyup.enter.native="onSubmit"></el-input>
+            </el-form-item>
+            <!-- <el-form-item label="关键字：" style='margin-bottom:10px;display:none'>
+                <el-input v-model="formInline.name" placeholder="姓名/编号/卡号/手机号" style="width: 200px;"  ></el-input>
+            </el-form-item> -->
+            <el-form-item label="" class="form_item_mt10">
+                <el-button type="primary" @click="onSubmit"  class="searchBtn">查询</el-button>
+            </el-form-item>
+        </el-form>
+        <!-- 查询信息 -->
+
+        <!-- 信息表 -->
+        <el-table :data="tableData" border style="width: 100%;margin-top:15px;margin-bottom:10px;" class="min_table" max-height="600" v-loading="loading">
+            <el-table-column prop="Code" label="客户编号" min-width="120"></el-table-column>
+            <el-table-column prop="RegistDate" label="注册日期" min-width="110">
+                <template scope="scope">
+                    <span v-if="scope.row.RegistDate">
+                         {{scope.row.RegistDate.substring(0,10)}}
+                    </span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="MemberName" label="客户" min-width="100">
+                 <template scope="scope">
+                    <el-button type="text" v-if="scope.row.Type == 1" style="color:black" @click="view(scope.$index,tableData)">{{scope.row.MemberName}}</el-button>
+                    <el-button type="text" v-else style="color:red" @click="view(scope.$index,tableData)">{{scope.row.MemberName}}</el-button>
+                    <span v-if="scope.row.MemberTags">({{scope.row.MemberTags}})</span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="ReferrerName" label="推荐人" min-width="140">
+                <template scope="scope">
+                    <span v-if="scope.row.ReferrerName">{{scope.row.ReferrerName}}</span><br/>
+                    <span v-if="scope.row.ReferrerCode">[{{scope.row.ReferrerCode}}]</span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="HospitalName" label="医院" min-width="130"></el-table-column>
+            <el-table-column prop="PhoneNumber" label="联系电话" min-width="120">
+                 <template scope="scope">
+                    <span v-if="scope.row.PhoneNumber">{{scope.row.PhoneNumber.substring(0,3)+'****'+scope.row.PhoneNumber.substring(7)}}</span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="CardNO" label="消费商卡号" min-width="120"></el-table-column>
+            <el-table-column prop="SourcWayeCode" label="来源渠道" min-width="100"></el-table-column>
+            <el-table-column prop="BranchGradeName" label="操作" min-width="140">
+                <template scope="scope">
+                <el-button type="primary" size="small">
+                        <a style="color:#fff;" :href="xmxUrl+'/Branch/MemberPrint?code='+scope.row.Code" :download="scope.row.MemberName">腕带打印</a>
+                    </el-button>
+                </template>
+            </el-table-column>
+        </el-table>
+        <!-- 信息表 -->
+        
+        <!-- 分页 -->
+        <div class="">
+            <!-- <el-pagination
+                @size-change="handleSizeChange"
+                @current-change="handleCurrentChange"
+                :current-page="currentPage"
+                :page-sizes="[10, 20, 30, 40]"
+                :page-size="size"
+                layout="total, sizes, prev, pager, next, jumper"
+                :total="total">
+            </el-pagination> -->
+            {{total}}条数据（信息显示最大30条）
+        </div>
+        <!-- 分页 -->
+        <el-dialog title="客户详情" :visible.sync="dialogView"  top="5%"  size="" :close-on-click-modal="false">
+            <CustomerView :mes="cusMes" style="width: 1100px" ref="customerDet"  v-if="dialogView" @openReport="openReport"></CustomerView>
+        </el-dialog>
+         <el-dialog ref="pay" title="新增报单" :visible.sync="ispopAdd"  style="position:fixed !important"  top="5%" @close="ispopAdd=false" size="" :close-on-click-modal="false">
+            <pop-add v-if="ispopAdd" @popAddClose='addFinish' style="width:1000px" :customerMes="customer"></pop-add>
+        </el-dialog>
+        <el-dialog ref="pay" title="查看详情" :visible.sync="ispopRead" top="5%" @close="ispopRead=false" size="">
+            <pop-read v-if="ispopRead" :data="selectData" style="width:1000px"></pop-read>
+        </el-dialog>
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+import { xmxUrl } from '@/config/env'
+    import "@/style/selfCommon.less"
+    import CustomerView from "@/page/FinanceManage/ReportManage/com/customerDetail.vue"
+    import {GetBranchByConditions,GetUserAllByKeywords,MemberPrint} from "../../../api/myData"
+    import PopAdd from '@/page/FinanceManage/ReportManage/com/addReport.vue'
+    import PopRead from '@/page/FinanceManage/ReportManage/com/reportRead.vue'
+    export default {
+        // name: 'AgentManage',
+        data() {
+            return {
+                xmxUrl,
+                ispopRead:false,
+                cusMes:{},
+                ispopAdd:false,
+                dialogView:false,
+                hosForm:[],
+                loading:false,
+                currentPage: 1,
+                formLabelWidth: '90px',
+                total: 0,
+                size: 10,
+                date:"",
+                formInline: {
+                    keywords:"",
+                    name:'',
+                },
+                tableData: [],
+                customer:{},
+                selectData:{},
+            }
+        },
+        computed: {
+
+        },
+        mounted: function () {
+            
+        },
+        methods: {
+            addFinish(val){
+                this.ispopAdd = false
+                if(val){
+                    this.$refs.customerDet.searchOrder()
+                }
+            },
+            openReport(val,ope){
+                if(ope=='add'){
+                    this.ispopAdd = true
+                }else{
+                    this.selectData=val
+                    this.ispopRead = true
+                }
+                this.customer = val
+            },
+             view(index,data){
+                this.cusMes = {
+                    CustomerId:data[index].Code,
+                    reportAdd:true
+                }
+                this.dialogView = true
+            },
+//            条件查询
+            async GetUserAllByKeywords(params){
+                try{
+                    this.loading = true
+                    let res = await GetUserAllByKeywords(params)
+                    this.loading = false
+                    if(res.error){
+
+                    }else{
+                        this.tableData = res
+                        this.tableData.push()
+                        this.total = res.length
+                    }
+                }catch(err){
+                    console.log(err)
+                }
+            },
+
+            // 条件查询
+            onSubmit() {
+                this.currentPage = 1
+                this.getTableDate()
+            },
+
+            // 分页页面展示数据条数改变触发事件
+            handleSizeChange(val) {
+                console.log(`每页 ${val} 条`);
+                this.size = val
+                this.getTableDate()
+            },
+
+            // 分页当前页码改变触发事件
+            handleCurrentChange(val) {
+                console.log(`当前页: ${val}`);
+                this.currentPage = val
+                this.getTableDate()
+            },
+
+            getTableDate(index){
+                this.GetUserAllByKeywords({
+                  keywords:this.formInline.keywords.removeSP(),
+                //   mandom:Math.random()*10000
+                })
+            },
+            async print(data){
+                // let url =  document.location.protocol +"//" + document.location.hostname +(80 == document.location.port || "" == document.location.port ? "": ":" + document.location.port) +"/";
+                // let newWin = window.open(url + "print/printMember.html?code=" + data.Code );
+                let res = await MemberPrint({
+                    code:data.Code
+                })
+            }
+        },
+        components: {
+            CustomerView,
+            PopAdd,
+            PopRead
+        }
+    }
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+
+</style>

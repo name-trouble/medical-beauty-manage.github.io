@@ -1,0 +1,340 @@
+<template>
+    <div class="tag selCommon">
+        <el-form :inline="true" :model="formInline" class="demo-form-inline form_search" label-width="80px">
+            <el-form-item label="医院："  class="form_item_mt10">
+                <el-select v-model="formInline.hospitalCode"  style='width:200px;' @change="hosCha">
+                    <el-option v-for="(item,index) in hospitalList" :key="index" :label="item.supplierName" :value="item.code"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="仓库："  class="form_item_mt10">
+                <el-select v-model="formInline.wareHouse" style='width:200px;'>
+                    <el-option label="全部" value=""></el-option>
+                    <el-option v-for="(item,index) in whList" :key="index" :label="item.warehouseName" :value="item.id"></el-option>
+                </el-select>
+            </el-form-item>
+
+            <el-form-item label="卡券："  class="form_item_mt10">
+                <el-autocomplete v-model="ticket" :fetch-suggestions="queryTicket" placeholder="请选择卡券"
+                :trigger-on-focus="false" @select="selectTick" style="width:200px">
+                    <template v-slot="{item}">
+                        <my-item-ticketSearch :item="item"></my-item-ticketSearch>
+                    </template>
+                </el-autocomplete>
+            </el-form-item>
+            <el-form-item label="状态："  class="form_item_mt10">
+                <el-select v-model="formInline.state" style='width:200px;'>
+                    <el-option label="全部" value=""></el-option>
+                    <el-option label="未出库" value="0"></el-option>
+                    <el-option label="已出库" value="1"></el-option>
+                    <el-option label="已销毁" value="2"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="关键字：" class="form_item_mt10">
+                <el-input v-model="formInline.keywords" placeholder="前缀/券号" style="width: 200px;" v-on:keyup.enter.native="onSubmit"></el-input>
+            </el-form-item>
+            <el-form-item label="" class="form_item_mt10">
+                <el-button type="primary" @click="onSubmit" class="searchBtn">查询</el-button>
+                <el-button type="primary" class="searchBtn" @click="exportTbale">导出报表</el-button>
+                <Export :tHeader="tHeader" ref="exportTable" :filterVal=' filterVal' :tableData1='tableData1' :name='name' style="display:none"></Export>
+            </el-form-item>
+        </el-form>
+        <!-- 信息表 -->
+        <el-table :data="tableData" border style="width: 100%;margin-top:15px;margin-bottom:10px;" max-height="560" class="smt min_table" v-loading="loading">
+            <el-table-column prop="hospitalName" label="医院" min-width="90"></el-table-column>
+            <el-table-column prop="warehouseName" label="仓库" min-width="70"></el-table-column>
+            <!-- <el-table-column prop="batchNumber" label="批号" min-width="90" align="center"></el-table-column> -->
+            <el-table-column prop="ticketName" label="卡券名称" min-width="90"></el-table-column>
+            <el-table-column prop="ticketCode" label="卡券编号" min-width="90" align="center"></el-table-column>
+            <el-table-column prop="totalTimes" label="使用次数" min-width="90"></el-table-column>
+            <el-table-column prop="usedTimes" label="已用次数" min-width="90"></el-table-column>
+            <el-table-column prop="state" label="库存状态" min-width="90" align="center">
+                <template slot-scope="scope">
+                    <el-tag type="success" v-if="scope.row.state == 1">已出库</el-tag>
+                    <el-tag type="gray" v-if="scope.row.state == 0">未出库</el-tag>
+                    <el-tag type="danger" v-if="scope.row.state == 2">已销毁</el-tag>
+                 </template>
+            </el-table-column>
+            <el-table-column prop="isUsed" label="使用状态" min-width="90" align="center">
+                <template slot-scope="scope">
+                    <el-tag type="success" v-if="scope.row.isUsed == 1">已使用</el-tag>
+                    <el-tag type="gray" v-if="scope.row.isUsed == 0">未使用</el-tag>
+                 </template>
+            </el-table-column>
+            <el-table-column prop="customerName" label="使用客户" min-width="90"></el-table-column>
+            <el-table-column prop="customerName" label="使用客户" min-width="90">
+                <template slot-scope="scope">
+                    <el-button type="primary" size="small" :disabled="!scope.row.ticketOutId" @click="viewDet(scope.row.ticketOutId)">查看出库信息</el-button>
+                 </template>
+            </el-table-column>
+        </el-table>
+        <!-- 信息表 -->
+
+        <!-- 分页 -->
+        <div class="block">
+            <el-pagination
+                @size-change="handleSizeChange"
+                @current-change="handleCurrentChange"
+                :current-page="currentPage"
+                :page-sizes="[10, 20, 30, 40]"
+                :page-size="size"
+                layout="total, sizes, prev, pager, next, jumper"
+                :total="total">
+            </el-pagination>
+        </div>
+        <!-- 分页 -->
+        <el-dialog title="查看" :visible.sync="payDialog" :modal="true" top="12%" size="">
+            <payDialog :mes="mes" v-if="payDialog" style="width:750px" @viewTicket="viewTicket"></payDialog>
+        </el-dialog>
+        <el-dialog title="查看券号" :visible.sync="viewDialog" size="" top="10%" :close-on-click-modal='false'>
+            <viewDialog v-if="viewDialog" class="viewDialog"
+            :viewData="viewData"  :ope="ope"></viewDialog>
+        </el-dialog>
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+    import {baseImgPath} from "@/config/env"
+    import  "@/style/selfCommon.less"
+    import payDialog from "./com/payDialog.vue"
+    import viewDialog from './com/view'
+    import { getCookie, delCookie } from '@/config/mUtils'
+    import {GetDropDownPermission,GetWarehouse,GetStockTicket,getAllTicket,GetStockTicketDetail} from "@/api/myData"
+    import Export from '@/components/export'
+    import Vue from "vue"
+    Vue.component('my-item-ticketSearch', {
+        functional: true,
+        render: function(h, ctx) {
+            var item = ctx.props.item;
+            return h('div', ctx.data, [
+                h('p', { attrs: { class: 'name' } }, ["券名称："+item.TickName]),
+                h('p', { attrs: { class: 'name' } }, ["券号："+item.TickInfoCode]),
+                h('p', { attrs: { class: 'name' } }, ["券面值："+item.FaceValue]),
+                h('p', { attrs: { class: 'name' } }, ["券类型："+item.Type]),
+                h('p', { attrs: { class: 'name' } }, ["折扣："+item.discount]),
+            ]);
+        },
+        props: {
+            item: { type: Object, required: true }
+        }
+    });
+    export default {
+        data () {
+            return {
+                payDialog:false,
+                ticket:"",
+                date:"",
+                loading:false,
+                total:0,
+                size:10,
+                currentPage:1,
+                checked:false,
+                formInline: {
+                    keywords: '',
+                    typeCode:'',
+                    hospitalCode:"",
+                    wareHouse:"",
+                    ticketCode:"",
+                    state:'',
+                },
+                tableData:[],
+                allData:[],
+                hospitalList:[],
+                supplierList:[],
+                whList:[],
+                allWhList:[],
+                ticketsList:[],
+                mes:{},
+                ope:'',
+                viewData:[],
+                viewDialog:false,
+            }
+        },
+        computed: {
+            /* 导出报表参数 tHeader,filterVal,tableData1*/
+            tHeader(){
+                return [ '卡券编号', '使用次数', '已用次数', '库存状态', '使用状态', '使用客户']
+            },
+            filterVal(){
+                return ['ticketCode', 'totalTimes', 'usedTimes', 'state','isUsed','customerName']
+            },
+            tableData1(){
+                let data = JSON.parse(JSON.stringify(this.allData))
+                data.forEach(ele=>{
+                    ele.state = ele.state==1?'已出库':'未出库'
+                    ele.isUsed = ele.isUsed ==1?'已使用':'未使用'
+                })
+                return data
+            },
+            name(){
+                return '卡券详情'
+            },
+            /*导出报表参数 tHeader,filterVal,tableData1*/
+        },
+        watch:{
+            'ticket':{
+                handler(curVal,oldVal){
+                    if(curVal == ''){
+                        this.formInline.ticketCode  = ''
+                    }
+                },
+                deep:true
+            }
+        },
+        mounted(){
+            this.date = [new Date(),new Date()]
+            this.GetDropDownPermission()
+        },
+        methods:{
+            viewTicket(val,ope){
+                this.ope = ope
+
+                this.viewData = val
+                this.viewDialog = true
+            },
+            viewDet(id){
+                this.mes = {
+                    id:id
+                }
+                this.payDialog = true
+            },
+            exportTbale(){
+                this.GetStockTicket({
+                    pageIndex:this.currentPage,
+                    pageSize:this.total,
+                    keywords:this.formInline.keywords.removeSP(),
+                    TicketId:this.formInline.ticketCode,
+                    HospitalCode:this.formInline.hospitalCode,
+                    WarehouseId:this.formInline.wareHouse,
+                    State:this.formInline.state,
+                },'export')
+            },
+            hosCha(val){
+                this.formInline.wareHouse = ""
+                this.whList = []
+                this.allWhList.forEach(ele => {
+                    if(ele.hospitalCode == val){
+                        this.whList.push(ele)
+                    }
+                });
+            },
+            getTickets(res) {
+                this.ticketsList = []
+                // let res = await getAllTicket({ 'keywords': str.removeSP() })
+                if (res instanceof Array && res.length > 0) {
+                    for (let item of res) {
+                        item.Type = this.getType(item.TicketsType)
+                        item.FaceValue = item["FaceValue"]?item["FaceValue"]:""
+                        item.value = item['TickName']
+                        item.discount = item.Discount?item.Discount+"%":""
+                        this.ticketsList.push(item)
+                    }
+                }
+            },
+            selectTick(item) {
+                this.formInline.ticketCode = item.Id
+            },
+            getType(type){
+                switch(type){
+                    case 1: return "折扣券"; break;
+                    case 2: return "现金券"; break;
+                    case 3: return "门票"; break;
+                }
+            },
+
+            //查找卡券 下拉补全
+            async queryTicket(queryString, cb) {
+                this.customerList = []
+                if (queryString !== '' && queryString != undefined) {
+                    let res = await getAllTicket({ 'keywords': queryString.removeSP() })
+                    this.getTickets(res)
+                }
+                this.formInline.ticketCode = ""
+                let _this = this
+                clearTimeout(this.timeout);
+                this.timeout = setTimeout(() => {
+                    cb(_this.ticketsList);
+                }, 100);
+            },
+            async GetDropDownPermission(){
+                let res1 = await GetDropDownPermission({typeId: 1});
+                this.hospitalList = res1.data
+                let whList = await GetWarehouse({
+                    "hospitalCode": "",
+                    pageIndex:1,
+                    pageSize:100,
+                    keywords:"",
+                    typeId:2//卡券
+                })
+                this.allWhList = whList.data
+                this.formInline.hospitalCode = res1.data[0].code
+            },
+            // 删除
+            async DeleteDrugInById(params){
+                try{
+                    let res = await DeleteDrugInById(params)
+                    if(res.status){
+                        this.$message({message: '删除成功', type: 'success'});
+                        this.search()
+                    }else{
+                        this.$message.error('删除失败');
+                    }
+                }catch(err){
+                    console.log(err)
+                    this.$message.error('删除失败');
+                }
+            },
+            async GetStockTicket(params,ope){
+                try{
+                    let res = await GetStockTicketDetail(params)
+                    if(ope){
+                        this.allData = res.data
+                        this.$refs.exportTable.handleDownload()
+                    }else{
+                        this.tableData = res.data
+                        this.total = res.count
+                    }
+                    this.loading = false
+                }catch(err){
+                    console.log(err)
+                }
+            },
+
+            onSubmit(){
+                this.currentPage = 1
+                this.search()
+            },
+            search(){
+                this.loading = true
+                this.GetStockTicket({
+                    pageIndex:this.currentPage,
+                    pageSize:this.size,
+                    keywords:this.formInline.keywords.removeSP(),
+                    TicketId:this.formInline.ticketCode,
+                    HospitalCode:this.formInline.hospitalCode,
+                    WarehouseId:this.formInline.wareHouse,
+                    State:this.formInline.state,
+                })
+            },
+            handleSizeChange(val) {
+                this.size = val
+                this.search()
+            },
+            handleCurrentChange(val) {
+                this.currentPage = val
+                this.search()
+            },
+
+
+        },
+        components: {
+            Export,
+            payDialog,
+            viewDialog
+        }
+    }
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+
+</style>

@@ -1,0 +1,618 @@
+<template>
+    <div class="selCommon register">
+        <el-form :model="ruleForm" :rules="rules" :inline="true" ref="ruleForm" label-width="100px" class="demo-ruleForm">
+            <el-form-item label="注册日期：" prop="registDate" class="form_item_mt10">
+                <el-date-picker  v-model="ruleForm.registDate" style="width:300px"  type="date"  placeholder="选择日期">
+            </el-date-picker>
+            </el-form-item>
+            <el-form-item label="医院：" class="form_item_mt10" prop="hospital">
+                <el-select v-model="ruleForm.hospital" class="form_sear_ipt"  @change="hosChange" style="width:300px;">
+                    <el-option v-for="(item,index) in hospitalList" v-if="item.code" :key="index" :label="item.supplierName" :value="item.code+'|'+item.supplierName"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="服务商名称：" prop="name" class="form_item_mt10">
+                <el-input v-model="ruleForm.name" style="width:300px;"></el-input>
+            </el-form-item>
+            <el-form-item label="等级：" class="form_item_mt10" prop="serviceGrade">
+                <el-select v-model="ruleForm.serviceGrade" class="form_sear_ipt" style="width:300px;">
+                    <el-option v-for="(item,index) in gradeList" :key="index" :label="item.name" :value="item.code"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="联系电话：" prop="phone" class="form_item_mt10" required>
+               <el-input v-model="ruleForm.phone" style="width:300px;"></el-input>
+            </el-form-item>
+            <el-form-item label="邮箱：" class="form_item_mt10">
+                <el-input v-model="ruleForm.email" style="width:300px;"></el-input>
+            </el-form-item>
+            <el-form-item label="住址：" class="form_item_mt10">
+                <el-select v-model="ruleForm.province" placeholder="请选择省" style="width: 100px;margin-bottom:5px">
+                    <el-option v-for="(item,index) in province" :label="item.name" :value="item.name" :key="index"></el-option>
+                </el-select>
+                <el-select v-model="ruleForm.city" placeholder="请选择市" style="width: 100px">
+                    <el-option v-for="(item,index) in city" :label="item.name" :value="item.name" :key="index"></el-option>
+                </el-select>
+                <el-select v-model="ruleForm.area" placeholder="请选择区域" style="width: 100px">
+                    <el-option v-for="(item,index) in area" :label="item.name" :value="item.name" :key="index"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="详细地址" prop="address" class="form_item_mt10">
+                <el-input v-model="ruleForm.address" placeholder="详细地址" style="width:300px;margin-bottom:5px;float:none"></el-input>
+            </el-form-item>
+            <el-form-item label="身份证号：" prop="" class="form_item_mt10" >
+                <el-input v-model="ruleForm.IdCard" style="width:300px;"></el-input>
+            </el-form-item>
+            <el-form-item label="生日："  class="form_item_mt10">
+                <el-select v-model="ruleForm.year" style="width:100px" @change="yearChange">
+                    <el-option v-for="(item,index) in yearList" :key="index" :label="item" :value="item"></el-option>
+                </el-select>
+                <el-select v-model="ruleForm.mounth" style="width:100px" @change="mouChange">
+                    <el-option v-for="(item,index) in mounthList" :key="index" :label="item" :value="item"></el-option>
+                </el-select>
+                <el-select v-model="ruleForm.day" style="width:100px">
+                    <el-option v-for="(item,index) in dayList" :key="index" :label="item" :value="item"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="性别：" class="form_item_mt10">
+                <el-radio-group v-model="ruleForm.sex" style="width:300px;">
+                    <el-radio :label="0">女</el-radio>
+                    <el-radio :label="1">男</el-radio>
+                </el-radio-group>
+            </el-form-item>
+            
+            <el-form-item label="服务商推荐人：" class="form_item_mt10" >
+                <el-autocomplete v-model="ruleForm.recCode" :fetch-suggestions="queryCus" placeholder="请输入内容" :trigger-on-focus="false" 
+                custom-item="my-item-memberItem" @select="selectCus" style="width:300px;"></el-autocomplete>
+            </el-form-item>
+            <el-form-item label="消费商推荐人：" class="form_item_mt10" >
+                <el-autocomplete v-model="ruleForm.BranchrecCode" :fetch-suggestions="queryCus1" placeholder="请输入内容" :trigger-on-focus="false"
+                custom-item="my-item-memberItem" @select="selectCus1" style="width:300px;"></el-autocomplete>
+            </el-form-item>
+            <el-form-item label="注册费用："  class="form_item_mt10" prop="payAmount">
+                <el-input v-model.number="ruleForm.payAmount" style="width:300px;"></el-input>
+            </el-form-item>
+            <el-form-item label="银行卡号："  class="form_item_mt10">
+                <el-input v-model="ruleForm.bankCardId" style="width:300px;"></el-input>
+            </el-form-item>
+            <el-form-item label="开户行："  class="form_item_mt10">
+                <!-- <el-input v-model="ruleForm.openBankCode" style="width:300px;"></el-input> -->
+                <el-select v-model="ruleForm.openBankCode" placeholder="请选择" style="width:300px;">
+                        <el-option v-for="item in bankList" :label="item.DataName" :value="item.DataName"
+                                   :key="item.DataCode"></el-option>
+                    </el-select>
+            </el-form-item>
+            <el-form-item label="开户行支行："  class="form_item_mt10">
+                <el-input v-model="ruleForm.openBankName" style="width:300px;"></el-input>
+            </el-form-item>
+            <el-form-item label="开户人姓名："  class="form_item_mt10">
+                <el-input v-model="ruleForm.bankCardHolder" style="width:300px;"></el-input>
+            </el-form-item>
+            <el-form-item label="支付信息：" style="wdith:100%;">
+                <el-table :data="payData" border style="width:780px;margin-bottom:10px">
+                    <el-table-column prop="payTypeName" label="支付方式" min-width="100"></el-table-column>
+                    <el-table-column prop="receiveAccount" label="收款账户" min-width="80"> </el-table-column>
+                    <el-table-column prop="realAmount" label="支付金额" min-width="80"> </el-table-column>
+                    <el-table-column prop="procFee" label="手续费" min-width="80"> </el-table-column>
+                    <el-table-column prop="payDate" label="支付日期" min-width="110">
+                        <template scope="scope">
+                            <span v-if="scope.row.payDate">{{scope.row.payDate.substring(0,19)}}</span>
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="memo" label="备注"  min-width="80" show-overflow-tooltip> </el-table-column>
+                    <el-table-column prop="address" label="操作"  min-width="120">
+                        <template scope="scope">
+                            <el-button type="primary" @click="editPay(scope.$index,payData)" size="small">编辑</el-button>
+                            <el-button type="primary" @click="del(scope.$index,payData)" size="small">删除</el-button>
+                        </template>
+                    </el-table-column>
+                </el-table>
+                <el-button @click="addPay" type="primary" size="small">添加支付信息</el-button>
+                <span>支付金额：{{realPayAmount}}</span>
+            </el-form-item>
+            <el-form-item label="备注：" style="width:100%;">
+                <el-input type="textarea" v-model="ruleForm.memo" :row="8" style="width:800px;"></el-input>
+            </el-form-item>
+        </el-form>
+        <div style="text-align: center">
+            <el-button type="primary" @click="submitForm('ruleForm')" :loading="saveLoading">保存</el-button>
+            <el-button @click="resetForm('ruleForm')">取消</el-button>
+        </div>
+        <el-dialog title="支付" :visible.sync="payDialog" :close-on-click-modal="false" size="" :modal="false">
+            <pay v-if="payDialog" @payOpe="payOpe" style="width:450px" :editMes="editMes"></pay>
+        </el-dialog>
+    </div>
+    
+</template>
+
+<script type="text/ecmascript-6">
+import pay from './pay'
+    import addr from "../../../../../static/addresss.json"
+    import { getCookie, delCookie,getStore } from '@/config/mUtils'
+    import {GetServiceInfoByKeywords,GetDropDownPermission,UpdateServiceInfo, AddServiceInfo,GetServiceInfoDetail,GetBranchByKeywords,getBaseDataByCode} from "@/api/myData"
+    import Vue from "vue"
+     Vue.component('my-item-memberItem', {
+        functional: true,
+        render: function(h, ctx) {
+            var item = ctx.props.item;
+            return h('li', ctx.data, [
+                h('p', { attrs: { class: 'select_name'+item.Type, title: item.name } }, ['名字：' + item.name]),
+                h('p', { attrs: { class: 'select_name'+item.Type, title: item.name} }, ['编号：' + item.code]),
+                h('p', { attrs: { class: 'select_name'+item.Type, title: item.name} }, ['手机号：' + item.phone]),
+            ]);
+        },
+        props: {
+            item: { type: Object, required: true }
+        }
+    });
+    export default {
+        data () {
+            var idCard = (rule, value, callback) => {
+                let reg = /(^\d{15}$)|(^\d{18}$)|(^\d{17}(\d|X|x)$)/
+                if(!value){
+                    return callback(new Error('请填写身份证号码'));
+                }
+                if(reg.test(value) == false){
+                    callback(new Error('请检查身份证号码'))
+                }else{
+                    callback()
+                }
+            };
+            var phone = (rule, value, callback) => {
+                let reg = /^1[3456789]\d{9}$/
+                if(!value){
+                    return callback(new Error('请填写联系电话'));
+                }
+                if(reg.test(value) == false){
+                    callback(new Error('请检查电话号码'))
+                }else{
+                    callback()
+                }
+            };
+            var rec = (rule, value, callback) => {
+                if(value.Code){
+                    callback()
+                }else{
+                    callback(new Error('请选择推荐人'))
+                }
+            };
+            return {
+                payData:[],
+                editMes:{},
+                editIndex:'',
+                payDialog:false,
+                saveLoading:false,
+                loading1:false,
+                province:[],
+                city:[],
+                area:[],
+                hospitalList:[],
+                ruleForm: {
+                    registDate:new Date(),
+                    phone:"",
+                    province:"",
+                    city:"",
+                    area:"",
+                    address:"",
+                    email:"",
+                    IdCard:"",
+                    name: '',
+                    recCode:"",//服务商推荐人
+                    BranchrecCode:'',//消费商推荐人
+                    sex:0,
+                    hospitalCode:"",
+                    hospitalName:"",
+                    hospital:'',
+                    referrerCode:"",
+                    referrerName:"",
+                    refBranchCode: "",
+                    refBranchName: "",
+                    memo:"",
+                    year:new Date().getFullYear()+"",
+                    mounth:"01",
+                    day:"01",
+                    bankCardHolder:'',
+                    openBankName:'',
+                    bankCardId:'',
+                    openBankCode:'',
+                    payAmount:100000,
+                    serviceGrade:'',
+                },
+                gradeList:[{name:'总监',code:'1'},{name:'经理',code:'2'},{name:'科长',code:'3'},{name:'组长',code:'4'},{name:'美导',code:'5'}],
+                yearList:[],
+                mounthList:[],
+                dayList:[],
+                bankList:[],
+                customerList:[],
+                rules: {
+                    registDate:[
+                        { required: true,type:'date', message: '请输入推荐人姓名', trigger: 'blur' },
+                    ],
+                    name: [
+                        { required: true, message: '请输入推荐人姓名', trigger: 'blur' },
+                    ],
+                    phone: [
+                        { validator: phone, trigger: 'blur' }
+                    ],
+                    referrerCode: [
+                        { required: true, message: '请填写推荐人', trigger: 'change' }
+                    ],
+                    address:[
+                        { required: true, message: '请填写会员地址',  trigger: 'blur'}
+                    ],
+                    hospital:[
+                        { required: true, message: '请选择医院',  trigger: 'change'}
+                    ],
+                    payAmount:[
+                        { required: true,type:'number', message: '请填写注册费用',  trigger: 'blur'}
+                    ],
+                    serviceGrade:[
+                        { required: true, message: '请选择等级',  trigger: 'change'}
+                    ],
+                }
+            }
+        },
+        watch:{
+            "ruleForm.province":{
+                handler(curVal,oldVal){
+                    this.province.forEach(row=>{
+                        if(row.name == this.ruleForm.province){
+                            this.city = row.sub
+                        }
+                    })
+                },
+                deep:true
+            },
+            //fetch-suggestions在整体清空时无法触发，这里做处理
+            "ruleForm.recCode":{
+                handler(curVal,oldVal){
+                    if(curVal == ''){
+                        
+                        this.ruleForm.referrerCode = ""
+                        this.ruleForm.referrerName = ""
+                    }
+                },
+                deep:true
+            },
+            "ruleForm.BranchrecCode":{
+                handler(curVal,oldVal){
+                    if(curVal == ''){
+                        
+                        this.ruleForm.refBranchCode = ""
+                        this.ruleForm.refBranchName = ""
+                    }
+                },
+                deep:true
+            }
+        },
+        computed:{
+            'realPayAmount'(){
+                
+                let sum = 0
+                this.payData.forEach(ele=>{
+                    sum+= Number(ele.realAmount)
+                })
+                return sum
+            }
+        },
+        props:{
+            mes:{}
+        },
+        mounted(){
+            this.getHospital()
+            this.getBirthMes()
+            this.province = addr.area
+        },
+        methods: {
+            addPay(){
+                this.editMes = {}
+                this.payDialog = true
+            },
+            // 添加支付信息回调
+            payOpe(val,ope,isEdit){
+                if(ope){
+                    if(val.constructor == Object){
+                        val.TicketOutId = this.mes.id
+                        this.payData.push(val)
+                    }
+                }else{
+                    if(isEdit){
+                        val.ApplyId = this.mes.ApplyId
+                        this.payData[this.editIndex] = val
+                        this.payData.push()
+                    }
+                }
+                this.payDialog = false
+            },
+            hosChange(val){
+                this.ruleForm.hospitalCode = val.split("|")[0]
+                this.ruleForm.hospitalName = val.split("|")[1]
+            },
+            async getHospital(){
+                let [res,payData,bankList] = await Promise.all([GetDropDownPermission({typeId: 1}),GetServiceInfoDetail({code:this.mes.code}),getBaseDataByCode("0004")]) 
+                this.bankList = bankList
+                this.payData = payData.data.branchOrderPayList
+                this.hospitalList = res.data
+                if(this.mes.id){
+                    this.copyData(this.mes)
+                }
+            },
+            copyData(data){
+                for(var p in data){
+                    if(data[p] == null){
+                        data[p] = ""
+                    }
+                }
+                if(data != ""){
+                    this.ruleForm.num = data.code
+                    setTimeout(()=>{
+                        this.ruleForm.province = data.province
+                    },30)
+                    setTimeout(()=>{
+                        this.ruleForm.city = data.city
+                    },40)
+                    setTimeout(()=>{
+                        this.ruleForm.area = data.area
+                    },50)
+                    this.ruleForm.address = data.address.split(",").join("")
+                    this.ruleForm.memo = data.memo
+                    this.ruleForm.email = data.email
+                    this.ruleForm.IdCard = data.idCard
+                    this.ruleForm.name = data.serviceInfoName
+                    this.ruleForm.recCode = data.referrerName
+                    this.ruleForm.BranchrecCode = data.refBranchName
+                    this.ruleForm.referrerName = data.referrerName
+                    this.ruleForm.referrerCode = data.referrerCode
+                    this.ruleForm.sex = Number(data.sex)
+                    this.ruleForm.hospitalCode = data.hospitalCode?data.hospitalCode:""
+                    this.ruleForm.hospitalName = data.hospitalName?data.hospitalName:""
+                    this.ruleForm.hospital = data.hospitalCode+'|'+ data.hospitalName
+                    this.ruleForm.year = data.birthday.substring(0,4)
+                    this.ruleForm.mounth = data.birthday.substring(5,7)
+                    this.ruleForm.day = data.birthday.substring(8)
+                    this.ruleForm.phone = data.phoneNumber
+                    this.ruleForm.payAmount = data.payAmount?data.payAmount:100000
+                    this.ruleForm.bankCardHolder = data.bankCardHolder
+                    this.ruleForm.openBankName = data.openBankName
+                    this.ruleForm.bankCardId = data.bankCardId
+                    this.ruleForm.openBankCode = data.openBankCode
+                    this.ruleForm.refBranchCode = data.refBranchCode
+                    this.ruleForm.refBranchName = data.refBranchName
+                    this.ruleForm.serviceGrade = data.serviceGrade+''
+                    this.ruleForm.registDate = data.registDate?new Date(data.registDate.substring(0,4),data.registDate.substring(5,7)-1,data.registDate.substring(8,10)):new Date()
+                }
+            },
+            yearChange(){
+                this.mouChange()
+            },
+            
+            mouChange(){
+                let arr=['01','03','05','07','08','10','12'],arr2 = ['04','06','09','11']
+                let day = []
+                for(let i = 1;i<32;i++){
+                    if(i<10){
+                        day.push("0"+i)
+                    }else{
+                        day.push(i+"")
+                    }
+                }
+                this.dayList = []
+                if(this.ruleForm.mounth == '02'){
+                    if(this.isLeapYear(this.ruleForm.year)){
+                        this.dayList = day.slice(0,day.length-3)
+                    }else{
+                        this.dayList = day.slice(0,day.length-2)
+                    }
+                }
+                if(arr.indexOf(this.ruleForm.mounth)>=0){
+                    this.dayList = day
+                }
+                if(arr2.indexOf(this.ruleForm.mounth)>=0){
+                    this.dayList = day.slice(0,day.length-1)
+                }
+                if(this.dayList.indexOf(this.ruleForm.day)<0){
+                    this.ruleForm.day = this.dayList[this.dayList.length-1]
+                }
+            },
+            // 闰年判断
+            isLeapYear(year) { 
+                  return (year % 4 == 0) && (year % 100 != 0 || year % 400 == 0); 
+            },
+            getBirthMes(){
+                let year = (new Date()).getFullYear()
+                let arr = [],arr1 = []
+                for(let i = 0;i<80;i++){
+                    arr.push(year-i)
+                }
+                this.yearList = arr
+                for(let j = 1;j<13;j++){
+                    if(j<10){
+                        arr1.push("0"+j)
+                    }else{
+                        arr1.push(j+"")
+                    }
+                }
+                this.mounthList = arr1
+                this.ruleForm.mounth = "01"
+                this.ruleForm.day = "01"
+                this.mouChange()
+            },
+             //查找服务商推荐 下拉补全
+            queryCus(queryString, cb) {
+                this.customerList = []
+                if (queryString !== '' && queryString != undefined) {
+                    this.GetServiceInfoByKeywords({ 'keywords': queryString.removeSP() })
+                }
+                this.ruleForm.referrerCode = ""
+                this.ruleForm.referrerName = ""
+                let _this = this
+                clearTimeout(this.timeout);
+                this.timeout = setTimeout(() => {
+                    cb(_this.customerList);
+                }, 1000);
+            },
+            //查找代理商推荐 下拉补全
+            queryCus1(queryString, cb) {
+                this.customerList = []
+                if (queryString !== '' && queryString != undefined) {
+                    this.getBranchByKeywords({ 'keywords': queryString.removeSP() })
+                }
+                this.ruleForm.refBranchCode = ""
+                this.ruleForm.refBranchName = ""
+                let _this = this
+                clearTimeout(this.timeout);
+                this.timeout = setTimeout(() => {
+                    cb(_this.customerList);
+                }, 1000);
+            },
+            //            搜索代理
+            async getBranchByKeywords(params){
+                try {
+                    let res = await GetBranchByKeywords(params)
+                    if (res instanceof Array && res.length > 0) {
+                        for (let item of res) {
+                            let tagName = ""
+                            if(item["BranchTags"] != ''&&item["BranchTags"] != null&&item["BranchTags"] != undefined){
+                                tagName = '('+item["BranchTags"]+')'
+                            }
+                            this.customerList.push({
+                                BranchTags:item["BranchTags"]?item["BranchTags"]:"",
+                                value: item["BranchName"]+tagName,
+                                phone: item["PhoneNumber"],
+                                code: item["Code"],
+                                name: item["BranchName"]+tagName,
+                                Name:item["BranchName"],
+                                hospitalCode: item['HospitalCode'],
+                                hospitalName: item['HospitalName'],
+                            })
+                        }
+                    }
+                    this.loading1 = false
+                } catch (err) {
+                    console.log(err)
+                }
+            },
+            // 服务商推荐选择
+            selectCus(item) {
+                this.ruleForm.referrerCode = item.code? item.code:""
+                this.ruleForm.referrerName = item.Name? item.Name:""
+            },
+            // 代理商推荐选择
+            selectCus1(item) {
+                this.ruleForm.refBranchCode = item.code? item.code:""
+                this.ruleForm.refBranchName = item.Name? item.Name:""
+            },
+            //    搜索代理
+            async GetServiceInfoByKeywords(params){
+                try {
+                    let res = await GetServiceInfoByKeywords(params)
+                    if (res.data instanceof Array && res.data.length > 0) {
+                        for (let item of res.data) {
+                            this.customerList.push({
+                                value: item["serviceInfoName"],
+                                phone: item["phoneNumber"],
+                                code: item["code"],
+                                name: item["serviceInfoName"],
+                                Name:item["serviceInfoName"],
+                                hospitalCode: item['hospitalCode'],
+                                hospitalName: item['hospitalName'],
+                            })
+                        }
+                    }
+                    this.loading1 = false
+                } catch (err) {
+                    console.log(err)
+                }
+            },
+//            添加会员 3普通会员 2认证会员
+            async AddServiceInfo(params){
+                try{
+                    let res,ope=this.mes.id?'编辑':'添加'
+                    if(this.mes.id){
+                        res = await UpdateServiceInfo(params)
+                    }else{
+                        res = await AddServiceInfo(params)
+                    }
+                    if(res.status){
+                        this.$message({message: ope+'成功', type: 'success'});
+                        this.$emit("close",true)
+                    }else{
+                        this.$message.error(ope+'失败！'+res.errorMessage);
+                    }
+                    this.saveLoading = false
+                }catch(err){
+                    console.log(err)
+                    this.$message.error(ope+'失败');
+                }
+            },
+
+            submitForm(formName) {
+                this.$refs[formName].validate((valid) => {
+                    if (valid) {
+                        
+                        let obj ={
+                            serviceInfoName: this.ruleForm.name.removeSP(),
+                            referrerCode: this.ruleForm.referrerCode,
+                            referrerName: this.ruleForm.referrerName,
+                            refBranchCode: this.ruleForm.refBranchCode,
+                            refBranchName: this.ruleForm.refBranchName,
+                            hospitalCode:this.ruleForm.hospitalCode,
+                            hospitalName: this.ruleForm.hospitalName,
+                            idCard: this.ruleForm.IdCard,
+                            sex: this.ruleForm.sex,
+                            birthday: this.ruleForm.year+'-'+this.ruleForm.mounth+'-'+this.ruleForm.day,
+                            phoneNumber: this.ruleForm.phone,
+                            email: this.ruleForm.email,
+                            address: this.ruleForm.address,
+                            province:this.ruleForm.province,
+                            city:this.ruleForm.city,
+                            area:this.ruleForm.area,
+                            memo:this.ruleForm.memo,
+                            bankCardHolder:this.ruleForm.bankCardHolder,
+                            openBankName:this.ruleForm.openBankName,
+                            bankCardId:this.ruleForm.bankCardId,
+                            openBankCode:this.ruleForm.openBankCode,
+                            registDate: this.ruleForm.registDate.formatDate('yyyy-MM-dd'),
+                            payInfoJsonStr:JSON.stringify(this.payData),
+                            realPayAmount:this.realPayAmount,
+                            payAmount:this.ruleForm.payAmount,
+                            serviceGrade:this.ruleForm.serviceGrade,
+                        }
+                        this.saveLoading = true
+                        if(this.mes.id){
+                            obj.modifiedUserId = getCookie("userId")
+                            obj.modifiedBy = getCookie("userName")
+                            obj.id = this.mes.id
+                            obj.code = this.mes.code
+                        }else{
+                            obj.createUserId = getCookie("userId")
+                            obj.createBy = getCookie("userName")
+                        }
+                        this.AddServiceInfo(obj)
+                    } else {
+                        console.log('error submit!!');
+                        return false;
+                    }
+                });
+            },
+            resetForm(formName) {
+                this.$refs[formName].resetFields();
+                this.$emit("close",false)
+            },
+            editPay(index,data){
+                this.editIndex = index
+                this.editMes = data[index]
+                this.payDialog = true
+            },
+            del(index,data){
+                data.splice(index,1)
+            },
+        },
+        components: {
+            pay
+        }
+    }
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+
+</style>

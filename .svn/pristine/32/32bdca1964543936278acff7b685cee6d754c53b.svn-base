@@ -1,0 +1,594 @@
+<template>
+    <div class="selCommon editRegister">
+        <el-form :model="ruleForm" ref="ruleForm" :inline="true" label-width="85px" class="demo-ruleForm">
+            <el-form-item label="入库日期：" prop="date" :rules="[{type:'date', required: true, message: '不能为空'}]" class="form_item_mt10">
+                <el-date-picker
+                    v-model="ruleForm.date"
+                    type="date"
+                    style='width:200px;'
+                    placeholder="选择日期">
+                </el-date-picker>
+            </el-form-item>
+            <el-form-item label="医院：" class="form_item_mt10"  prop="hospital" :rules="[{required: true, message: '不能为空'}]">
+                <el-select v-model="ruleForm.hospital"  style='width:200px;' @change="hosChange" >
+                    <el-option v-for="(item,index) in hospitalList" v-if="item.code" :key="index" :label="item.supplierName" :value="item.supplierName+'|'+item.code"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="入库类别："  class="form_item_mt10" prop="ticketInType" :rules="[{ required: true, message: '不能为空'}]">
+                <el-select v-model="ruleForm.ticketInType" style='width:200px;' >
+                    <el-option v-for="(item,index) in typeList" :key="index" :label="item" :value="item"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="入库仓库："  class="form_item_mt10" prop="wareHouse" :rules="[{ required: true, message: '不能为空'}]">
+                <el-select v-model="ruleForm.wareHouse" style='width:200px;' >
+                    <el-option v-for="(item,index) in whList" :key="index" :label="item.warehouseName" :value="item.warehouseName+'|'+item.id"></el-option>
+                </el-select>
+            </el-form-item>
+
+            <el-form-item label="操作人："  class="form_item_mt10">
+                <span>{{ruleForm.operator}}</span>
+            </el-form-item>
+            <el-form-item label="卡券："  class="form_item_mt0" style="width:100%">
+                <el-autocomplete v-model="customer" :fetch-suggestions="queryTicket" placeholder="请输入内容"
+                :trigger-on-focus="false" custom-item="my-item-tickets" @select="selectTick" style="width:200px"></el-autocomplete>
+                <span style="color:red;display: inline-block;vertical-align: top;">(选择卡券添加到下表)</span>
+            </el-form-item>
+           
+            <el-form-item label=" "  class="" label-width="20px">
+                <el-table :data="tableData" border style="width: 950px;margin-top:15px;margin-bottom:10px;" max-height="400">
+                    <el-table-column prop="ticketName" label="券名称" min-width="100"></el-table-column>
+                    <!-- <el-table-column prop="HospitalName" label="适用医院" min-width="100" show-overflow-tooltip></el-table-column> -->
+                    <el-table-column prop="quantity" label="数量" min-width="70">
+                        <template scope="scope">
+                            <span >{{scope.row.quantity}}</span>
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="salePrice" label="售价" min-width="70">
+                        <template scope="scope">
+                            <el-input-number v-model="scope.row.salePrice" :debounce='1000' placeholder="" :controls="false" @change="numChange(scope.$index,scope.row)" :min=0 style="width:90%"></el-input-number>
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="totalAmount" label="金额" min-width="70">
+                        <template scope="scope">
+                            <el-input-number v-model="scope.row.totalAmount" :debounce='1000' placeholder="" :controls="false" :min=0 style="width:90%"></el-input-number>
+                        </template>
+                    </el-table-column>
+                    
+                    <el-table-column prop="startNum" label="出券前缀" width="170">
+                        <template scope="scope">
+                            <el-input v-model="scope.row.ticketPrefixCode" style="width:90%"  @change="changeCode(scope.row,scope.$index)"></el-input>
+                        </template>
+                    </el-table-column>
+                   
+                    <el-table-column prop="numCount" label="流水号位数" min-width="70">
+                        <template scope="scope">
+                            <el-input-number v-model="scope.row.numCount" placeholder="" :controls="false" :min=0 style="width:90%" @change="changeCode(scope.row,scope.$index)"></el-input-number>
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="status" label="操作" width="150">
+                        <template scope="scope">
+                            <el-button @click="scanning(scope.$index,scope.row)" type="primary" size="small">扫描券号</el-button>
+                            <el-button @click="deleteRow(scope.$index,tableData)" type="primary" size="small">删除</el-button>
+                        </template>
+                    </el-table-column>
+                </el-table>
+            </el-form-item>
+
+            <el-form-item label="备注：" class="form_item_mt1">
+                <el-input v-model="ruleForm.memo" type="textarea" :rows="4" style="width:500px" ></el-input>
+            </el-form-item>
+        </el-form>
+        <div class="form_footer">
+            <el-button type="primary" @click="sure('ruleForm')" :loading="saveLoading">保存</el-button>
+            <el-button @click="cancel('ruleForm')">取消</el-button>
+        </div>
+        <el-dialog title="添加券号" :visible.sync="dialogDet" size="" :modal="false">
+            <el-input v-model="ruleForm.number" placeholder="请输入券号，多个使用逗号分隔" type="textarea" :rows="4" style="width:500px"></el-input>
+            <div class="form_footer" >
+                <el-button type="primary" @click="returnSave('ruleForm')">保存</el-button>
+                <el-button @click="dialogDet = false">取消</el-button>
+            </div>
+        </el-dialog>
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+    import { getCookie, delCookie } from '@/config/mUtils'
+    import {GetWarehouse,GetGoodsByKeywords2,GetUserAllByKeywords,GetTicketInDetail,getTicketsInfoByTicketCode,getAllTicket,GetStockTicketByKeywords,
+    GetDropDownPermission,getSupplierByPage,AddStockTicketIn,UpdatestockTicketIn} from "@/api/myData"
+    import Vue from "vue"
+    Vue.component('my-item-tickets', {
+        functional: true,
+        render: function(h, ctx) {
+            var item = ctx.props.item;
+            return h('li', ctx.data, [
+                h('p', { attrs: { class: 'name' } }, ["券名称："+item.TickName]),
+                h('p', { attrs: { class: 'name' } }, ["券号："+item.TickInfoCode]),
+                h('p', { attrs: { class: 'name' } }, ["券面值："+item.FaceValue]),
+                h('p', { attrs: { class: 'name' } }, ["券类型："+item.Type]),
+                h('p', { attrs: { class: 'name' } }, ["折扣："+item.discount]),
+            ]);
+        },
+        props: {
+            item: { type: Object, required: true }
+        }
+    });
+  
+    export default {
+        props:{
+            editMes:{},//编辑信息
+        },
+        data () {
+            return {
+                saveLoading:false,
+                dialogDet:false,
+                customer:"",
+                isDrug:false,
+                ruleForm: {
+                    wareHouse:"",
+                    ticketInType:"",
+                    buyer:"",
+                    date:new Date(),
+                    hospital:"",
+                    operator:getCookie("userName"),
+                    memo:"",
+                    number:'',
+                },
+                typeList:['印制入库','调拨入库'],
+                tableData:[],
+                hospitalList:[],//医院
+                fromHospitalList:[],
+                formHospitalList:[],
+                fromWhlist:[],
+                whList:[],//仓库
+                allWhlist:[],
+                customerList:[],
+                yearList:[],
+                monthList:[],
+                tickets:{},
+                returnIndex:Number,
+                scanIndex:'',
+            }
+        },
+        mounted(){
+            this.GetBaseDataAll()
+        },
+        watch:{
+            'ruleForm.hospital':{
+                handler(curVal,oldVal){
+                    if(oldVal != ""){
+                        this.ruleForm.wareHouse = ""
+                    }
+                },
+                deep:true
+            },
+            'ruleForm.ticketInType':{
+                handler(curVal,oldVal){//退货类型切换后清空之前存下的信息
+                    if(!this.editMes.view){
+                        this.tableData = []
+                        this.customer = ''
+                    }
+                },
+                deep:true
+            }
+        },
+        methods: {
+            changeCode(data,index){
+                debugger
+                this.tableData.push()
+                this.scanIndex = index 
+                if(data.scanDialog){//编辑流水位数和前缀重新计算券号
+                    setTimeout(()=>{
+                        this.scan(data.scanDialog)
+                    },20)
+                }
+            },
+            // 扫描券号
+            scanning(index,data){
+                debugger
+                if(data.ticketPrefixCode&&String(data.numCount) != ''){
+                    this.scanIndex = index 
+                    this.$emit("openScan",data.scanDialog?data.scanDialog:{})
+                }else{
+                    this.$message({ message: '请填写流水号和前缀',type: 'warning'});
+                }
+            },
+            
+            scan(val){// 扫描确认
+                debugger
+                let _this = this
+                this.tableData[this.scanIndex].scanDialog = val //保存录券的方式和初始值结束值 用来编辑使用
+                let dialogData = []
+                let flg = true
+                this.tableData[this.scanIndex].rangeDetailInJson = []
+                val.space.forEach(row=>{
+                    debugger
+                     if(row.endNum){//表示本条数据为区间方式
+                        let NumCount = _this.tableData[_this.scanIndex].numCount?_this.tableData[_this.scanIndex].numCount:5
+                        let pre = _this.tableData[_this.scanIndex].ticketPrefixCode,startNum = row.startNum,endNum = row.endNum
+                        if(NumCount<String(endNum).length){
+                            flg = false
+                            this.$alert('流水位数过小！请修改,否则将影响生成的券号','提示', {
+                                confirmButtonText: '确定',
+                                callback: action => {
+                                    return false
+                                }
+                            });
+                        }else{
+                            for(var i = startNum;i<endNum+1;i++){// 编码 为前缀+区间值 位数
+                                let code = "",digit =Number(NumCount) - String(i).length
+                                for(var j=0;j<digit;j++){
+                                    code+="0"
+                                }
+                                dialogData.push(pre+code+i)
+                            }
+                            _this.tableData[_this.scanIndex].rangeDetailInJson.push({
+                                startNum : startNum,
+                                endNum : endNum,
+                                ticketCodes:dialogData.join(","),
+                                createUserId:getCookie("userId"),
+                                createBy:getCookie("userName")
+                            })
+                        }
+                    }else{//表示本条数据为textarea文本方式 
+                        this.tableData[this.scanIndex].rangeDetailInJson.push({
+                            startNum : '',
+                            endNum : '',
+                            ticketCodes:row.ticketCodes,
+                            createUserId:getCookie("userId"),
+                            createBy:getCookie("userName")
+                        })
+                        row.ticketCodes.split(",").forEach(row => {
+                            dialogData.push(row)
+                        });
+                    }
+                })
+                if(flg){
+                    this.makeMixCode(dialogData)
+                }
+            },
+            makeMixCode(val){
+                debugger
+                let data = JSON.parse(JSON.stringify(val))
+                if(val){
+                    this.tableData[this.scanIndex].ticketCodes = data.join(',')
+                    this.tableData[this.scanIndex].ticketCodesArr= data
+                    this.tableData[this.scanIndex].totalAmount = this.tableData[this.scanIndex].salePrice.mul(data.length)
+                    this.tableData[this.scanIndex].quantity = data.length
+                }
+                this.tableData.push()
+            },
+
+            addTickets(index,data){
+                this.returnIndex = index
+                this.ruleForm.number = ''
+                this.dialogDet = true
+            },
+            returnSave(){
+                let codes = this.ruleForm.number.split(",").join("")
+                if(!isNaN(codes)){
+                    this.tableData[this.returnIndex].Codes = this.ruleForm.number
+                    this.dialogDet = false
+                }else{
+                    this.$message({
+                        message: '警告,输入的券号不符合规则，请检查后重新输入',
+                        type: 'warning'
+                    });
+                }
+            },
+            
+            hosChange(val){
+                this.ruleForm.warehouseId = ''
+                let hosCode = val.split("|")[1]
+                if(hosCode){
+                    this.whList = []
+                    this.allWhlist.forEach(ele=>{
+                        if(ele.hospitalCode == hosCode){
+                            this.whList.push(ele)
+                        }
+                    })
+                }else{
+                    this.whList = JSON.parse(JSON.stringify(this.allWhlist))
+                }
+            },
+            numChange(index,data){
+                window.clearTimeout()
+                setTimeout(()=>{
+                    if(!isNaN(data.quantity)){
+                        this.tableData[index].totalAmount = data.quantity.mul(data.salePrice)
+                    }
+                    this.tableData.push()
+                },100)
+            },
+
+            async GetTicketInDetail(id){
+                let res = await GetTicketInDetail({id:id})
+                this.tableData = res.data.stockTicketInDetailList
+            },
+
+            async getTickets(str,ope) {
+                this.customerList=[]
+                let res
+                if(ope){
+                    res = await getAllTicket({ 'keywords': str.removeSP()})
+                }else{
+                    res = await GetStockTicketByKeywords({ 'keywords': str.removeSP(),hospitalCode:this.getIdOrName(this.ruleForm.hospital,1),
+                    warehouseId:this.getIdOrName(this.ruleForm.wareHouse,1)})  
+                }
+                
+                if ((res instanceof Array && res.length > 0)||res.status) {
+                    if(ope){
+                        for (let item of res) {
+                            item.Type = this.getType(item.TicketsType)
+                            item.FaceValue = item["FaceValue"]?item["FaceValue"]:""
+                            item.value = item['TickName']
+                            item.discount = item.Discount?item.Discount+"%":""
+                            this.customerList.push(item)
+                        }
+                    }else{
+                        for (let item of res.data) {
+                            item.numCount = item.numCount==null?'':item.numCount
+                            item.FaceValue = item["FaceValue"]?item["FaceValue"]:""
+                            item.value = item['ticketName']
+                            this.customerList.push(item)
+                        }
+                    }
+                }
+            },
+            getType(type){
+                switch(type){
+                    case 1: return "折扣券"; break;
+                    case 2: return "现金券"; break;
+                    case 3: return "门票"; break;
+                }
+            },
+
+            //查找卡券 下拉补全
+            queryTicket(queryString, cb) {
+                this.customerList = []
+                if (queryString !== '' && queryString != undefined) {
+                    this.getTickets(queryString,1)
+                }
+                let _this = this
+                clearTimeout(this.timeout);
+                this.timeout = setTimeout(() => {
+                    cb(_this.customerList);
+                }, 1000);
+            },
+
+            //点击获取 卡券信息  Oject
+            selectTick(item) {
+                let flg = true
+                this.tableData.forEach(ele=>{
+                    if(ele.ticketId == item.Id){
+                        this.$message({
+                            message: '警告,选择券已存在列表中，请直接修改数量',
+                            type: 'warning'
+                        });
+                        flg = false
+                    }
+                })
+                if(flg){
+                    this.tableData.push({
+                        ticketCodes:'',
+                        ticketCodesArr:[],
+                        ticketId:item.Id,
+                        ticketName:item.TickName,
+                        quantity:0,
+                        totalAmount:0,
+                        numCount:5,//默认流水五位
+                        salePrice:item.Price,
+                        // batchNumber:item.batchNumber,
+                        createBy:getCookie('userName'),
+                        createUserId:getCookie('userId'),
+                        ticketPrefixCode:'',
+                        rangeDetailInJson:[],
+                    })
+                }
+            },
+
+            async GetBaseDataAll(){
+                try{
+                    let data = {startdate:"",enddate: "",suppliername: "",suptypecode: "",phonenumber: "",pageindex: 1,pagesize: 1000,}
+                    let res = await  getSupplierByPage(data)
+                    this.fromHospitalList = res
+                    let hosList = await GetDropDownPermission({typeId:1})
+                    this.hospitalList = hosList.data
+                    if(getCookie('hospitalCode')){
+                        this.hospitalList.forEach(ele=>{
+                            if(ele.code == getCookie("hospitalCode")){
+                                this.ruleForm.hospital = ele.supplierName+'|'+ele.code+'|'+ele.prefixCode
+                            }
+                        })
+                    }
+                    
+                    let whList = await GetWarehouse({
+                        "hospitalCode": "",pageIndex:1,pageSize:100,keywords:"",typeId:2//券
+                    })
+                    if(getCookie('hospitalCode')){
+                        whList.data.forEach(ele=>{
+                            if(ele.hospitalCode == getCookie('hospitalCode')){
+                                this.whList.push(ele)
+                            }
+                        })
+                    }else{
+                        this.whList = whList.data
+                    }
+                    this.allWhlist = JSON.parse(JSON.stringify(whList.data))
+                    if(this.editMes.ticketInCode){
+                        let res = await GetTicketInDetail({id:this.editMes.id})
+                        res.data.stockTicketInDetailList.forEach(row=>{
+                            row.scanDialog = {activeName: 1,space:[]}
+                            row.rangeDetailInJson = row.rangeDetailInList
+                            row.rangeDetailInList.forEach(ele=>{
+                                row.scanDialog.space.push({
+                                    endNum:ele.endNum,
+                                    startNum:ele.startNum,
+                                    ticketCodes:ele.ticketCodes
+                                })
+                            })
+                        })
+                        debugger
+                        this.tableData = res.data.stockTicketInDetailList
+                        this.copyData(res.data.stockTicketIn)
+                    }
+                }catch(err){
+                    console.log(err)
+                }
+            },
+            copyData(data){
+                for(var key in data){
+                    if(data[key] == null){
+                        data[key] = ""
+                    }
+                }
+                
+                    this.ruleForm = {
+                        id:data.id,
+                        ticketInCode:data.ticketInCode,
+                        wareHouse:data.warehouseName.length>0?data.warehouseName+'|'+data.warehouseId:"",
+                        ticketInType:data.ticketInType,
+                        hospital:data.hospitalName+"|"+data.hospitalCode,
+                        operator:data.createBy,
+                        memo:data.memo,
+                        ticketPrefixCode:this.tableData[0]?this.tableData[0].ticketPrefixCode:'',
+                        numCount:this.tableData[0]?this.tableData[0].numCount:'',
+                        number:this.tableData[0]?this.tableData[0].ticketCodes:'',
+                    }
+                    if(data.ticketInDate){
+                        this.$set(this.ruleForm,'date',new Date(data.ticketInDate.substring(0,4),Number(data.ticketInDate.substring(5,7))-1,data.ticketInDate.substring(8,10)))
+                    }
+            },
+            deleteRow(index,data){
+                data.splice(index,1)
+            },
+            sure(form){
+                 this.$refs[form].validate((valid) => {
+                    if (valid) {
+                        if(!this.getTableChech()){
+                            this.$message({message: '请至少添加一条卡券信息并保持数据完整', type: 'warning'});
+                            return false
+                        }
+                        let obj = {
+                            'ticketInDate':this.ruleForm.date.formatDate('yyyy-MM-dd'),
+                            "hospitalCode": this.getIdOrName(this.ruleForm.hospital,1),
+                            "hospitalName": this.getIdOrName(this.ruleForm.hospital,0),
+                            "ticketInType": this.ruleForm.ticketInType,
+                            "warehouseId": this.getIdOrName(this.ruleForm.wareHouse,1),
+                            "warehouseName":this.getIdOrName(this.ruleForm.wareHouse,0),
+                            "memo": this.ruleForm.memo,
+                            'ticketInDetailList':JSON.stringify(this.tableC(this.tableData)),
+                        }
+                        this.saveLoading = true
+                        // 编辑
+                        if(this.editMes.ticketInCode){
+                            obj.id = this.ruleForm.id
+                            obj.ticketInCode = this.ruleForm.ticketInCode
+                            obj.modifiedUserId = getCookie("userId")
+                            obj.modifiedBy = getCookie("userName")
+                            this.UpdatestockTicketIn(obj)
+                        }else{
+                            // 添加
+                            obj.createUserId = getCookie("userId")
+                            obj.createBy = getCookie("userName")
+                            this.AddStockTicketIn(obj)
+                        }
+                    } else {
+                        return false;
+                    }
+                });
+            },
+            
+            getTableChech(){
+                let flg = true
+                if(this.tableData.length==0){
+                    return false
+                }
+                this.tableData.forEach(ele=>{
+                    if(ele.ticketPrefixCode===""){
+                        flg = false
+                    }
+                })
+                return flg
+            },
+
+            tableC(tableData){//退货入库需要拼接券号
+                // if(this.ruleForm.ticketInType == '退货入库'){
+                //     data.forEach(ele=>{
+                //         ele.TicketCodes = this.splitTocketCode(ele)
+                //         ele.quantity = ele.Codes.split(",").length
+                //     })
+                //     return data
+                // }else{
+                    let data = JSON.parse(JSON.stringify(tableData))
+                    data.forEach(ele=>{
+                        ele.ticketPrefixCode = ele.ticketPrefixCode.toLocaleUpperCase()
+                        ele.rangeDetailInJson = JSON.stringify(ele.rangeDetailInJson)
+                    })
+                    return data
+                // }
+            },
+            splitTocketCode(data){
+                let arr = data.Codes.split(","),ticketsCode = []
+                arr.forEach(ele=>{
+                    if(String(ele).length>0){//排除空字符串
+                        let len = this.ruleForm.numCount-String(ele).length,preZero=''
+                        for(let i =0;i<len;i++){
+                            preZero+="0"
+                        }
+                        ticketsCode.push(data.Codes.ticketPrefixCode+preZero+ele)
+                    }
+                })
+                return ticketsCode.join(",")
+            },
+            async AddStockTicketIn(params){
+                let res =await AddStockTicketIn(params)
+                if(res.status){
+                    this.$message({message: '添加成功', type: 'success'});
+                    this.$emit("addClose",true)
+                }else{
+                    this.$alert(res.errorMessage, '添加失败', {
+                        confirmButtonText: '确定',
+                        type: 'warning',
+                    callback: action => {}});
+                }
+                this.saveLoading = false
+            },
+            async UpdatestockTicketIn(params){
+                let res = await UpdatestockTicketIn(params)
+                if(res.status){
+                    this.$message({message: '编辑成功', type: 'success'});
+                    this.$emit("addClose",true)
+                }else{
+                    this.$alert(res.errorMessage, '编辑失败', {
+                        confirmButtonText: '确定',
+                        type: 'warning',
+                    callback: action => {}});
+                }
+                this.saveLoading = false
+            },
+            getIdOrName(data,index){
+                
+                    if(data.length>0){
+                        return data.split("|")[index]
+                    }else{
+                        return ""
+                    }
+            },
+            cancel(form){
+                this.$emit("addClose",false)
+            },
+        },
+        components: {
+
+        }
+    }
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+.form_span{
+    display: block;
+    line-height: 40px;
+}
+</style>

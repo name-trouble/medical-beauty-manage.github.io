@@ -1,0 +1,287 @@
+<template>
+   <div class="">
+        <el-form :model="ruleForm" :rules="rules" :inline="true" ref="ruleForm" label-width="100px" class="">
+            <el-form-item label="付款人：" class="form_item_mt10" prop="branchCode">
+                <el-autocomplete v-model="ruleForm.BranchrecCode" :fetch-suggestions="queryCus1" placeholder="请输入内容" :trigger-on-focus="false"
+                custom-item="my-item-memberItem" @select="selectCus1" style="width:300px;"></el-autocomplete>
+            </el-form-item>
+            <el-form-item label="支付方式：" class="form_item_mt10" prop="payType">
+                <el-select v-model="ruleForm.payType" style="width:300px;float:none">
+                    <el-option v-for="(item,$index) in payWayList" :key="$index" :label="item.DataName" :value="item.DataCode" ></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="金额：" class="form_item_mt10" prop="realAmount">
+                <el-input  v-model="ruleForm.realAmount" style="width:300px"></el-input>
+            </el-form-item>
+            <!-- <el-form-item label="手续费：" class="form_item_mt10">
+                <el-input-number v-model="ruleForm.ProcFee" :debounce="debounce" :controls="false" style="width: 300px"></el-input-number>
+            </el-form-item> -->
+            <el-form-item label="医院：" prop="topBranch" class="form_item_mt10">
+                    <el-select style="width:300px" v-model="ruleForm.topBranch" @change="selBranch" filterable placeholder="请选择">
+                        <el-option v-for="(item,index) in topBranchList" :label="item.supplierName" :value="item.supplierName+'|'+item.code" :key="index"></el-option>
+                    </el-select>
+                </el-form-item>
+            <!-- <el-form-item label="销售公司：" prop="topBranch" class="form_item_mt10">
+                    <el-select style="width:300px" v-model="ruleForm.topBranch" @change="selBranch" filterable placeholder="请选择">
+                        <el-option v-for="(item,index) in topBranchList" :label="item.branchName" :value="item.branchName+'|'+item.code" :key="index"></el-option>
+                    </el-select>
+                </el-form-item> -->
+            <el-form-item label="收款账户：" class="form_item_mt10" v-if="ruleForm.payType != '001'">
+                 <el-select style="width:300px" v-model="ruleForm.receiveAccount"  filterable  allow-create placeholder="请选择">
+                    <el-option v-for="item in accountList" :label="item.shortName" :value="item.shortName" :key="item.DataName"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="支付时间：" class="form_item_mt10">
+                <el-date-picker type="date" placeholder="选择日期" v-model="payDate" style="width: 300px;" ></el-date-picker>
+            </el-form-item>
+            <el-form-item label="备注：" class="form_item_mt10">
+                <el-input type="textarea" v-model="ruleForm.memo" :rows="3" style="width:300px"></el-input>
+            </el-form-item>
+        </el-form>
+        <div class="form_footer">
+            <el-button type="primary" @click="submitForm('ruleForm')">确定</el-button>
+            <el-button @click="resetForm('ruleForm')">取消</el-button>
+        </div>
+   </div>
+</template>
+
+<script>
+import fetch from '@/config/myFetch'
+import { getCookie } from "@/config/mUtils";
+import {getBaseDataByCode,GetDropDownPermission,GetBaseBranchAccount,GetBranchByKeywords,GetHospitalAccountByCode,AddChargePay, UpdateChargePay} from "@/api/myData"
+import Vue from "vue"
+     Vue.component('my-item-memberItem', {
+        functional: true,
+        render: function(h, ctx) {
+            var item = ctx.props.item;
+            return h('li', ctx.data, [
+                h('p', { attrs: { class: 'select_name'+item.Type, title: item.name } }, ['名字：' + item.name]),
+                h('p', { attrs: { class: 'select_name'+item.Type, title: item.name} }, ['编号：' + item.code]),
+                h('p', { attrs: { class: 'select_name'+item.Type, title: item.name} }, ['手机号：' + item.phone]),
+            ]);
+        },
+        props: {
+            item: { type: Object, required: true }
+        }
+    });
+export default {
+    props:{
+        editMes:{},
+        id:"",
+        hospitalCode:"",
+    },
+    data() {
+        return {
+            debounce:1000,
+            payWayList:[],
+            accountList:[],
+            topBranchList:[],
+            payDate:"",
+            ruleForm: {
+                memo:"",
+                receiveAccount:"",
+                payType:"",
+                payTypeName:"",
+                realAmount:"",
+                payDate:"",
+                ProcFee:"",
+                topBranch:"",
+                itemType:6,
+                hospitalCode:"",
+                hospitalName:"",
+                branchCode:'',
+                branchName:'',
+                BranchrecCode:'',
+            },
+            customerList:[],
+            rules:{
+                topBranch:[
+                    {required: true, message: '请选择', trigger: 'change'}
+                ],
+                payType: [{ required: true, message: '请选择', trigger: 'change' }],
+                realAmount: [{ required: true, message: '请填写' }],
+                branchCode:[{ required: true, message: '请填写' }],
+            }
+        };
+    },
+    
+    mounted(){
+        this.payDate = new Date()
+        this.getPayWay()
+    },
+    methods: {
+        //查找代理商推荐 下拉补全
+            queryCus1(queryString, cb) {
+                this.customerList = []
+                if (queryString !== '' && queryString != undefined) {
+                    this.getBranchByKeywords({ 'keywords': queryString.removeSP() })
+                }
+                this.ruleForm.branchCode = ''
+                this.ruleForm.branchName = ''
+                let _this = this
+                clearTimeout(this.timeout);
+                this.timeout = setTimeout(() => {
+                    cb(_this.customerList);
+                }, 1000);
+            },
+        // 代理商推荐选择
+            selectCus1(item) {
+                this.ruleForm.branchCode = item.code? item.code:""
+                this.ruleForm.branchName = item.Name? item.Name:""
+            },
+            //            搜索代理
+            async getBranchByKeywords(params){
+                try {
+                    let res = await GetBranchByKeywords(params)
+                    if (res instanceof Array && res.length > 0) {
+                        for (let item of res) {
+                            let tagName = ""
+                            if(item["BranchTags"] != ''&&item["BranchTags"] != null&&item["BranchTags"] != undefined){
+                                tagName = '('+item["BranchTags"]+')'
+                            }
+                            this.customerList.push({
+                                BranchTags:item["BranchTags"]?item["BranchTags"]:"",
+                                value: item["BranchName"]+tagName,
+                                phone: item["PhoneNumber"],
+                                code: item["Code"],
+                                name: item["BranchName"]+tagName,
+                                Name:item["BranchName"],
+                                hospitalCode: item['HospitalCode'],
+                                hospitalName: item['HospitalName'],
+                            })
+                        }
+                    }
+                    this.loading1 = false
+                } catch (err) {
+                    console.log(err)
+                }
+            },
+        selBranch(){
+                if(this.ruleForm.topBranch.length>0){
+                    this.ruleForm.hospitalCode = this.ruleForm.topBranch.split("|")[1]
+                    this.ruleForm.hospitalName = this.ruleForm.topBranch.split("|")[0]
+                    // this.GetBaseBranchAccount({
+                    //     keywords:this.ruleForm.hospitalCode
+                    // })
+                    this.GetHospitalAccountByCode(this.ruleForm.hospitalCode)
+                }else{
+                    this.ruleForm.hospitalCode = ""
+                    this.ruleForm.hospitalName = ""
+                }
+            },
+        async GetHospitalAccountByCode(id) {
+            let res = await GetHospitalAccountByCode({
+                hospitalCode: id
+            });
+            this.accountList = res.data;
+        },
+        //获取支付方式
+        async getPayWay() {
+            let res0 = await GetDropDownPermission({typeId: 1})
+            
+            if(res0.data[0].code == ""){
+                this.topBranchList = res0.data.slice(1)
+            }else{
+                this.topBranchList = res0.data
+            }
+            let res = await getBaseDataByCode("0006")
+            if(res.constructor==Array){
+                res.forEach(row => {
+                    if(row.DataCode !='008'&&row.DataCode !='009'&&row.DataCode !='010'&&row.DataCode !='011'&&row.DataCode !='018'){
+                        this.payWayList.push(row)
+                    }
+                });
+            }
+            if(this.editMes.payDate){
+                this.initData(this.editMes)
+            }
+        },
+        
+        initData(data){
+            
+            for(var key in data){
+                if(data[key] == null){
+                    data[key] = ''
+                }
+            }
+            this.ruleForm={
+                memo:data.memo,
+                receiveAccount:data.receiveAccount,
+                payType:data.payType,
+                payTypeName:"",
+                realAmount:data.realAmount,
+                ProcFee:data.procFee,
+                topBranch:data.hospitalName.length>0?data.hospitalName+'|'+data.hospitalCode:"",
+                hospitalCode:"",
+                hospitalName:"",
+                payDate:"",
+                branchName:data.branchName,
+                branchCode:data.branchCode,
+                id:data.id,
+                BranchrecCode:data.branchName,
+                "modifiedUserId": getCookie("userId"),
+                "modifiedBy": getCookie("userName")
+            }
+            
+            this.payDate = data.payDate.length>0?new Date(data.payDate.substring(0,4),data.payDate.substring(5,7)-1,data.payDate.substring(8,10)):new Date()
+        },
+        submitForm(formName) {
+            let _this = this
+            this.$refs[formName].validate((valid) => {
+                if (valid) {
+                    for(let item of _this.payWayList){
+                        if(_this.ruleForm.payType == item.DataCode){
+                            _this.ruleForm.payTypeName = item.DataName
+                        }
+                    }
+                    if(this.payDate.formatDate("yyyy-MM-dd") == new Date().formatDate("yyyy-MM-dd")){
+                         this.ruleForm.payDate = new Date().formatDate("yyyy-MM-dd hh:mm:ss")
+                    }else{
+                         this.ruleForm.payDate = this.payDate.formatDate("yyyy-MM-dd hh:mm:ss")
+                    }
+                    if(this.editMes.payDate){
+                        if(_this.payDate.formatDate("yyyy-MM-dd") == _this.editMes.payDate.substring(0,10)){
+                            _this.ruleForm.payDate = _this.editMes.payDate
+                        } 
+                    }
+                    this.submitPay()
+                }
+            });
+        },
+        async submitPay(){
+            let res
+            if(this.editMes.id){
+                res = await UpdateChargePay(this.ruleForm)
+            }else{
+                // this.ruleForm.mod
+                res = await AddChargePay(this.ruleForm)
+            }
+            if(res.status){
+                this.$message({ message: "操作成功", type: 'success' });
+                this.$emit("payOpe",true)
+            }else{
+                this.$message.error('操作失败'+res.errorMessage)
+            }
+            
+        },
+        resetForm(formName) {
+            this.$emit("payOpe",false)
+        },
+    }
+}
+</script>
+
+<style scoped>
+
+.form_footer{
+    text-align: center
+}
+.form_item_ipt153{
+    width: 153px
+}
+.form_item_wt255{
+    width: 253px
+}
+
+</style>
+

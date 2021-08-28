@@ -1,0 +1,219 @@
+<template>
+    <div class="selCommon teamMigrate">
+        <el-form :inline="true" :model="formInline" class="demo-form-inline form_search" label-width="80px" >
+            <el-form-item label="时间范围：" class="form_item_mt10 ">
+                <el-date-picker v-model="formInline.date1" @change="dateForm1" type="daterange" placeholder="选择日期范围" class="wt200"></el-date-picker>
+            </el-form-item>
+            <el-form-item label="关键字：" class="form_item_mt10 form_item_wh280">
+                <el-input v-model="formInline.keywords" placeholder="消费商/前推荐人/后推荐人" style="width: 200px;"></el-input>
+            </el-form-item>
+            <el-form-item label=" " class="form_item_mt10 form_item_wh280">
+                <el-button type="primary" @click="onSubmit" class="searchBtn">查询</el-button>
+            </el-form-item>
+        </el-form>
+        <el-table :data="tableData" style="width: 100%;margin-top:15px;margin-bottom:10px;min-height: 400px" max-height="660" ref="multipleTable" >
+            <el-table-column prop="createOn" label="变迁时间" min-width="100">
+                <template slot-scope="scope">
+                    {{scope.row.createOn.substring(0,10)}}
+                </template>
+            </el-table-column>
+             <el-table-column prop="branchName" label="消费商" min-width="100">
+                <template slot-scope="scope">
+                    <span v-if="scope.row.branchName">{{scope.row.branchName}}[{{scope.row.branchCode}}]</span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="beforeRefName" label="前推荐人" min-width="100">
+                <template slot-scope="scope">
+                    {{scope.row.beforeRefName}}
+                    <span v-if="scope.row.beforeRefCode">
+                        [{{scope.row.beforeRefCode}}]
+                    </span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="branchGradeName" label="" min-width="80">
+                <template slot-scope="scope">
+                    <el-button type="text">
+                        <i class="el-icon-d-arrow-right"></i>
+                    </el-button>
+                </template>
+            </el-table-column>
+            <el-table-column prop="afterRefName" label="后推荐人" min-width="100">
+                <template slot-scope="scope">
+                    {{scope.row.afterRefName}}
+                    <span v-if="scope.row.afterRefCode">
+                        [{{scope.row.afterRefCode}}]
+                    </span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="changeReason" label="变迁原因" min-width="150"></el-table-column>
+            <el-table-column prop="createBy" label="操作人" min-width="100"></el-table-column>
+        </el-table>
+        <div class="block">
+            <el-pagination @size-change="handleSizeChange" @current-change="handleCurrentChange" :current-page="currentPage" :page-sizes="[10, 20, 30, 40]" :page-size="size" layout="total, sizes, prev, pager, next, jumper" :total="total">
+            </el-pagination>
+        </div>
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+import { GetBranchByConditions, GetBranchGradeAll, BranchChange, GetChangeLog, GetBranchByKeywords, GetBranchChangeLogList } from "@/api/myData"
+import { getCookie } from "@/config/mUtils"
+import "@/style/selfCommon.less"
+export default {
+    // name: "teamMigrate",
+    data() {
+        return {
+          
+            loading: false,
+            options: [],
+            optionsB: [],
+            total: 0,
+            size: 10,
+            currentPage: 1,
+            agentList: [],
+            formInline: {
+                keywords: "",
+                date1: "",
+                startTime: "",
+                endTime: "",
+                rec: "",
+                grade: "",
+                branch: "",
+            },
+           
+            tableData: [],
+            multipleSelection: [],
+        }
+    },
+    computed: {
+        /* 导出报表参数 tHeader,filterVal,tableData1*/
+        tHeader() {
+            return ["代理编号", '姓名', '代理等级', '联系电话', '身份证号', '缴纳押金', "推荐人", '状态']
+        },
+        filterVal() {
+            return ['Code', 'BranchName', 'BranchGradeName', 'PhoneNumber', 'IDCard', 'Pledge', 'ReferrerName', 'IsEnable']
+        },
+        name() {
+            return '迁移记录'
+        },
+        tableData1() {
+            let arr = JSON.parse(JSON.stringify(this.tableData))
+            arr.forEach(row => {
+                if(row.IsEnable == 0){
+                        row.IsEnable ="未启用"
+                    }
+                     if(row.IsEnable == 1){
+                        row.IsEnable ="已启用"
+                    }
+                    if(row.IsEnable == 2){
+                        row.IsEnable = "退会"
+                    }
+            })
+            return arr
+        }
+        /*导出报表参数 tHeader,filterVal,tableData1*/
+    },
+
+    // watch: {
+    //     "form.branchObj": {
+    //         handler(curVal, oldVal) {
+    //             if (curVal.length > 0) {
+    //                 this.form.ReferrerName = curVal.split("|")[2]
+    //                 this.form.ReferrerCode = curVal.split("|")[3]
+    //                 this.form.branchName = curVal.split("|")[0]
+    //                 this.form.branchCode = curVal.split("|")[1]
+    //             }
+    //         },
+    //         deep: true
+    //     }
+    // },
+    mounted() {
+        //            this.onSubmit()
+        this.GetBranchGrade()
+    },
+    methods: {
+        async GetBranchByKeywords(params, index) {
+            try {
+                let res = await GetBranchByKeywords(params)
+                if (index == 1) {
+                    this.optionsB = res
+                } else {
+                    this.options = res
+                }
+                this.loading = false
+
+            } catch (err) {
+                console.log(err)
+            }
+        },
+        async GetBranchGrade() {
+            try {
+                let res = await GetBranchGradeAll()
+                this.agentList = res
+                // this.onSubmit()
+            } catch (err) {
+                console.log(err)
+            }
+        },
+        async GetBranchChangeLogList(params) {
+            try {
+                let res = await GetBranchChangeLogList(params)
+                if (res.status) {
+                    this.total = res.count
+                    this.tableData = res.data
+                } else {
+
+                }
+            } catch (err) {
+                console.log(err)
+            }
+        },
+        handleSizeChange(val) {
+            console.log(`每页 ${val} 条`);
+            this.size = val
+            this.search()
+        },
+        handleCurrentChange(val) {
+            console.log(`当前页: ${val}`);
+            this.currentPage = val
+            this.search()
+        },
+        dateForm1(val) {
+            val = val.formatDates()
+            this.formInline.startTime = val.substring(0, 10)
+            this.formInline.endTime = val.substring(13)
+        },
+        search(){
+            this.GetBranchChangeLogList({
+                // referrerName:this.formInline.rec,
+                // branchName:this.formInline.branch,
+                // branchGradeCode:this.formInline.grade,
+                startDate: this.formInline.startTime,
+                endDate: this.formInline.endTime,
+                pageIndex: this.currentPage,
+                pageSize: this.size,
+                Keywords: this.formInline.keywords.removeSP()
+            })
+        },
+        onSubmit() {
+            this.currentPage = 1
+            this.search()
+        },
+
+        log(index, data, num) {
+            this.form = data[index]
+            this.GetChangeLog({
+                branchCode: data[index].Code
+            })
+            this.dialogOpe(num, true)
+        },
+    },
+    components: {
+    }
+}
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+
+</style>

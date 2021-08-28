@@ -1,0 +1,359 @@
+<template>
+    <div class="MemberManage">
+        <el-form :inline="true" :model="formInline" class="demo-form-inline form_search" label-width="80px" >
+            <el-form-item label="回访时间：" class="form_item_mt10">
+                <el-date-picker
+                    v-model="date"
+                    type="daterange"
+                    class="form_sear_ipt"
+                    @change="dateSelect"
+                    placeholder="选择日期范围">
+                </el-date-picker>
+            </el-form-item>
+            <el-form-item label="关键字：" class="form_item_mt10">
+                <el-input v-model="formInline.name" placeholder="客户/客服/设计师/设计师助理" class="form_sear_ipt"  v-on:keyup.enter.native="onSubmit"></el-input>
+            </el-form-item>
+            <el-form-item label="回访状态：" class="form_item_mt10">
+                <el-select v-model="formInline.status" class="form_sear_ipt" @change="onSubmit">
+                    <el-option label="全部" value=""></el-option>
+                    <el-option label="待回访" value="1"></el-option>
+                    <el-option label="已回访" value="2"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="回访编号：" class="form_item_mt10">
+                <el-input v-model="formInline.num" placeholder="" class="form_sear_ipt"  v-on:keyup.enter.native="onSubmit"></el-input>
+            </el-form-item>
+            <el-form-item label="手机号：" class="form_item_mt10">
+                <el-input v-model="formInline.phoneNumber" placeholder="" class="form_sear_ipt"  v-on:keyup.enter.native="onSubmit"></el-input>
+            </el-form-item>
+            <br/>
+            <el-form-item label=" " class="form_item_mt10">
+                <el-button type="primary" @click="onSubmit" class="searchBtn">查询</el-button>
+                <Export :tHeader="tHeader" :filterVal=' filterVal' :tableData1='tableData1' :name='name' ref="exportData" style="display:none"></Export>
+               <el-button type="" @click="exportData" :loading="exportLoading" :disabled="tableData.length == 0">导出报表</el-button>
+            </el-form-item>
+        </el-form>
+        <!-- 信息表 -->
+        <el-table :data="tableData" border style="width: 100%;margin-top:15px;margin-bottom:10px;" max-height="600" v-loading="loading" class="min_table smt">
+            <el-table-column prop="visitNO" label="回访编号" width="90" sortable></el-table-column>
+            <el-table-column prop="visitDate" width="90" label="回访日期" sortable>
+                <template slot-scope="scope">
+                    <span v-if="scope.row.visitDate">
+                        {{scope.row.visitDate.substring(0,10)}}
+                    </span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="serviceName" label="客服" min-width="80">
+               
+            </el-table-column>
+            <el-table-column prop="fxCode" label="订单编号" min-width="90"></el-table-column>
+            <!-- <el-table-column prop="fxCode" label="医院" min-width="150"></el-table-column> -->
+            <el-table-column prop="doctorName" label="执行医生" min-width="90"></el-table-column>
+            <el-table-column prop="customerName" label="客户" min-width="90" sortable>
+                 <template slot-scope="scope">
+                    <el-button :style="{'color':scope.row.isBranch?'black':'red'}" type="text" @click="view(scope.row,tableData)">{{scope.row.customerName}}</el-button>
+                    <span v-if="scope.row.memberTags">({{scope.row.memberTags}})</span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="sex" label="性别" min-width="55">
+                <template slot-scope="scope">
+                    <span v-if="scope.row.sex == 0">女</span>
+                    <span v-if="scope.row.sex == 1">男</span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="designerAssistName" label="年龄" min-width="70">
+                <template slot-scope="scope">
+                    {{scope.row.birthday|filterFun}}
+                </template>
+            </el-table-column>
+            <el-table-column prop="phoneNumber" label="手机号" width="100">
+                <template slot-scope="scope">
+                    <span v-if="scope.row.phoneNumber">{{scope.row.phoneNumber.substring(0,3)+'****'+scope.row.phoneNumber.substring(7)}}</span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="isPayOff" label="成交状态" min-width="80">
+                <template slot-scope="scope">
+                    <el-tag type="success" v-if="scope.row.isPayOff">已付清</el-tag>
+                    <el-tag type="danger" v-else>未付清</el-tag>
+                </template>
+            </el-table-column>
+            <el-table-column prop="designerName" label="设计师" min-width="80"></el-table-column>
+            <el-table-column prop="designerAssistName" label="设计师助理" min-width="90"></el-table-column>
+            <el-table-column prop="visitContent" label="回访内容" min-width="120" show-overflow-tooltip></el-table-column>
+            <el-table-column prop="visitRecord" label="回访记录" min-width="120" show-overflow-tooltip></el-table-column>
+            <el-table-column prop="visitStatus" label="回访状态" width="80">
+                <template slot-scope="scope">
+                    <el-tag type="danger" v-if="scope.row.visitStatus == 1">待回访</el-tag>
+                    <el-tag type="success" v-if="scope.row.visitStatus == 2">已回访</el-tag>
+                </template>
+            </el-table-column>
+            <el-table-column prop="visitRecord" label="是否满意" min-width="80">
+                <template slot-scope="scope">
+                    <el-tag type="danger" v-if="scope.row.isSatisfaction == 0">不满意</el-tag>
+                    <el-tag type="success" v-if="scope.row.isSatisfaction == 1">满意</el-tag>
+                </template>
+            </el-table-column>
+            <el-table-column prop="IsAuth" label="操作" min-width="80">
+                <template slot-scope="scope">
+                   <el-button @click="add(scope.row,tableData)" type="primary" size="small" >回访</el-button>
+                </template>
+            </el-table-column>
+        </el-table>
+        <!-- 信息表 -->
+
+        <!-- 分页 -->
+        <div class="block">
+            <el-pagination
+                @size-change="handleSizeChange"
+                @current-change="handleCurrentChange"
+                :current-page="currentPage"
+                :page-sizes="[10, 20, 30, 40]"
+                :page-size="size"
+                layout="total, sizes, prev, pager, next, jumper"
+                :total="total">
+            </el-pagination>
+        </div>
+        <!-- 分页 -->
+
+        <!--注册弹窗-->
+       <el-dialog title="回访" :visible.sync="dialogTableVisible"  top="5%"  size="" :close-on-click-modal="false">
+            <add :mes="mes" style="width: 1000px" @close="close" v-if="dialogTableVisible"></add>
+        </el-dialog>
+
+        <el-dialog title="客户详情" :visible.sync="dialogView"  top="5%"  size="" :close-on-click-modal="false">
+            <CustomerView :mes="mes" style="width: 1200px"  v-if="dialogView"></CustomerView>
+        </el-dialog>
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+    import  "@/style/selfCommon.less"
+    import Export from '@/components/export'
+    import add from "./com/visit.vue"
+    import CustomerView from "@/page/FinanceManage/ReportManage/com/customerDetail.vue"
+    import {GetDropDownPermission,GetVisit} from "@/api/myData"
+    import { getCookie } from "@/config/mUtils";
+    var _this
+    export default {
+        // name:"MemberManage",
+        data () {
+            return {
+                loading:false,
+                mes:{},
+                dialogView:false,
+                dialogTableVisible:false,
+                
+                total:10,
+                size:10,
+                currentPage:1,
+                hospitalList:[],
+                date:"",
+                formInline:{
+                    date1:"",
+                    date2:"",
+                    status:"",
+                    name:"",
+                    phone:"",
+                    hospital:'',
+                    num:"",
+                    phoneNumber:"",
+                },
+                tableData:[],
+                allData:[],
+                exportLoading:false,
+                mes:{},
+            }
+        },
+        computed: {
+            /* 导出报表参数 tHeader,filterVal,tableData1*/
+            tHeader(){
+                return ['回访编号','回访日期', '客服', '订单编号', '执行医生', '客户', '性别', '年龄','手机号','成交状态','设计师','设计师助理','回访内容','回访记录','回访状态','满意']
+            },
+            filterVal(){
+                return ['visitNO','visitDate','serviceName','fxCode','doctorName', 'customerName', 'sex', 'age', 'phoneNumber','isPayOff','designerName','designerAssistName','visitContent','visitRecord','visitStatus','isSatisfaction']
+            },
+            tableData1(){
+                 let data = JSON.parse(JSON.stringify(this.allData))
+                data.forEach(row => {
+                    row.sex = row.sex == 1?"男":"女"
+                    row.age = this.getAge(row.birthday)
+                    row.isPayOff = row.isPayOff?"已付清":"未付清"
+                    row.visitStatus = this.getStatus(1,row.visitStatus)
+                    row.isSatisfaction = this.getStatus(2,row.isSatisfaction)
+                });
+                
+                return data
+            },
+            name(){
+                return '回访'
+            },
+            /*导出报表参数 tHeader,filterVal,tableData1*/
+        },
+        filters:{
+            filterFun(val){
+                 _this.getAge(val)
+            }
+        },
+        
+        mounted(){
+             _this = this
+            let date = new Date()
+            date.setDate("01")
+            this.date = [date,new Date()]
+            this.getHospital()
+        },
+        methods:{
+            getStatus(ope,status){
+                switch(ope){
+                    case 1: if(status == 1){
+                        return "待回访";
+                    } else if(status == 2){
+                        return "已回访";
+                    };
+                    case 2: if(status == 0){
+                        return "不满意";
+                    } else if(status == 1){
+                        return "满意";
+                    };
+                }
+            },
+            getAge(val){
+                if(val){
+                    let date = new Date()
+                    if(date.getFullYear - Number(val.substring(0,4))<150){
+                        return date.getFullYear - Number(val.substring(0,4))
+                    }
+                }else{
+                    return ""
+                }
+            },
+            async GetVisit(params,ope){
+                let res =await GetVisit(params)
+                this.loading = false
+                if(res.status){
+                    if(ope){
+                        this.exportLoading = false
+                        this.allData = res.data
+                        setTimeout(()=>{
+                            this.$refs.exportData.handleDownload()
+                        },20)
+                    }else{
+                        this.total = res.count
+                        this.tableData = res.data
+                    }
+                }else{
+                    console.log(res)
+                }
+            },
+            async getHospital(params){
+                try {
+                    let res1 = await GetDropDownPermission({typeId: 1});
+                    this.hospitalList = res1.data
+                    this.formInline.hospital = this.hospitalList[0].code
+                } catch (err) {
+                    console.log(err)
+                }
+            },
+            onSubmit(){
+                this.currentPage = 1
+                this.search()
+            },
+            search(){
+                this.loading = true
+                this.GetVisit({
+                    "visitStatus":this.formInline.status,
+                    "customerName": this.formInline.name,
+                    "visitNO": this.formInline.num,
+                    pageIndex:this.currentPage,
+                    pageSize:this.size,
+                    startDate:this.formInline.date1,
+                    endDate:this.formInline.date2,
+                    phoneNumber:this.formInline.phoneNumber
+                })
+            },
+            exportData(){
+                this.exportLoading= true
+                this.GetVisit({
+                    "visitStatus":this.formInline.status,
+                    "customerName": this.formInline.name,
+                    "visitNO": this.formInline.num,
+                    pageIndex:1,
+                    pageSize:this.total,
+                    startDate:this.formInline.date1,
+                    endDate:this.formInline.date2,
+                    phoneNumber:this.formInline.phoneNumber
+                },1)
+            },
+            dateSelect(val){
+                if(val.length!=0){
+                    val = val.formatDates()
+                    this.formInline.date1 = val.substring(0,10)
+                    this.formInline.date2 = val.substring(13)
+                }else{
+                    this.formInline.date1 = ""
+                    this.formInline.date2 = ""
+                }
+                // this.onSubmit()
+            },
+            handleSizeChange(val) {
+                console.log(`每页 ${val} 条`);
+                this.size = val
+                this.search()
+            },
+            handleCurrentChange(val) {
+                console.log(`当前页: ${val}`);
+                this.currentPage = val
+                this.search()
+            },
+
+            add(index,data){
+                this.mes = index
+                this.dialogTableVisible = true
+            },
+            close(val){
+                
+                this.dialogTableVisible = false
+                if(val){
+                    this.search()
+                }
+            },
+            del(index,data){
+                 this.$confirm('此操作将永久删除该文件, 是否继续?', '提示', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    type: 'warning'
+                }).then(() => {
+                    this.DeleteConsulting({
+                        id:data[index].id
+                    })
+                }).catch(() => {
+                           
+                });
+                
+            },
+            close(val){
+                this.dialogTableVisible = false
+                if(val){
+                    this.search()
+                }
+            },
+            view(data1,data){
+                this.mes = data1
+                this.dialogView = true
+            },
+        },
+        components: {
+            Export,
+            add,
+            CustomerView
+        }
+    }
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+
+    .form_sear_ipt{
+        width: 220px
+    }
+</style>

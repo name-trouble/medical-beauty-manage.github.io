@@ -1,0 +1,321 @@
+<template>
+    <div class="selCommon projectOrder">
+        <el-form :inline="true" :model="formInline" class="demo-form-inline form_search" label-width="80px" >
+            <el-form-item label="日期："  class="form_item_mt10 ">
+                <el-date-picker v-model="date1" @change="dateForm1" type="daterange" placeholder="选择日期范围" style="width: 200px;"></el-date-picker>
+            </el-form-item>
+            <!-- <el-form-item label="姓名：" class="form_item_mt10 form_item_wh280">
+                <el-input v-model="formInline.customer" placeholder="姓名/手机号" style="width: 200px;" v-on:keyup.enter.native="onSubmit"></el-input>
+            </el-form-item> -->
+            <el-form-item label="等级："  class="form_item_mt10 form_item_wh280">
+                <el-select v-model="formInline.grade" placeholder="请选择" style='width:200px;' @change="onSubmit">
+                    <el-option label="全部" value=""></el-option>
+                    <el-option label="用户" value="1" ></el-option>
+                    <el-option label="会员" value="2" ></el-option>
+                    <el-option label="消费商" value="3" ></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="关键字：" class="form_item_mt10 form_item_wh280">
+                <el-input v-model="formInline.keyWords" placeholder="姓名/手机号" style="width: 200px;" v-on:keyup.enter.native="onSubmit"></el-input>
+            </el-form-item>
+
+            <!-- <el-form-item label="会费：" class="form_item_mt10">
+                <el-input v-model="formInline.feeStart" placeholder="" style="width: 92px;">
+                    <template slot="prepend">￥</template>
+                </el-input>
+                <span style="margin:0 5px;float:left">-</span>
+                <el-input v-model="formInline.feeEnd" placeholder="" style="width: 92px;">
+                    <template slot="prepend">￥</template>
+                </el-input>
+            </el-form-item>
+
+            <el-form-item label="线上订单：" class="form_item_mt10">
+                <el-input v-model="formInline.onlineStart" placeholder="" style="width: 92px;">
+                    <template slot="prepend">￥</template>
+                </el-input>
+                <span style="margin:0 5px;float:left">-</span>
+                <el-input v-model="formInline.onlineEnd" placeholder="" style="width: 92px;">
+                    <template slot="prepend">￥</template>
+                </el-input>
+            </el-form-item>
+            
+            <el-form-item label="线下订单：" class="form_item_mt10">
+                <el-input v-model="formInline.reportStart" placeholder="" style="width: 92px;">
+                    <template slot="prepend">￥</template>
+                </el-input>
+                <span style="margin:0 5px;float:left">-</span>
+                <el-input v-model="formInline.reportStart" placeholder="" style="width: 92px;">
+                    <template slot="prepend">￥</template>
+                </el-input>
+            </el-form-item> -->
+
+            <el-form-item label=" " class="form_item_mt10 form_item_wh280">
+                <el-button type="primary" @click="onSubmit" class="searchBtn">查询</el-button>
+                <Export ref="exportCom" :tHeader="tHeader" :filterVal=' filterVal' :tableData1='tableData1' :name='name' style="display:none"></Export>
+                <el-button class="searchBtn" @click="exportData">导出报表</el-button>
+            </el-form-item>
+        </el-form>
+        <!--信息表--> 
+        <!-- :summary-method="getSummaries" -->
+        <el-table :data="tableData" border style="width: 100%;margin-top:15px;margin-bottom:10px;" max-height="560" class="min_table smt" v-loading="tableLoading" :summary-method="getSummaries"
+    show-summary>
+            <el-table-column prop="realname" min-width="100" label="姓名">
+                <template slot-scope="scope">
+                    <el-button type="text" @click="viewCustomer(scope.row)">
+                        {{scope.row.realname}}
+                    </el-button>
+                </template>
+            </el-table-column>typeId
+            <el-table-column prop="typeId" min-width="100" label="等级">
+                <template slot-scope="scope">
+                   <span v-if="scope.row.typeId == 1">用户</span>
+                   <span v-if="scope.row.typeId == 2">会员</span>
+                   <span v-if="scope.row.typeId == 3">消费商</span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="mobile" label="手机号" min-width="100" align="center">
+                <template slot-scope="scope">
+                    <span v-if="scope.row.mobile">{{scope.row.mobile}}</span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="onlineBranchName" label="线上团队" min-width="100" ></el-table-column>
+            <el-table-column prop="realPayAmount" label="会费" min-width="100" align="right"></el-table-column>
+            <el-table-column prop="onlinePrice" label="线上订单" min-width="100" align="right"></el-table-column>
+            <el-table-column prop="offlineAmount" label="线下订单" min-width="100" align="right"></el-table-column>
+        </el-table>
+        <!-- 分页 -->
+        <div class="block">
+            <el-pagination
+                @size-change="handleSizeChange"
+                @current-change="handleCurrentChange"
+                :current-page="currentPage"
+                :page-sizes="[10, 20, 30, 40]"
+                :page-size="size"
+                layout="total, sizes, prev, pager, next, jumper"
+                :total="total">
+            </el-pagination>
+        </div>
+        <el-dialog ref="pay" title="查看详情" :visible.sync="ispopRead" top="5%" @close="ispopRead=false" size="">
+            <pop-read v-if="ispopRead" :data="selectData" style="width:950px"></pop-read>
+        </el-dialog>
+
+        <el-dialog title="客户详情" :visible.sync="dialogView"  top="5%"  size="" :close-on-click-modal="false">
+            <CustomerView :mes="cusMes" @openReport="openReport" :startDate="formInline.startTime" :endDate="formInline.endTime" style="width: 1100px"  v-if="dialogView"></CustomerView>
+        </el-dialog>
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+    import PopRead from '@/page/FinanceManage/ReportManage/com/reportRead.vue'
+    import CustomerView from "./com/customerDet.vue"
+    import "@/style/selfCommon.less"
+    import Export from '@/components/export'
+    import {GetGoodsByKeywords,SearchAppActivityBenefit,getBaseDataByCode,GetBranchGradeAll,GetOnlineTeamConsume} from "@/api/myData"
+    import { getCookie, getStore } from '../../../config/mUtils';
+    let _this
+    export default {
+        // name:"projectOrder",
+        data () {
+            return {
+                date1:'',
+                ispopRead:false,
+                cusMes:{},
+                dialogView:false,
+                tableLoading:false,
+                formInline:{
+                    // customer:'',
+                    // teamName:'',
+                    // feeStart:'',
+                    // feeEnd:'',
+                    // onlineStart:'',
+                    // onlineEnd:'',
+                    // reportStart:'',
+                    // reportStart:'',
+                    startTime:'',
+                    endTime:'',
+                    grade:'',
+                    keyWords:'',
+                },
+                tableData:[],
+                currentPage:1,
+                size:10,
+                total:0,
+                allData:[],
+                project:'',
+                projectList:[],
+                consumeList:[],
+                medicalList:[],
+                sumData:{
+                    realPayAmount:0,
+                    onlinePrice:0,
+                    offlineAmount:0,
+                },
+                selectData:{},
+                gradeList:[],
+            }
+        },
+        computed: {
+            /* 导出报表参数 tHeader,filterVal,tableData1*/
+            tHeader(){
+                return ['姓名', '等级', '手机号', '线上团队', '会费', '线上订单', '线下订单']
+            },
+            filterVal(){
+                return ['realname', 'typeId', 'mobile', 'onlineBranchName', 'realPayAmount', 'onlinePrice', 'offlineAmount']
+            },
+            tableData1(){
+                let data = JSON.parse(JSON.stringify(this.allData))
+                data.forEach(row=>{
+                    if(row.typeId == 1){
+                        row.typeId = '用户'
+                    }else if(row.typeId == 2){
+                        row.typeId = '会员'
+                    }else if(row.typeId == 3){
+                        row.typeId = '消费商'
+                    }
+                })
+                return data
+            },
+            name(){
+                return '线上团队业绩'
+            },
+            /*导出报表参数 tHeader,filterVal,tableData1*/
+        },
+        watch:{
+            'project':{
+                handler(curVal,oldVal){
+                    if(curVal == ''){
+                        this.formInline.projectId = ''
+                    }
+                }
+            }
+        },
+        filters:{
+            filFun(val){
+                let len = _this.consumeList.length
+                let list =  _this.consumeList
+                for(var i = 0;i<len;i++){
+                    if(val == list[i].DataCode){
+                        return list[i].DataName
+                    }
+                }
+            },
+            filFunM(val){
+                let len = _this.medicalList.length
+                let list =  _this.medicalList
+                for(var i = 0;i<len;i++){
+                    if(val == list[i].DataCode){
+                        return list[i].DataName
+                    }
+                }
+            },
+        },
+        mounted(){
+            _this = this
+            let date = new Date()
+            date.setDate("01")
+            this.date1 = [date,new Date()]
+            this.getType()
+        },
+        methods: {
+            dateForm1(val){
+                if(val){
+                    val = val.formatDates()
+                    this.formInline.startTime = val.substring(0,10)
+                    this.formInline.endTime = val.substring(13)
+                }else{
+                    this.formInline.startTime = ""
+                    this.formInline.endTime = ""
+                } 
+            },
+
+            getSummaries(param) {
+                return ['总计','','','',this.sumData.realPayAmount,this.sumData.onlinePrice,this.sumData.offlineAmount];
+            },
+            async getType(){
+                let [consumeList,medicalList,gradeList] = await Promise.all([getBaseDataByCode("0017"),getBaseDataByCode("0022"),GetBranchGradeAll()])
+                this.consumeList = consumeList
+                this.medicalList = medicalList
+                this.gradeList = gradeList
+            },
+           
+            exportData(){
+                this.getProofOrder({
+                    "keywords":this.formInline.keyWords,
+                    "typeId": this.formInline.grade,
+                    "startDate":this.formInline.startTime,
+                    "endDate": this.formInline.endTime,
+                    'pageIndex': 1,
+                    'pageSize': this.total,
+                },1)
+            },
+            
+            submit(){
+                this.pageIndex = 1
+                this.search()
+            },
+            async getProofOrder(params,ope){
+                try {
+                    this.tableLoading = true
+                    let res = await GetOnlineTeamConsume(params)
+                    if(ope){
+                        this.allData = res.data
+                        this.$refs.exportCom.handleDownload()
+                    }else{
+                        this.total = res.count
+                        this.tableData =res.data
+                        this.sumData = res.sumdata[0]
+                    }
+                    this.tableLoading = false
+                } catch (err) {
+                    console.log(err)
+                }
+            },
+           
+            onSubmit(){
+                this.currentPage = 1
+                this.search()
+            },
+            search(){
+                
+                this.getProofOrder({
+                    "keywords":this.formInline.keyWords,
+                    "typeId": this.formInline.grade,
+                    "startDate":this.formInline.startTime,
+                    "endDate": this.formInline.endTime,
+                    'pageIndex': this.currentPage,
+                    'pageSize': this.size,
+                })
+            },
+            handleSizeChange(val) {
+                console.log(`每页 ${val} 条`);
+                this.size = val
+                this.search()
+            },
+            handleCurrentChange(val) {
+                console.log(`当前页: ${val}`);
+                this.currentPage = val
+                this.search()
+            },
+            viewCustomer(data){//
+                this.cusMes = {
+                    customerId:data.mobile
+                }
+                this.dialogView = true
+            },
+            openReport(data) {
+                this.selectData = data
+                this.ispopRead = true
+            }
+        },
+        components: {
+            Export,
+            CustomerView,
+            PopRead
+        }
+    }
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+
+</style>

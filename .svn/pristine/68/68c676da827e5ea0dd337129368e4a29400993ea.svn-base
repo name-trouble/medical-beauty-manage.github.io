@@ -1,0 +1,122 @@
+<template>
+    <div class="selCommon editRegister">
+
+        <el-form :model="ruleForm" ref="ruleForm" :inline="true" label-width="85px" class="demo-ruleForm">
+             <el-form-item label="服务商编号：" class="form_item_mt0">
+                 <span>{{message.code}}</span>
+             </el-form-item>
+            <el-form-item label="姓名：" class="form_item_mt0">
+                <span>{{message.serviceInfoName}}</span>
+            </el-form-item>
+            <el-form-item label="联系电话："  required class="form_item_mt0">
+                <span>{{message.phoneNumber}}</span>
+            </el-form-item>
+            <el-form-item label="邮箱："  class="form_item_mt0">
+                <span>{{message.email}}</span>
+            </el-form-item>
+            <el-form-item label="住址：" class="form_item_mt0">
+                <span>{{message.province}}{{message.city}}{{message.area}}{{message.address}}</span>
+            </el-form-item>
+            <el-form-item label="身份证号："  class="form_item_mt0" >
+                <span>{{message.IdCard}}</span>
+            </el-form-item>
+            <el-form-item label="生日："  class="form_item_mt0">
+                <span>{{message.birthday}}</span>
+            </el-form-item>
+            <el-form-item label="性别：" class="form_item_mt0">
+                <span v-if="message.sex == 0">女</span>
+                <span v-if="message.sex == 1">男</span>
+            </el-form-item>
+            <el-form-item label="推荐人："  class="form_item_mt0" >
+                <span>{{message.referrerName}}</span>
+            </el-form-item>
+            <el-form-item label="注册费用："  class="form_item_mt0" >
+                <span>{{message.payAmount}}</span>
+            </el-form-item>
+            <el-form-item label="银行卡号："  class="form_item_mt0">
+                <span>{{message.bankCardId}}</span>
+            </el-form-item>
+            <el-form-item label="开户行："  class="form_item_mt0">
+                <span>{{message.openBankCode}}</span>
+            </el-form-item>
+            <el-form-item label="开户行支行："  class="form_item_mt0">
+                <span>{{message.openBankName}}</span>
+            </el-form-item>
+            <el-form-item label="开户人姓名："  class="form_item_mt0">
+                <span>{{message.bankCardHolder}}</span>
+            </el-form-item>
+            <el-form-item label="备注：" class="form_item_mt1">
+                <span>{{message.memo}}</span>
+            </el-form-item>
+            <el-form-item label="支付信息：" class="form_item_mt1">
+                <el-table :data="payData" border style="width:780px;margin-bottom:10px">
+                    <el-table-column prop="payTypeName" label="支付方式" min-width="100"></el-table-column>
+                    <el-table-column prop="receiveAccount" label="收款账户" min-width="80"> </el-table-column>
+                    <el-table-column prop="realAmount" label="支付金额" min-width="80"> </el-table-column>
+                    <el-table-column prop="procFee" label="手续费" min-width="80"> </el-table-column>
+                    <el-table-column prop="payDate" label="支付日期" min-width="110">
+                        <template scope="scope">
+                            <span v-if="scope.row.payDate">{{scope.row.payDate.substring(0,19)}}</span>
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="memo" label="备注"  min-width="120" show-overflow-tooltip> </el-table-column>
+                    <!-- <el-table-column prop="address" label="操作"  min-width="140">
+                        <template scope="scope">
+                            <el-button type="primary" @click="editPay(scope.$index,payData)" size="small">编辑</el-button>
+                            <el-button type="primary" @click="del(scope.$index,payData)" size="small">删除</el-button>
+                        </template>
+                    </el-table-column> -->
+                </el-table>
+            </el-form-item>
+        </el-form>
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+    import { getCookie, delCookie } from '@/config/mUtils'
+    import {GetServiceInfoDetail} from "@/api/myData"
+    export default {
+        props:{
+            mes:{
+                type:Object,
+                default:{}
+            },
+            id:''
+        },
+        data () {
+            return {
+                ruleForm: {
+
+                },
+                payData:[],
+                message:{},
+            }
+        },
+        
+        mounted(){
+           
+            this.getPayData()
+        },
+        methods: {
+            async getPayData(){
+                debugger
+                let serviceMes = await GetServiceInfoDetail({code:this.mes.code})
+                this.payData = serviceMes.data.branchOrderPayList
+                this.message = serviceMes.data.serviceInfo
+            },
+            
+        },
+        components: {
+
+        }
+    }
+</script>
+
+<style scoped>
+.form_item_mt0{
+    width:46%
+}
+.form_item_mt1{
+    width:100%
+}
+</style>

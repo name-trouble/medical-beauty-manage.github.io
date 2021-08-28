@@ -1,0 +1,195 @@
+<template>
+    <div class="couponConsume selCommon">
+        <el-form :inline="true" :model="formInline" class="demo-form-inline form_search" label-width="80px">
+            <el-form-item label="券名称：" class="form_item_mt10 form_item_wh280">
+                <el-input v-model="formInline.name" placeholder="" style="width: 200px;"  v-on:keyup.enter.native="onSubmit"></el-input>
+            </el-form-item>
+            <el-form-item label="申请人：" class="form_item_mt10 form_item_wh280">
+                <el-input v-model="formInline.apply" placeholder="" style="width: 200px;"  v-on:keyup.enter.native="onSubmit"></el-input>
+            </el-form-item>
+            <el-form-item label="券类型：" class="form_item_mt10 form_item_wh280">
+                <el-select v-model="formInline.type"  class="form_ipt_200" @change="onSubmit">
+                    <el-option label="全部" value=""></el-option>
+                    <el-option label="折扣券" value="1"></el-option>
+                    <el-option label="代金券" value="2"></el-option>
+                    <el-option label="门票" value="3"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label=" " class="form_item_mt10 form_item_wh280">
+                <el-button type="primary" @click="onSubmit" class="searchBtn">查询</el-button>
+            </el-form-item>
+        </el-form>
+        <el-table :data="tableData" border style="width: 100%;margin-top:15px;margin-bottom:10px;" max-height="560" class="min_table">
+            <el-table-column prop="ApplyNumTotal" label="券正面" min-width="80">
+                <template slot-scope="scope">
+                    <img :src="url+scope.row.FrontPicUrl" alt="" height="50" width="82">
+                </template>
+            </el-table-column>
+            <el-table-column prop="TickName" label="券名称" min-width="100"></el-table-column>
+            <el-table-column prop="TicketsType" label="券类型" min-width="100">
+                <template slot-scope="scope">
+                    <span v-if="scope.row.TicketsType==1">折扣券</span>
+                    <span v-if="scope.row.TicketsType==2">代金券</span>
+                    <span v-if="scope.row.TicketsType==3">门票</span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="TickInfoCode" label="券种编号" min-width="80"></el-table-column>
+            <el-table-column prop="IDCard" label="有效期" min-width="150">
+                <template slot-scope="scope">
+                    <span v-if="scope.row.PrdOfVal!='' && scope.row.PrdOfVal!=null "> {{ '售后'+ scope.row.PrdOfVal +'天'}}</span>
+                    <span v-else>
+                        开始时间： <span v-if="scope.row.StateDate">
+                           {{scope.row.StateDate.substring(0,10)}}
+                        </span><br/>
+                        结束时间：<span v-if="scope.row.EndDate">
+                            {{scope.row.EndDate.substring(0,10)}}
+                        </span>
+                    </span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="Price" label="售价" min-width="80">
+                <template slot-scope="scope">
+                    <span style="float: right">
+                         {{scope.row.Price.toQFW()}}
+                    </span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="ApplyNumTotal" label="申请数量" min-width="80"></el-table-column>
+            <el-table-column prop="InputNumTotal" label="录入数" min-width="80"></el-table-column>
+            <el-table-column prop="ObtainNumTotal" label="已领券" min-width="80"></el-table-column>
+            <el-table-column prop="UsedNumTotal" label="已使用" min-width="80"></el-table-column>
+            <el-table-column prop="" label="操作" min-width="80">
+                <template slot-scope="scope">
+                    <el-button type="text" @click="show(scope.$index,tableData)">查看</el-button>
+                </template>
+            </el-table-column>
+        </el-table>
+        共：{{total}}条数据
+        <el-dialog title="详情" :mes="mes" :visible.sync="dialogTableVisible" size="">
+            <useStatus :mes="mes" :flg="flg" style="width: 800px"></useStatus>
+        </el-dialog>
+        <!--<ul class="parent" style="display: flex">
+            <li class="child" :style="{order:orderList[0]}">1</li>
+            <li class="child" :style="{order:orderList[1]}">2</li>
+            <li class="child" :style="{order:orderList[2]}">3</li>
+            <li class="child" :style="{order:orderList[3]}">4</li>
+            <li class="child" :style="{order:orderList[4]}">5</li>
+        </ul>-->
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+    import {baseImgPath} from "@/config/env"
+    import {GetTicketsReport} from "@/api/myData"
+    import "@/style/selfCommon.less"
+    import useStatus from "./com/useStatus.vue"
+    export default {
+        data () {
+            return {
+                url:"",
+                mes:{},
+                flg:"",
+                orderList:[1,0,5,3,4],
+                dialogTableVisible:false,
+                total:0,
+                size:10,
+                currentPage:1,
+                formInline:{
+                    name:"",
+                    apply:"",
+                    type:"",
+                    keywords:"",
+                },
+                tableData:[],
+            }
+        },
+        computed: {
+            /* 导出报表参数 tHeader,filterVal,tableData1*/
+            // tHeader(){
+            //     return ["券名称", '券类型', '券种编号','适用医院', '适用项目', '有效期', '售价',"申请数量","录入数","已领券","未领券",'已使用']
+            // },
+            // filterVal(){
+            //     return ['TickName', 'TicketsType','TickInfoCode', 'HospitalName', 'ProjectName','validity','Price','ApplyNum','InputNumTotal','ObtainNumTotal','UsedNumTotal']
+            // },
+            // name(){
+            //     return '消费券报表'
+            // },
+            // tableData1(){
+            //     let arr = JSON.parse(JSON.stringify(this.tableData))
+            //     arr.forEach(row=>{
+            //         row.TicketsType = this.getName(row.TicketsType)
+            //         row.validity = this.getData(row)
+            //     })
+            //     return arr
+            // },
+
+            /*导出报表参数 tHeader,filterVal,tableData1*/
+        },
+        mounted(){
+            this.url = baseImgPath
+            // this.onSubmit()
+        },
+        methods:{
+            getName(data){
+                switch (data){
+                    case 1: return '折扣券' ;
+                    case 2: return '代金券' ;
+                    case 3: return '门票' ;
+                }
+            },
+            getData(data){
+                if(data.PrdOfVal!='' && (data.PrdOfVal+'')!='null'){
+                    return '售后'+ data.PrdOfVal +'天'
+                }else{
+                    if(data.StartDate&&data.EndDate){
+                        return "开始："+data.StartDate.substr(0,10)+'结束：'+data.EndDate.substr(0,10)
+                    }else{
+                        return ""
+                    }
+                }
+            },
+            async GetTicketsReport(params){
+                try{
+                    let res = await GetTicketsReport(params)
+                    this.tableData = res
+                    this.total = res.length
+                }catch(err){
+                    console.log(err)
+                }
+            },
+            onSubmit(){
+                this.currentPage = 1
+                this.flg = this.formInline.apply
+                this.search()
+            },
+            search(){
+                this.GetTicketsReport({
+                    TickName:encodeURIComponent(this.formInline.name),
+                    ApplyUserName:encodeURIComponent(this.formInline.apply),
+                    TicketsType:encodeURIComponent(this.formInline.type),
+                })
+            },
+            show(index,data,title){
+                this.dialogTableVisible = true
+                this.mes = data[index]
+            }
+        },
+        components: {
+            useStatus
+        }
+    }
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+    .parent{
+        width: 100%;
+        flex-flow: wrap;
+    }
+.child{
+    width: 100%;
+    height: 20px;
+    border: 1px solid #333;
+    margin-bottom: 10px;
+}
+</style>

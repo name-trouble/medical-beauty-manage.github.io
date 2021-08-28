@@ -1,0 +1,266 @@
+<template>
+    <div class="tag selCommon">
+        <el-form :inline="true" :model="formInline" class="demo-form-inline form_search" label-width="80px">
+            <el-form-item label="出库日期：" class="form_item_mt10">
+                <el-date-picker
+                    v-model="date"
+                    style="width: 200px;"
+                    type="daterange"
+                    @change="dateChange"
+                    placeholder="选择日期">
+                </el-date-picker>
+            </el-form-item>
+            <el-form-item label="医院：" class="form_item_mt10">
+                <el-select v-model="formInline.hospitalCode"  style='width:200px;' @change="hosChange">
+                    <el-option v-for="(item,index) in hospitalList" :key="index" :label="item.supplierName" :value="item.code"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="仓库：" class="form_item_mt10">
+                <el-select v-model="formInline.wareHouse" style='width:200px;'>
+                    <el-option v-for="(item,index) in whList" :key="index" :label="item.warehouseName" :value="item.id"></el-option>
+                </el-select>
+            </el-form-item>
+            
+            <el-form-item label="关键字：" class="form_item_mt10">
+                <el-input v-model="formInline.keywords" placeholder="请输入" style="width: 200px;" v-on:keyup.enter.native="onSubmit"></el-input>
+            </el-form-item>
+            
+            <el-form-item label="" class="form_item_mt10">
+                <el-button type="primary" @click="onSubmit" class="searchBtn">查询</el-button>
+                <el-button type="primary" class="searchBtn" @click="search(1)" :loading="ExportLoading">导出报表</el-button>
+                <Export :tHeader="tHeader" ref="exportTable" :filterVal='filterVal' :tableData1='tableData1' :name='name' style="display:none"></Export>
+            </el-form-item>
+        </el-form>
+        <!-- 信息表 -->
+        <el-table :data="tableData" border style="width: 100%;margin-top:15px;margin-bottom:10px;" max-height="560"  class="smt min_table" 
+        v-loading="loading" show-summary  :summary-method="getSummaries">
+            <el-table-column prop="ticketDate" label="日期" min-width="90"></el-table-column>
+            <el-table-column prop="ticketName" label="卡券名称" min-width="90"></el-table-column>
+            <!-- <el-table-column prop="ticketName" label="业务事由" min-width="90"></el-table-column> -->
+            <el-table-column label="数量单位" min-width="90">
+                <template slot-scope="scope"><span>张</span></template>
+            </el-table-column>
+            <el-table-column prop="warehouseName" label="票券入库" min-width="270">
+                <el-table-column prop="ticketInCount1" label="印制入库" min-width="90"></el-table-column>
+                <el-table-column prop="ticketInCount2" label="调拨入库" min-width="90"></el-table-column>
+                <el-table-column prop="sumData1" label="合计" min-width="90"></el-table-column>
+            </el-table-column>
+            <el-table-column prop="warehouseName" label="票券出库" min-width="630">
+                <el-table-column prop="ticketoutCount1" label="调拨出库" min-width="90"></el-table-column>
+                <el-table-column prop="ticketoutCount2" label="套餐发放" min-width="90"></el-table-column>
+                <el-table-column prop="ticketoutCount3" label="日常销售" min-width="90"></el-table-column>
+                <el-table-column prop="ticketoutCount4" label="赠送出库" min-width="90"></el-table-column>
+                <el-table-column prop="ticketoutCount5" label="销毁报废" min-width="90"></el-table-column>
+                <el-table-column prop="ticketoutCount6" label="其它出库" min-width="90"></el-table-column>
+                <el-table-column prop="ticketoutCount7" label="退货出库" min-width="90"></el-table-column>
+                <el-table-column prop="sumData2" label="合计" min-width="90"></el-table-column>
+            </el-table-column>
+            <el-table-column prop="remainCount" label="票券库存" min-width="90" align="center"></el-table-column>
+        </el-table>
+        <!-- 信息表 -->
+        <!-- 分页 -->
+        <div class="block">
+            <el-pagination
+                @size-change="handleSizeChange"
+                @current-change="handleCurrentChange"
+                :current-page="currentPage"
+                :page-sizes="[10, 20, 30, 40]"
+                :page-size="size"
+                layout="total, sizes, prev, pager, next, jumper"
+                :total="total">
+            </el-pagination>
+        </div>
+        <!-- 分页 -->
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+    import {baseImgPath} from "@/config/env"
+    import  "@/style/selfCommon.less"
+    import { getCookie, delCookie } from '@/config/mUtils'
+    import {GetDropDownPermission,GetWarehouse,GetStockTicket,GetTicketInOutRecord,GetTicketInDetail,GetTicketOutDetail,GetRemainTicketCode,GetTicketStockAll} from "@/api/myData"
+    import Export from '@/components/export'
+    export default {
+        data () {
+            return {
+                ExportLoading:false,
+                date:"",
+                editMes:[],
+                loading:false,
+                detLoading:false,
+                ticketsDet:false,
+                title:"",
+                inOutDet:false,
+                total:0,
+                size:10,
+                currentPage:1,
+                checked:false,
+                formInline: {
+                    startDate:"",
+                    endDate:"",
+                    keywords: '',
+                    typeCode:'',
+                    hospitalCode:"",
+                    wareHouse:"",
+                    IsEnable:"",
+                    remainNum:false,
+                    startDate:'',
+                    endDate:'',
+                },
+                allData:[],
+                tableData:[],
+                hospitalList:[],
+                supplierList:[],
+                whList:[],
+                allWhList:[],
+                detData:[],
+                sumData:{},
+                dynamicTags:[],
+            }
+        },
+        computed: {
+            /* 导出报表参数 tHeader,filterVal,tableData1*/
+            tHeader(){
+                return ['日期', '卡券名称', '印制入库', '调拨入库', '调拨出库', '套餐发放','日常销售','赠送出库','销毁报废','其它出库','退货出库','库存']
+            },
+            filterVal(){
+                return ['ticketDate', 'ticketName', 'ticketInCount1', 'ticketInCount2','ticketoutCount1','ticketoutCount2','ticketoutCount3','ticketoutCount4',
+                'ticketoutCount5','ticketoutCount6','ticketoutCount7','remainCount',]
+            },
+            tableData1(){
+                return this.allData
+            },
+            name(){
+                return '卡券库存明细'
+            },
+            /*导出报表参数 tHeader,filterVal,tableData1*/
+        },
+        mounted(){
+            this.date = [new Date(),new Date()]
+            this.GetDropDownPermission()
+        },
+        methods:{
+            dateChange(val){
+                if(val){
+                    val = val.formatDates()
+                    this.formInline.startDate = val.substring(0,10)
+                    this.formInline.endDate = val.substring(13)
+                }else{
+                    this.formInline.startDate = ""
+                    this.formInline.endDate = ""
+                }
+            },
+            hosChange(val){
+                this.whList = []
+                this.formInline.wareHouse = ''
+                this.allWhList.forEach(ele=>{
+                    if(ele.hospitalCode == val){
+                        this.whList.push(ele)
+                    }
+                })
+            },
+            async showReaminDet(data,title){
+                this.title = title
+                this.dynamicTags = []
+                this.ticketsDet = true
+                let res = await GetRemainTicketCode({
+                    TicketId:data.ticketId,
+                    // BatchNumber:data.batchNumber,
+                    TicketCodePre:data.ticketPrefixCode,
+                    numcount:data.numCount,
+                    warehouseId:data.warehouseId,
+                })
+                res.data.forEach(ele=>{
+                    this.dynamicTags.push(ele.ticketCode)
+                }) 
+            },
+    
+            getSummaries(param) {
+                let sumDate1 = this.sumData.ticketInCount2+this.sumData.ticketInCount1,
+                sumData2 = this.sumData.ticketoutCount1+this.sumData.ticketoutCount2+this.sumData.ticketoutCount3+
+                this.sumData.ticketoutCount4+this.sumData.ticketoutCount5+this.sumData.ticketoutCount6+this.sumData.ticketoutCount7
+                return ['合计','','',this.sumData.ticketInCount1,this.sumData.ticketInCount2,sumDate1,
+                this.sumData.ticketoutCount1,this.sumData.ticketoutCount2,
+                this.sumData.ticketoutCount3,this.sumData.ticketoutCount4,
+                this.sumData.ticketoutCount5,this.sumData.ticketoutCount6,this.sumData.ticketoutCount7,sumData2,sumDate1 - sumData2]
+            },
+            async GetDropDownPermission(){
+                let res1 = await GetDropDownPermission({typeId: 1});
+                this.hospitalList = res1.data
+                let whList = await GetWarehouse({
+                    "hospitalCode": "",pageIndex:1,pageSize:100,keywords:"",typeId:2//卡券
+                })
+                this.allWhList = whList.data
+                this.formInline.hospitalCode = this.hospitalList[0].code
+            },
+            async GetStockTicket(params,ope){
+                try{
+                    if(ope){
+                        this.ExportLoading = true
+                    }else{
+                        this.loading = true
+                    }
+                    let res = await GetTicketStockAll(params)
+                    
+                    if(ope){
+                        this.allData = this.calData(res.data)
+                        this.ExportLoading = false
+                        setTimeout(()=>{
+                            this.$refs.exportTable.handleDownload()
+                        },10)
+                    }else{
+                        this.tableData = this.calData(res.data)
+                        this.sumData = res.sumdata[0]
+                    }
+                    this.total = res.count
+                    this.loading = false
+                }catch(err){
+                    console.log(err)
+                }
+            },
+            calData(data){
+                data.forEach(row=>{
+                    row.sumData1 = row.ticketInCount1+row.ticketInCount2
+                    row.sumData2 = row.ticketoutCount1+row.ticketoutCount2+row.ticketoutCount3+row.ticketoutCount4+row.ticketoutCount5+row.ticketoutCount6+row.ticketoutCount7
+                    row.remainCount = row.sumData1 - row.sumData2 
+                })
+                return data
+            },
+            
+            onSubmit(){
+                this.currentPage = 1
+                this.search()
+            },
+            search(ope){
+                this.GetStockTicket({
+                    pageIndex:ope?1:this.currentPage,
+                    pageSize:ope?this.total:this.size,
+                    startDate:this.formInline.startDate,
+                    endDate:this.formInline.endDate,
+                    Keywords:this.formInline.keywords.removeSP(),
+                    WarehouseId:this.formInline.wareHouse,
+                    HospitalCode:this.formInline.hospitalCode,
+                },ope?ope:'')
+                
+            },
+            handleSizeChange(val) {
+                this.size = val
+                this.search()
+            },
+            handleCurrentChange(val) {
+                this.currentPage = val
+                this.search()
+            },
+        },
+        components: {
+            Export,
+        }
+    }
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+.tag{
+    margin: 5px;
+}
+</style>

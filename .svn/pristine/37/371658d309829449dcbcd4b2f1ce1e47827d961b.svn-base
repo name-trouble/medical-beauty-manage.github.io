@@ -1,0 +1,363 @@
+<template>
+    <div>
+        <div class="head">
+            <span>订单编号：{{data.FxCode}}</span>
+            <span>客户：{{data.CustomerName}}</span>
+            <span>项目名称：{{ data.ProjectName.substr(0,5)+'...' }}</span>
+            <span>项目规格：</span>
+            <span>疗程： {{data.Course}}</span>
+            <span>执行中： {{ getState(data.CommandState)}}</span><br/>
+            <span>备注：{{data.Memo}}</span>
+        </div>
+        <div>
+            <el-form :model="formData" ref="ruleForm" label-width="120px">
+                <el-form-item label="执行序号：" class="form_item_mt10" style="width:400px;">
+                    {{ data.CurrentCourse}}
+                </el-form-item>
+                <el-form-item label="执行日期：" class="form_item_mt10" style="width:400px;">
+                    <el-date-picker v-model="date" @change="dateChange" class="form_item_ipt220"></el-date-picker>
+                </el-form-item>
+                <el-form-item label="医生：" class="form_item_mt10" style="width:400px;">
+                    <el-select v-model="doctor" class="form_item_ipt220" filterable>
+                        <el-option v-for="(item,index) in doctorList" :key="index" :label="item.name" :value="item.code+'|'+item.name"></el-option>
+                    </el-select>
+                </el-form-item>
+                <el-form-item label="护士：" class="form_item_mt10" style="width:400px;">
+                    <el-select v-model="service" class="form_item_ipt220" filterable>
+                        <el-option v-for="(item,index) in serviceList" :key="index" :label="item.name" :value="item.code+'|'+item.name"></el-option>
+                    </el-select>
+                </el-form-item>
+                <el-form-item label="医生助理：" class="form_item_mt10" style="width:400px;">
+                    <el-select v-model="doctorAssit" class="form_item_ipt220" filterable>
+                        <el-option v-for="(item,index) in doctorAssitList" :key="index" :label="item.name" :value="item.code+'|'+item.name"></el-option>
+                    </el-select>
+                </el-form-item>
+                <el-form-item label="备注：" prop="memo" style="width:400px;">
+                    <el-input v-model="formData.memo" class="form_item_ipt220"> </el-input>
+                </el-form-item>
+            </el-form>
+        </div>
+        
+        <div>
+            <span style="line-height:36px">执行记录</span>
+            <el-table :data="tableData" border min-width="500">
+                <el-table-column type="index" label="" min-width="100"></el-table-column>
+                <el-table-column prop="CreateOn" label="创建日期" min-width="100">
+                    <template scope="scope">
+                    <span v-if="scope.row.CreateOn">
+                        {{scope.row.CreateOn.substring(0,10)}}
+                    </span>               
+                    </template>
+                </el-table-column>
+                 
+                <el-table-column prop="DoctorName" label="执行医生" min-width="100"></el-table-column>
+                <el-table-column prop="NurseName" label="执行护士" min-width="100"></el-table-column>
+                <el-table-column prop="DoctorAssistName" label="医生助理" min-width="100"></el-table-column>
+                <el-table-column prop="CreateBy" label="提交人" min-width="100"></el-table-column>
+                <el-table-column prop="Memo" label="备注" show-overflow-tooltip></el-table-column>
+                <el-table-column prop="ExecDate" label="执行日期" min-width="130">
+                    <template scope="scope">
+                         <span v-if="scope.row.ExecDate">
+                        {{scope.row.ExecDate.substring(0,10)+' '+scope.row.ExecDate.substring(11)}}
+                         </span>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="Memo" label="操作" width="120">
+                    <template scope="scope">
+                        <el-button size="small" type="primary" @click="editDate(scope.$index,tableData)" :disabled="operate == 'command'">编辑</el-button>
+                        <el-button size="small" type="primary" @click="revoke(scope.row)" :disabled="operate == 'command'">撤回</el-button>
+                    </template>
+                </el-table-column>
+            </el-table>
+        </div>
+
+        <div class="dialog_footer" v-if="operate == 'command'">
+            <el-button @click="save" type="primary" :loading="commandLoding">确定 </el-button>
+            <el-button @click="cancel">取消 </el-button>
+        </div>
+
+        <el-dialog title="编辑时间" :visible.sync="dialogFormVisible" :modal="false">
+            <el-form :model="form" label-width="100px">
+                <el-form-item label="执行时间：" class="form_item_mt0">
+                    <el-date-picker v-model="date1" @change="dateChange1" class="form_item_ipt220"></el-date-picker>
+                </el-form-item>
+                <el-form-item label="医生：" class="form_item_mt0">
+                     <el-select v-model="form.doctor" class="form_item_ipt220" filterable>
+                        <el-option v-for="(item,index) in doctorList" :key="index" :label="item.name" :value="item.code+'|'+item.name"></el-option>
+                    </el-select>
+                </el-form-item>
+                <el-form-item label="护士：" class="form_item_mt0">
+                     <el-select v-model="form.service" class="form_item_ipt220" filterable>
+                        <el-option v-for="(item,index) in serviceList" :key="index" :label="item.name" :value="item.code+'|'+item.name"></el-option>
+                    </el-select>
+                </el-form-item>
+                <el-form-item label="医生助理：" class="form_item_mt0">
+                    <el-select v-model="form.doctorAssist" class="form_item_ipt220" filterable>
+                        <el-option v-for="(item,index) in doctorAssitList" :key="index" :label="item.name" :value="item.code+'|'+item.name"></el-option>
+                    </el-select>
+                </el-form-item>
+                <el-form-item label="备注：" class="form_item_mt0">
+                    <el-input v-model="form.memo" class="form_item_ipt220"></el-input>
+                </el-form-item>
+            </el-form>
+            <div slot="footer" class="dialog-footer">
+                <el-button type="primary" @click="editS" :loading="loading">确 定</el-button>
+                <el-button @click="editC">取 消</el-button>
+            </div>
+        </el-dialog>
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+import '../lib/report.less'
+
+import { getProofOrderDetail, addCommandOrder,GetServiceManList,UpdateOrderCommand,RevokeOrderCommand } from "@/api/myData"
+import { getCookie } from '@/config/mUtils'
+export default {
+    props: {
+        fxCode: String,
+        operate:"",
+    },
+    data() {
+        return {
+            dialogFormVisible:false,
+            date:new Date(),
+            date1:"",
+            form:{
+                date:"",
+                doctorAssist:"",
+                service:"",
+                doctor:"",
+                memo:"",
+            },
+            formData: {
+                fxCode: "",
+                memo: "",
+                createUserId: "",
+                createBy: "",
+                execDate:(new Date()).formatDate("yyyy-MM-dd"),
+            },
+            editMes:{},
+            loading:false,
+            commandLoding:false,
+            serciceManList:[],
+            doctorList:[],
+            serviceList:[],
+            doctorAssitList:[],
+            doctor:"",
+            service:"",
+            doctorAssit:"",
+            tableData: [],
+            EditDate:"",
+            data: {
+                ProjectName:""
+            },
+        }
+    },
+
+    mounted() {
+        this.getData()
+    },
+
+    methods: {
+        // 撤销执行
+        revoke(data){
+            this.$confirm('确定撤销该执行记录?', '提示', {
+                confirmButtonText: '确定',
+                cancelButtonText: '取消',
+                type: 'warning'
+            }).then(() => {
+                this.RevokeOrderCommand({
+                    fxcode:this.data.FxCode,
+                    id:data.Id
+                })
+            })
+        },
+        async RevokeOrderCommand(params){
+            let res = await RevokeOrderCommand(params)
+            if(res.status){
+                this.$message({ type: 'success', message: '撤销成功！' })
+                this.getData()
+            }else{
+                this.$message({ type: 'error', message: '操作失败！'+res.errorMessage})
+            }
+        },
+        dateChange1(val){
+            
+            if(val){
+                this.form.date = val
+            }else{
+                this.form.date = ""
+            }
+        },
+        dateChange(val){
+            if(val){
+                this.formData.execDate = val
+            }else{
+                this.formData.execDate = ""
+            }
+        },
+        async UpdateOrderCommand(params){
+            let res = await UpdateOrderCommand(params)
+            if(res.status){
+                this.$message({ type: 'success', message: '编辑成功！' })
+                this.dialogFormVisible = false
+                this.form = {
+                    date:(new Date()).formatDate("yyyy-MM-dd"),
+                    doctorAssist:"",
+                    service:"",
+                    doctor:"",
+                    memo:"",
+                }
+                this.getData()
+            }else{
+                this.$message({ type: 'error', message: '编辑失败！' })
+            }
+            this.loading = false
+        },
+        //获取所有 医生
+        async getServiceMan(code) {
+            let ser = await GetServiceManList()
+            this.serciceManList = ser.data
+            this.filterDoctor(code)
+            this.copyWorth(this.data)
+        },
+        async getData() {
+            let res = await getProofOrderDetail(this.fxCode)
+            this.data = res['ProofOrder']
+            this.tableData=res["OrderCommandList"]
+            this.getServiceMan(this.data.HospitalId)
+        },
+        //获取 医生，设计师，助理  选择列表
+        filterDoctor(hospitalCode) {
+            //医生001// 护士003//医生助理列表  005//设计师列表   002//设计师助理列表  006
+            for (let item of this.serciceManList) {
+                let hosCodes = item.hospitalCode.split(",")//多权限筛选
+                if (hosCodes.indexOf(hospitalCode)>=0) {
+                    if (item.serTypeCode === '005') {    //医生助理
+                        this.doctorAssitList.push({ 'code': item["code"], 'name': item["serviceName"], text: item["serviceName"] + '(' + item["code"] + ')' })
+                    }
+                    if(item.serTypeCode === '003'){
+                        this.serviceList.push({ 'code': item["code"], 'name': item["serviceName"], text: item["serviceName"] + '(' + item["code"] + ')' })
+                    }
+                    if(item.serTypeCode === '001'){
+                        this.doctorList.push({ 'code': item["code"], 'name': item["serviceName"], text: item["serviceName"] + '(' + item["code"] + ')' })
+                    }
+                }
+            }
+        },
+        copyWorth(data){
+            this.doctor = data.ServiceManId ? data.ServiceManId+"|"+data.ServiceManName:""
+            this.service = data.NurseName?data.NurseId+"|"+data.NurseName:""
+            this.doctorAssit = data.DoctorAssist?data.DoctorAssist+"|"+data.DoctorAssistName:""
+        },
+        async addData() {
+            this.formData.fxCode = this.fxCode
+            this.formData.createUserId = getCookie("userId")
+            this.formData.createBy = getCookie("userName")
+            this.formData.doctorId = this.doctor.split("|")[0]?this.doctor.split("|")[0]:""
+            this.formData.doctorName = this.doctor.split("|")[1]?this.doctor.split("|")[1]:""
+            this.formData.nurseId = this.service.length>0?this.service.split("|")[0]:""
+            this.formData.nurseName = this.service.length>0?this.service.split("|")[1]:""
+            this.formData.doctorAssist = this.doctorAssit.length>0?this.doctorAssit.split("|")[0]:""
+            this.formData.doctorAssistName = this.doctorAssit.length>0?this.doctorAssit.split("|")[1]:""
+            let res = await addCommandOrder(this.formData)
+            if (res.success && res.success > 0) {
+                this.$message({ type: 'success', message: '提交成功！' })
+                this.$emit('close',1)
+            }
+            else{
+                 this.$message({ type: 'success', message: '提交失败！' })
+            }
+            this.commandLoding = false
+        },
+
+        cancel() {
+            this.$emit('close',0)
+         },
+
+        save() {
+            this.$refs["ruleForm"].validate((valid) => {
+                if (valid) {
+                    this.commandLoding = true
+                    this.addData()
+                }
+                else {
+                    this.$message({ type: 'info', message: '请填写完整信息!' })
+                    return false
+                }
+            })
+        },
+
+        getState(val) {
+            if (val == null || val == "" || val == 0) return '未执行'
+            if (val == 1) return '执行中'
+            if (val == 2) return '执行完毕'
+        },
+        editDate(index,data){
+            this.dialogFormVisible = true
+        },
+
+        editDate(index,data){
+            this.editMes = data[index]
+            this.form.date =data[index].ExecDate?data[index].ExecDate:(new Date()).formatDate("yyyy-MM-dd")
+            this.date1 =data[index].ExecDate? new Date(data[index].ExecDate.substring(0,4),data[index].ExecDate.substring(5,7)-1,data[index].ExecDate.substring(8,10)):new Date()
+            this.EditDate = data[index].ExecDate?data[index].ExecDate:""
+            this.form.doctorAssist = data[index].DoctorAssist?data[index].DoctorAssist+'|'+data[index].DoctorAssistName:""
+            this.form.service = data[index].NurseId?data[index].NurseId+'|'+data[index].NurseName:""
+            this.form.doctor = data[index].DoctorId?data[index].DoctorId+'|'+data[index].DoctorName:""
+            this.form.memo = data[index].Memo?data[index].Memo:""
+            this.dialogFormVisible = true
+        },
+
+        editS(){
+            this.loading = true
+            // 判断日期是否修改
+            let date = this.EditDate.substring(0,10) == this.form.date?this.EditDate:this.form.date
+            this.UpdateOrderCommand({
+                fxCode:this.data.FxCode,
+                Id:this.editMes.Id,
+                doctorId:this.form.doctor.split("|")[0]?this.form.doctor.split("|")[0]:"",
+                doctorName:this.form.doctor.split("|")[1]?this.form.doctor.split("|")[1]:"",
+                nurseId:this.form.service.split("|")[0]?this.form.service.split("|")[0]:"",
+                nurseName:this.form.service.split("|")[1]?this.form.service.split("|")[1]:"",
+                doctorAssist:this.form.doctorAssist.split("|")[0]?this.form.doctorAssist.split("|")[0]:"",
+                doctorAssistName:this.form.doctorAssist.split("|")[1]?this.form.doctorAssist.split("|")[1]:"",
+                expectAmount:this.editMes.ExpectAmount,
+                approveState:this.editMes.ApproveState,
+                memo:this.form.memo,
+                ExecDate:date,
+                modifiedUserId:getCookie("userId"),
+                modifiedBy:getCookie("userName"),
+            })
+        },
+        editC(){
+            this.dialogFormVisible = false
+        },
+      
+    },
+
+    watch: {
+        fxCode: function(val) {
+            this.getData()
+
+        }
+    }
+}
+</script>
+
+<style scoped>
+.head {
+    margin: -10px 0 20px 0;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #ddd;
+}
+
+.head span {
+    margin: 5px 20px;
+}
+    .dialog_footer{
+        text-align: center;
+        margin-top: 10px;
+    }
+</style>

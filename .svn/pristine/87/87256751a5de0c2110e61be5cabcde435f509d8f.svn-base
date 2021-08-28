@@ -1,0 +1,350 @@
+<template>
+    <div class="settled selCommon">
+        <el-form :inline="true" :model="formInline" class="demo-form-inline  form_search" label-width="80px">
+            <el-form-item label="有效日期："  class="form_item_mt10 ">
+                <el-date-picker
+                    v-model="date"
+                    type="daterange"
+                    @change="dateChange"
+                    style='width:200px;'
+                    placeholder="选择日期范围">
+                </el-date-picker>
+            </el-form-item>
+            <el-form-item label="活动名称:" class="form_item_mt10">
+                <el-input v-model="formInline.name"  style='width:200px;'></el-input>
+            </el-form-item>
+            <el-form-item label="活动类型:" class="form_item_mt10">
+                <el-select v-model="formInline.type"  style='width:200px;'>
+                    <el-option label="全部" value=""></el-option>
+                    <el-option label="限时秒杀" value="1"></el-option>
+                    <el-option label="体验专区" value="2"></el-option>
+                    <el-option label="特惠项目" value="3"></el-option>
+                    <el-option label="量贩专区" value="4"></el-option>
+                    <el-option label="398特惠" value="5"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="活动栏目：" class="form_item_mt10 " >
+                <el-select v-model="formInline.column" style="width:200px;">
+                    <el-option label="全部" value=""></el-option>
+                    <el-option v-for="item in columnList" :label="item.DataName" :key="item.DataCode" :value="item.DataCode"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="活动状态:" class="form_item_mt10">
+                <el-select v-model="formInline.status"  style='width:200px;'>
+                    <el-option label="全部" value=""></el-option>
+                    <el-option label="未开始" value="1"></el-option>
+                    <el-option label="已开始" value="2"></el-option>
+                    <el-option label="已结束" value="3"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="" class="form_item_mt10 form_item_wh280">
+                <el-button type="primary" @click="search" class="searchBtn" icon="search">查询</el-button>
+                <el-button type="primary" @click="addActive" class="searchBtn" icon="plus">添加</el-button>
+            </el-form-item>
+        </el-form>
+        <el-table :data="tableData" border style="width: 100%;margin-top:15px;margin-bottom:10px;" max-height="600" class="min_table smt" v-loading="loading">
+            <el-table-column prop="code" label="活动编号" min-width="100" align="center"></el-table-column>
+            <el-table-column prop="catalogName" label="栏目" min-width="100"></el-table-column>
+            <el-table-column prop="name" label="活动名称" min-width="100"></el-table-column>
+            <el-table-column prop="types" label="活动类型" min-width="100" align="center">
+                <template scope="scope">
+                    <span v-if="scope.row.types == 1">限时秒杀</span>
+                    <span v-if="scope.row.types == 2">体验专区</span>
+                    <span v-if="scope.row.types == 3">特惠项目</span>
+                    <span v-if="scope.row.types == 4">量贩专区</span>
+                    <span v-if="scope.row.types == 5">398特惠</span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="validDate1" label="有效时间" min-width="150">
+                <template scope="scope">
+                    <div>开始时间：{{scope.row.validDate1}}</div>
+                    <div>结束时间：{{scope.row.validDate2}}</div>
+                </template>
+            </el-table-column>
+            <el-table-column prop="customerName" label="活动状态" min-width="100" align="center">
+                <template scope="scope">
+                      <el-tag type="success" v-if="scope.row.status == 2">进行中</el-tag>
+                      <el-tag type="gray" v-if="scope.row.status == 3">已结束</el-tag>
+                      <el-tag type="danger" v-if="scope.row.status == 1">未开始</el-tag>
+                      <el-tag type="gray" v-if="scope.row.status == 4">已失效</el-tag>
+                </template>
+            </el-table-column>
+            <el-table-column prop="amounts" label="订单实付金额" min-width="100" ></el-table-column>
+            <el-table-column prop="itemDetail" label="付款订单数" min-width="100"></el-table-column>
+            <el-table-column prop="customerName" label="付款人数" min-width="100"></el-table-column>
+            <el-table-column prop="amount" label="操作" min-width="180" >
+                <template scope="scope">
+                    <el-button type="primary" @click="copyActivity(scope.row)" size="small">复制项目</el-button>
+                    <el-button type="primary" @click="view(scope.row)" size="small">查看</el-button>
+                    <el-button type="primary" @click="edit(scope.row)" size="small">编辑</el-button>
+                    <el-button type="warning" size="small" v-if="scope.row.status == 2" @click="SetStatusActivitys(scope.row,4)">使失效</el-button>
+                    <el-button type="danger" @click="delActive(scope.row)" size="small" v-if="scope.row.status == 1||scope.row.status == 3||scope.row.status == 4">删除</el-button>
+                </template>
+            </el-table-column>
+        </el-table>
+        <!-- 分页 -->
+        <div class="block">
+            <el-pagination
+                 @size-change="handleSizeChange"
+                 @current-change="handleCurrentChange"
+                 :current-page="currentPage"
+                 :page-sizes="[10, 30, 50, 100]"
+                 :page-size="size"
+                 layout="total, sizes, prev, pager, next, jumper"
+                 :total="total">
+             </el-pagination>
+        </div>
+
+        <el-dialog title="效果数据" :visible.sync="dialogView"  top="20%"  size="" :close-on-click-modal="false">
+            <div style="width:700px;border-top:1px solid #999;padding-top:20px;">
+                <div style="line-height:20px;">活动名称：</div>
+                <div class="resultCon">
+                    <div class="resultM">
+                        订单实付金额<br/><span style="font-size:16px;font-weight:bold">￥</span>
+                    </div>
+                    <div class="resultM">
+                        优惠总金额<br/><span style="font-size:16px;font-weight:bold">￥</span>
+                    </div>
+                    <div class="resultM">
+                        费效比<br/><span style="font-size:16px;font-weight:bold">%</span>
+                    </div>
+                    <div class="resultM">
+                        付款商品件数<br/><span style="font-size:16px;font-weight:bold">件</span>
+                    </div>
+                </div>
+                <div class="resultCon">
+                    <div class="resultM">
+                        新成交客户数<br/><span style="font-size:16px;font-weight:bold"></span>
+                    </div>
+                    <div class="resultM">
+                        老成交客户数<br/><span style="font-size:16px;font-weight:bold"></span>
+                    </div>
+                    <div class="resultM"></div>
+                    <div class="resultM"></div>
+                </div>
+            </div>
+        </el-dialog>
+        <el-dialog :title="title" :visible.sync="dialogAdd"  top="10%"  size="" :close-on-click-modal="false">
+             <Combo ref="Combo" :mes="mes" @addSure='addSure' @addPro="addPro" style="width:900px;" v-if="dialogAdd"></Combo>
+        </el-dialog>
+        <el-dialog title="选择项目" :visible.sync="dialogPro"  top="10%"  size="" :close-on-click-modal="false">
+             <projectList ref="projectList" :activityId="activityId" @selectPro='selectPro' style="width:900px;" v-if="dialogPro"></projectList>
+        </el-dialog>
+        <el-dialog :title="relationTitle" :visible.sync="dialogVisible" size="">
+            <addRelation v-if="dialogVisible" :selectMes="selectMes" @close='addRelationClose' style="width:1000px;"></addRelation>
+        </el-dialog>
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+import './lib/quill.less'
+import Combo from "./com/addActivity.vue"
+import addRelation from "./com/addRelation"
+import projectList from "./com/projetcSelect.vue"
+import {GetDropDownPermission,GetBranchReceiveList,getBaseDataByCode,GetActivitys,DeleteActivitys,SetStatusActivitys,CopyActivity} from "@/api/myData"
+import "@/style/selfCommon.less"
+    export default {
+        data () {
+            return {
+                title:"",
+                activityId:"",
+                date:"",
+                dialogPro:false,
+                dialogAdd:false,
+                dialogView:false,
+                dialogVisible:false,
+                selectMes:{},
+                total:0,
+                size:10,
+                currentPage:1,
+                columnList:[],
+                formInline: {
+                    startDate:"",
+                    endDate:"",
+                    name:"",
+                    type:"",
+                    status:"",
+                    column:'',
+                },
+                agentList:[],
+                tableData:[],
+                loading:false,
+                serTypes:[],//职位
+                form:{
+
+                },
+                mes:{},
+                relationTitle:'',
+            }
+        },
+        computed: {
+            
+        },
+       
+        mounted(){
+            let date1 = new Date(),date = new Date(),day = date.getDate()+8
+            
+            date.setDate(day)
+            date1.setDate(1)
+            this.date = [date1,date]
+            this.getBaseDataByCode()
+        },
+        methods: {
+            async getBaseDataByCode(){
+                this.columnList = await getBaseDataByCode('0026')
+            },
+            addRelationClose(val){
+                this.dialogVisible = false
+            },
+            async copyProejct(params){
+                let res = await CopyActivity(params)
+                if(res.status){
+                   this.$message({ message: '复制成功',type: 'success'});
+                   this.submit()
+                }else{
+                    this.$message.error('复制失败');
+                }
+            },
+            copyActivity(data){
+                this.$confirm('是否确认复制?', '提示', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    type: 'warning'
+                }).then(() => {
+                    this.copyProejct({id:data.id})
+                })
+                
+            },
+            edit(data){
+                this.activityId = data.id
+                this.mes = data
+                this.dialogAdd = true
+                this.title = '活动编辑'
+            },
+            delActive(params){
+                this.$confirm('确定删除该活动吗?', '提示', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    type: 'warning'
+                }).then(() => {
+                    this.DeleteActivitys(params)
+                })
+            },
+            async DeleteActivitys(params){
+                let res = await DeleteActivitys({id:params.id})
+                if(res.status){
+                   this.$message({ message: '删除成功',type: 'success'});
+                   this.submit()
+                }else{
+                    this.$message.error('删除失败');
+                }
+            },
+            dateChange(val){
+                if(val){
+                    this.formInline.startDate = val.substring(0,10)
+                    this.formInline.endDate = val.substring(13)
+                }else{
+                    this.formInline.startDate = ""
+                    this.formInline.endDate = ""
+                }
+            },
+           
+            search(){
+                this.currentPage = 1
+                this.submit()
+            },
+            submit(){
+                this.loading = true
+                this.GetActivitys({
+                   ValidDate1 :this.formInline.startDate,
+                   ValidDate2:this.formInline.endDate,
+                   name:this.formInline.name,
+                   Types:this.formInline.type,
+                   Status:this.formInline.status,
+                   OrderBy:"",
+                   pageIndex:this.currentPage,
+                   pageSize:this.size,
+                   CatalogCode:this.formInline.column,
+                })
+            },
+            async GetActivitys(params){
+                let res = await GetActivitys(params)
+                if(res.status){
+                    this.total = res.count
+                    this.tableData = res.data
+                }else{
+                    this.$message.error('查询失败');
+                }
+                this.loading = false
+            },
+
+            handleSizeChange(val) {
+                this.size = val
+                this.submit()
+             },
+             handleCurrentChange(val) {
+                this.currentPage = val
+                this.submit()
+             },
+             addActive(){
+                 this.mes = {}
+                 this.dialogAdd = true
+                 this.title = '活动添加'
+             },
+             addPro(val,data){//1选择项目 2 选择附赠商品
+                if(val ==1){
+                    this.dialogPro = true
+                }else if(val == 2){
+                    this.relationTitle = data.title
+                    this.selectMes = data.data
+                    this.dialogVisible = true
+                }
+             },
+             selectPro(val){
+                 this.$refs.Combo.GetListByActivityId()
+                //  this.dialogPro = false
+             },
+             view(data){
+                 this.dialogView = true
+             },
+             addSure(val){
+                this.dialogAdd = false
+                if(val){
+                    this.submit()
+                }
+             },
+             async SetStatusActivitys(data,status){
+                let res = await SetStatusActivitys({id:data.id,status:status,})
+                if(res.status){
+                     this.$message({ message: '操作成功', type: 'success' });
+                    this.submit()
+                }else{
+                    this.$message.error('操作失败');
+                }
+             }
+        },
+        components: {
+            addRelation,
+            Combo,
+            projectList
+        }
+    }
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+.resultCon{
+    width:100%;
+    height:90px;
+    padding:20px;
+    box-sizing: border-box;
+    background: #f0f0f0;
+    display: flex;
+    margin-top: 20px;
+}
+.resultM{
+    width: 25%;
+    text-align: center;
+    line-height: 26px;
+}
+</style>

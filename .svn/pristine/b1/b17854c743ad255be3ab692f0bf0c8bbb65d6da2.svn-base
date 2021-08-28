@@ -1,0 +1,130 @@
+<template>
+    <div>
+        <div class="select" id="roleinfo_select">
+            <span>关键字：</span>
+            <el-input v-model="filterWord" @keyup.enter.native="search" placeholder="名称"></el-input>
+            <el-button type="primary" icon="search" @click="search">搜索</el-button>
+            <el-button type="primary" icon="plus" @click="addRow">确定</el-button>
+        </div>
+        <el-table :data="tableData" ref="roleTable" v-loading = "loading"
+        style="width: 100%;margin-top:10px;margin-bottom:10px;" border stripe height="460" row-key="id" @selection-change="selectChange">
+            <el-table-column type="index" width="50" label="序号">
+            </el-table-column>
+
+            <el-table-column type="selection"   align="center" width="50">
+            </el-table-column>
+
+            <el-table-column prop="Code" label="编号" min-width="100">
+            </el-table-column>
+
+            <el-table-column prop="Realname" label="名称" min-width="100">
+            </el-table-column>
+
+            <el-table-column prop="Description" label="描述" min-width="100">
+            </el-table-column>
+
+            <el-table-column prop="Enabled" label="是否有效" min-width="100">
+                <template scope="scope">
+                    <el-tag :type="scope.row.Enabled === 1 ? 'success' : 'warning'" close-transition v-html="scope.row.Enabled === 1 ? '有效' : '无效'"> </el-tag>
+                </template>
+            </el-table-column>
+        </el-table>
+    </div>
+</template>
+
+<script>
+/**
+ * 添加用户  ===》 角色信息
+ * */
+import { getRoleAll, addUserRole } from '../../../api/myData'
+
+export default {
+    props: {
+        addClick: Function,
+        data: Array
+    },
+    data() {
+        return {
+            loading:false,
+            filterWord: "",
+            tableData: [],
+            selectData: [],
+        }
+    },
+
+
+    mounted() {
+        this.getRoleInfo()
+        let _this = this
+    },
+
+    methods: {
+        toggleSelection() {
+             this.$refs.roleTable.clearSelection()
+            if(this.data.length==0) {
+                return
+            }
+            let _this = this
+            this.data.forEach(roleId => {
+                _this.tableData.forEach((item,index) => {
+                   if(item["Id"]==roleId){
+                  _this.$refs.roleTable.toggleRowSelection(item);
+                   }
+                });
+            });
+        },
+
+        async getRoleInfo() {
+            this.loading = true
+            this.tableData = await getRoleAll()
+            this.loading = false
+            this.$nextTick(function () {
+                this.toggleSelection()
+            })
+        },
+
+        search() {
+            if (this.filterWord === "" || this.filterWord === null) {
+                this.tableData = this.allData.slice(0)
+                return;
+            }
+            let _this = this
+            this.tableData = []
+
+            this.allData.forEach((item, index) => {
+                if (item["Code"].indexOf(_this.filterWord) >= 0 || item["Realname"].indexOf(_this.filterWord) >= 0) {
+                    _this.tableData.push(item)
+                }
+            })
+        },
+
+        selectChange(val) {
+            this.selectData = val
+        },
+
+        addRow() {
+            this.addClick && this.addClick(this.selectData)
+        },
+    }
+}
+</script>
+
+<style lang="less" scoped>
+.select {
+    .el-input {
+        position: static;
+        width: 60px;
+        float: none;
+    }
+
+    .el-input,
+    .el-input__inner {
+        width: auto;
+    }
+
+    .el-select {
+        padding-right: 0;
+        float: none;
+    }
+}
+</style>

@@ -1,0 +1,170 @@
+<template>
+    <div class="doctorList" style="text-align: left">
+        <div class="select">
+            <el-form :inline="true" v-model="filterModel" class="demo-form-inline" label-width="110px">
+                <el-form-item label="服务者姓名：" class="form_item_mt10">
+                    <el-input v-model="filterModel.serviceName" v-on:keyup.enter.native="search"></el-input>
+                </el-form-item>
+                <el-form-item label="" class="form_item_mt10">
+                    <el-button type="primary" @click="search" class="searchBtn">查询</el-button>
+                </el-form-item>
+            </el-form>
+        </div>
+
+        <el-table :data="tableData" ref="multipleTable" style="width: 100%;margin-top:10px;margin-bottom:10px;" border height="600" row-key="id">
+            <el-table-column prop="Id" label="Id" min-width="80">
+            </el-table-column>
+
+            <el-table-column label="头像" min-width="100" align="center">
+                <template scope="scope">
+                    <img v-bind:src="baseImgPath+scope.row.ImgUrl" style="height:50px;width:50px;">
+                </template>
+            </el-table-column>
+
+            <el-table-column prop="Code" label="服务者编号" min-width="100">
+            </el-table-column>
+
+            <el-table-column prop="CreateOn" label="注册日期" min-width="100">
+                <template scope="scope">
+                    <span v-if="scope.row.CreateOn">{{scope.row.CreateOn.substring(0,10)}}</span>
+                </template>
+            </el-table-column>
+
+            <el-table-column prop="ServiceName" label="服务者姓名" min-width="100">
+            </el-table-column>
+
+            <el-table-column prop="SkillCode" label="擅长" show-overflow-tooltip min-width="100"></el-table-column>
+
+            <el-table-column prop="ApplyNum" label="操作" min-width="160" align="center">
+                <template scope="scope">
+                    <el-button  size="mini" icon="edit" @click="select(scope)"> 选择</el-button>
+                    <!-- <el-button  size="mini" icon="delete" @click="unSelect(scope.$index)">取消选择</el-button> -->
+                </template>
+            </el-table-column>
+        </el-table>
+
+        <div class="block" style="margin-bottom:20px">
+            <el-pagination @size-change="pageSizeChange" @current-change="pageIndexChange" :total="dataCount" :current-page.sync="currentPage" :page-size="pageSize" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper">
+            </el-pagination>
+        </div>
+
+    </div>
+</template>
+
+<script>
+
+import { getServiceManAllByPage, getSupplierBySupType } from '@/api/myData'
+import '@/style/yqCom.less'
+import { baseImgPath } from '@/config/env'
+export default {
+    data() {
+        return {
+            ispopList: false,
+            filterModel: {
+                serviceName: '',
+                hospitalCode: '',
+                serTypeCode:"",
+                jobs: '',
+                title: '',
+                skillCode: '',
+
+                startDate: '',
+                endDate: '',
+
+                pageIndex: 1,
+                pageSize: 20
+            },
+
+            currentView: "",
+
+            filterWord: "",
+            tableData: [],
+
+            dataCount: 0, //总数
+            currentPage: 1,   //当前页面index
+            pageSize: 20, //每页显示条数
+            dates: '',
+            baseImgPath,
+
+            serTypes: [],   // 职位
+            titles: [], //职称
+            hospitals: []   //医院
+        }
+    },
+
+    created() {
+        
+        this.getData()
+    },
+
+    methods: {
+        async getData() {
+            
+            this.filterModel.pageIndex = this.currentPage
+            this.filterModel.pageSize = this.pageSize
+
+            let res = await getServiceManAllByPage(this.filterModel)
+            this.tableData = []
+            if (res instanceof Array && res.length > 0) {
+                this.tableData = res
+                this.dataCount = parseInt(this.tableData[0]["RecordCount"])
+            }
+        },
+
+
+        select(item) {
+            // item.column.type='primary';
+            this.$emit('DoctorSelectInfo',item.row.Id, item.row.ImgUrl,item.row.ServiceName)
+        },
+
+        search() {
+            this.getData()
+        },
+
+        pageIndexChange(index) {
+            this.filterModel.pageIndex = index
+            this.pageIndex = i9ndex
+            this.getData()
+        },
+        pageSizeChange(size) {
+            this.filterModel.pageSize = size
+            this.pageSize = size
+            this.getData()
+        },
+
+    }
+}
+</script>
+
+<style lang="less" scoped>
+.select {
+    .el-input {
+        width: 220px;
+    }
+
+    .el-date-editor {
+        width: 220px;
+    }
+
+    .el-input--small .el-input__inner {
+        height: 35px;
+        width: 220px;
+    }
+
+    .el-select {
+        width: 220px;
+    }
+}
+
+.pop-span {
+    color: #02a0ff;
+    cursor: pointer;
+    line-height: 50px;
+    display: block;
+}
+
+.block {
+    margin-right: 30px;
+    padding-right: 0!important;
+}
+</style>

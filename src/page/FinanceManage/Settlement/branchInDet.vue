@@ -1,0 +1,303 @@
+<template>
+    <div class="settled selCommon">
+        <el-form :inline="true" :model="formInline" class="demo-form-inline form_search" label-width="80px">
+            <el-form-item label="时间："  class="form_item_mt10 ">
+                <!-- <el-date-picker v-model="formInline.date" @change="dateForm1" type="daterange" placeholder="选择日期范围" class="wt200"></el-date-picker> -->
+                    <el-select v-model="year" placeholder="选择年份" style="width:100px;float:left">
+                        <el-option v-for="(item,index) in yearList" :key="index" :label="item" :value="item"></el-option>
+                    </el-select>
+                    <el-select v-model="month" placeholder="选择月份" style="width:100px;float:left">
+                        <el-option v-for="(item,index) in monthList" :key="index" :label="item" :value="item"></el-option>
+                    </el-select>
+            </el-form-item>
+            <!--  <el-form-item label="医院："  class="form_item_mt10 form_item_wh280">
+                  <el-select v-model="formInline.Hospital" placeholder="" style="width: 200px;">
+                      <el-option v-for="(item,index) in HospitalList" :key="item.code" :label="item.supplierName" :value="item.code"></el-option>
+                  </el-select>
+              </el-form-item>-->
+            <el-form-item label="销售公司："  class="form_item_mt10 form_item_wh280">
+                <el-select v-model="formInline.branch" placeholder="" style="width: 200px;" @change="submit">
+                    <el-option v-for="item in branchList" :key="item.branchName" :label="item.branchName" :value="item.code"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="来源客户："  class="form_item_mt10 form_item_wh280">
+                <el-select v-model="formInline.type" placeholder="" style="width: 200px;" @change="change">
+                    <el-option label="全部" value=""></el-option>
+                    <el-option label="医院" value="1"></el-option>
+                    <el-option label="销售公司" value="2"></el-option>
+                    <el-option label="消费商" value="3"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="医院："  class="form_item_mt10 form_item_wh280" v-if="formInline.type == 1">
+                <el-select v-model="formInline.keywords" placeholder="" style="width: 200px;">
+                    <el-option label="全部" value=""></el-option>
+                    <el-option v-for="item in HospitalList" :key="item.code" :label="item.supplierName" :value="item.code"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="销售公司："  class="form_item_mt10 form_item_wh280" v-if="formInline.type == 2">
+                <el-select v-model="formInline.keywords" placeholder="" style="width: 200px;">
+                    <el-option v-for="item in branchList" :key="item.code" :label="item.branchName" :value="item.code"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="关键字："  class="form_item_mt10 form_item_wh280" v-if="formInline.type == 3">
+                <el-input v-model="formInline.keywords" style="width: 200px;"></el-input>
+            </el-form-item>
+            <el-form-item label=" " class="form_item_mt10 form_item_wh280">
+                <el-button type="primary" @click="submit" class="searchBtn">查询</el-button>
+                <Export ref="port" :tHeader="tHeader" :filterVal='filterVal' :tableData1='reportData' :name='name'></Export>
+            </el-form-item>
+        </el-form>
+        <el-table :data="tableData" border style="width: 100%;margin-top:15px;margin-bottom:10px;"  v-loading="loading" :summary-method="getSummaries"
+        class="min_table smt" max-height="660" show-summary>
+            <el-table-column prop="branchName" label="销售公司" min-width="80"></el-table-column>
+            <el-table-column prop="fromName" label="来源客户" min-width="80"></el-table-column>
+            <!-- <el-table-column label="开户人" prop="hospitalName" min-width="100">
+                <template slot-scope="scope">
+                     {{scope.row.bankCardHolder}}
+                 </template>
+            </el-table-column>
+            <el-table-column label="开户行" prop="hospitalName" min-width="100">
+                <template slot-scope="scope">
+                    {{scope.row.openBankName}}
+                </template>
+            </el-table-column>
+             <el-table-column label="银行卡号" prop="hospitalName" min-width="100">
+                 <template slot-scope="scope">
+                     {{scope.row.bankCardId}}
+                 </template>
+             </el-table-column> -->
+            <el-table-column label="金额" prop="totalAmountOut" min-width="120"  align="right">
+                <template slot-scope="scope">
+                    <el-button type="text" size="small" @click="det(scope.$index,tableData)"  style="float: right;">￥{{scope.row.totalAmountOut.toQFW()}}</el-button>
+                </template>
+            </el-table-column>
+        </el-table>
+        <div class="block">
+            <el-pagination @size-change="handleSizeChange" @current-change="handleCurrentChange" 
+                :current-page="currentPage" :page-sizes="[10, 20, 30, 40]" :page-size="size"
+                layout="total, sizes, prev, pager, next, jumper" :total="total">
+            </el-pagination>
+        </div>
+        <!-- 分页 -->
+
+        <el-dialog title="详情" :visible.sync="dialogTableVisible" size="">
+            <span>金额：{{totalAmount}}</span>
+            <el-table ref="multipleTable" :data="detailData" border tooltip-effect="dark" style="width: 750px" max-height="560"
+            class="min_table smt"  @selection-change="handleSelectionChange">
+                <el-table-column type="selection" align="center"  min-width="55"> </el-table-column>
+                <el-table-column prop="branchName" label="销售公司" min-width="90"> </el-table-column>
+                <el-table-column prop="fromName" label="来源" min-width="100"> </el-table-column>
+                <el-table-column prop="totalAmountOut" label="金额" min-width="100" align="right">
+                    <template slot-scope="scope">
+                        <span v-if="scope.row.totalAmountOut"> ￥{{scope.row.totalAmountOut.toQFW()}}</span>
+                        <span v-else> ￥0</span>
+                    </template>
+                </el-table-column>
+            </el-table>
+        </el-dialog>
+        <el-dialog title="订单详情" :visible.sync="ispopRead" top="5%" size="">
+            <report style="width:900px" v-if="ispopRead" :data="selectData" ></report>
+        </el-dialog>
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+    import Export from '@/components/export'
+    // import det from "./components/branchSD.vue"
+    import report from "@/page/FinanceManage/ReportManage/com/reportRead"
+    import {GetDropDownPermission,GetCompanyIn,GetCompanyInDetail,GetSupplierBySupTypeCode} from "@/api/myData"
+    import "@/style/selfCommon.less"
+    export default {
+        data () {
+            return {
+                loading:false,
+                dialogTableVisible:false,
+                HospitalList:[],
+                branchList:[],
+                total:0,
+                currentPage:0,
+                size:10,
+                allData:[],
+                year:(new Date).getFullYear(),
+                month:"",
+                yearList:[],
+                monthList:[],
+                formInline: {
+                    // keywords:"",
+                    Hospital:"",
+                    branch:"",
+                    date:"",
+                    startTime: "",
+                    endTime: "",
+                    type:'',
+                    branch:"",
+                    keywords:"",
+                },
+                agentList:[],
+                tableData:[],
+                detailData:[],
+                multipleSelection:[],
+                ispopRead:false,
+                selectData:{},
+                sum:{
+                    totalAmountOut:0,
+                },
+                selectData:{},
+                ispopRead:false
+            }
+        },
+        computed: {
+            /* 导出报表参数 tHeader,filterVal,tableData1*/
+             tHeader(){
+                return ['销售公司', '转出客户', '开户人', '开户行','银行卡号','金额']
+            },
+            filterVal(){
+                return ['hospitalName', 'toName', 'bankCardHolder', 'openBankName','bankCardId','totalAmountOut']
+            },
+            name(){
+                return '销售公司结算'
+            },
+            reportData(){
+                let arr = JSON.parse(JSON.stringify(this.tableData))
+                /*  arr.forEach(row=>{
+                 row.sawCount =  Number(row.ConsumeAmount)+Number(row.RecomAmount)-Number(row.DebitAmount)
+                 row.DebitAmount = Number(row.DebitAmount)*(-1)
+                 })*/
+                return arr
+            },
+            totalAmount(){
+                let sum = 0
+                this.multipleSelection.forEach(row=>{
+                    sum  = sum.add(row.totalAmountOut)
+                })
+                return sum
+            }
+        },
+        mounted(){
+//            设置默认中国时间
+            this.getBaseDate()
+            this.getSupplierByPage()
+        },
+        methods: {
+            getSummaries(param) {
+                return ["总合计",'','','','',this.sum.totalAmountOut.toQFW(),''];
+            },
+            change(){
+                this.formInline.keywords = ""
+            },
+            handleSelectionChange(val) {
+                this.multipleSelection = val;
+            },
+            async GetCompanyInDetail(params){
+                let res = await GetCompanyInDetail(params)
+                this.detailData = res.data
+            },
+
+            getBaseDate(){
+                this.yearList = [new Date().getFullYear()+1,new Date().getFullYear(),new Date().getFullYear()-1,new Date().getFullYear()-2]
+                for(let i = 1 ;i<13;i++){
+                    if(i<10){
+                        this.monthList.push("0"+i)
+                    }else{
+                        this.monthList.push(i)
+                    }
+                }
+                
+                let m = new Date().getMonth()
+                if(m>9){
+                    this.month = m
+                }else{
+                    if(m == 0){
+                        this.year = new Date().getFullYear()-1
+                        this.month = 12
+                    }else{
+                        this.month = "0"+m
+                    }
+                }
+            },
+
+//            获取列表信息
+            async GetCompanyIn(params){
+                try {
+                    this.loading = true
+                    let res = await GetCompanyIn(params)
+                    this.loading = false
+                    if(res.status){
+                        this.total = res.count
+                        this.allData = res.data
+                        this.pageChange()
+                        this.getTotal()
+                    }else{
+                        this.$message.error('获取数据失败'+res.errorMessage);
+                    }
+                    
+                } catch (err) {
+                    console.log(err)
+                }
+            },
+//            获取医院
+            async getSupplierByPage(){
+                let res0 = await GetDropDownPermission({typeId:2})
+                this.branchList = res0.data
+                let res1 = await GetSupplierBySupTypeCode({SupTypeCode:"001"});
+                this.HospitalList = res1
+            },
+            submit(){
+                this.currentPage = 1
+                this.search()
+                
+            },
+//            搜索
+            search(){
+                this.sum.totalAmountOut = 0
+                this.GetCompanyIn({
+                    BranchCode:this.formInline.branch,
+                     CommissionDate:this.year+"-"+this.month,
+                    IsFinished:"0",
+                    typeId:this.formInline.type,
+                    keywords:this.formInline.keywords,
+                })
+            },
+            det(index,data){
+                this.dialogTableVisible = true
+                this.GetCompanyInDetail({
+                    BranchCode: data[index].branchCode,
+                    fromCode:data[index].fromCode,
+                    CommissionDate:this.year+"-"+this.month,
+                    TypeId:data[index].typeName,
+                })
+            },
+            handleSizeChange(val) {
+                this.size = val
+                this.pageChange()
+            },
+
+            handleCurrentChange(val) {
+                this.currentPage = val
+                this.pageChange()
+            },
+            pageChange(data){
+                this.tableData = this.allData.slice((this.currentPage-1)*this.size,this.currentPage*this.size)
+            },
+            getTotal(){
+                this.allData.forEach(row=>{
+                   this.sum.totalAmountOut = this.sum.totalAmountOut.add(row.totalAmountOut)
+               })
+            },
+            getPD(data){
+                this.ispopRead = true
+                this.selectData = data
+            }
+        },
+        components: {
+            Export,
+            report
+            // det
+        }
+    }
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+
+</style>

@@ -1,0 +1,273 @@
+<template>
+    <div class="checkDialog selCommon">
+        <el-form :model="form" :inline="true" :label-width="formLabelWidth" class="clear">
+            <el-form-item label="" class="form_item_half form_item_mt0" label-width="formLabelWidth">
+                <span style="font-size: 16px;font-weight: bold;float:left">执行信息</span>
+            </el-form-item>
+            <el-form-item label="提成月份" class="form_item_half form_item_mt0" label-width="formLabelWidth">
+                <el-select v-model="year" placeholder="选择年份" style="width:100px;float:left">
+                        <el-option v-for="(item,index) in yearList" :key="index" :label="item" :value="item"></el-option>
+                    </el-select>
+                    <el-select v-model="month" placeholder="选择月份" style="width:100px;float:left">
+                        <el-option v-for="(item,index) in monthList" :key="index" :label="item" :value="item"></el-option>
+                    </el-select>
+            </el-form-item>
+            <el-col style=" background: rgb(249, 249, 249);float: left">
+                <el-tag v-if="form.CommandState == 0" class="status_tag">未执行</el-tag>
+                <el-tag v-if="form.CommandState == 1" class="status_tag">执行中</el-tag>
+                <el-tag type="success" v-if="form.CommandState == 2" class="status_tag">执行完毕</el-tag>
+                <el-table border style="width: 1050px;margin: 0 auto" :data="tableMes" ref="multipleTable" @selection-change="handleSelectionChange">
+                    <el-table-column type="index" label="执行序号" width="100"></el-table-column>
+                    <el-table-column label="提交日期" prop="CreateOn" min-width="120">
+                        <template scope="scope">
+                            {{scope.row.CreateOn|filterC}}
+                        </template>
+                    </el-table-column>
+                    <el-table-column label="提交人" prop="CreateBy" min-width="120">
+                        <template scope="scope">
+                            <span v-if="scope.row.CreateBy&&scope.row.CreateBy != 'null'">
+                                {{scope.row.CreateBy}}
+                            </span>
+                        </template>
+                    </el-table-column>
+                    <el-table-column label="备注" prop="Memo" min-width="120"></el-table-column>
+                    <el-table-column label="审核状态" prop="ApproveState" min-width="120">
+                        <template scope="scope">
+                            <span v-if="!scope.row.ApproveState">未审核</span>
+                            <span v-if="scope.row.ApproveState == 1">已审核</span>
+                        </template>
+                    </el-table-column>
+                </el-table>
+            </el-col>
+
+        </el-form>
+        <div slot="footer" class="dialog-footer" v-if="!form.ApproveState">
+            <el-button type="primary" @click="pass" size="small" v-if="form.ApproveState !=2 " :loading="saveLoading">审核</el-button>
+            <el-button @click="Reject" type="danger" size="small" v-if="!form.ApproveState">驳回</el-button>
+        </div>
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+    import "@/style/selfCommon.less"
+    import {baseImgPath} from "@/config/env"
+    import { getCookie } from '@/config/mUtils'
+    import {CancelOrRejectOrder,ApproveProofOrder,GetProofOrderDetail,PreConsumeOrder,getBaseDataByCode} from "@/api/myData"
+    export default {
+        // name: "checkDialog",
+        props: {
+            FxCode:""
+        },
+        data () {
+            return {
+                saveLoading:false,
+                CrossList:[],
+                HospitalList:[],
+//                dialog:false,
+                status: "0",
+                year:(new Date).getFullYear(),
+                month:'',
+                yearList:[],
+                monthList:[],
+                tableData: [{}],
+                tableMes: [{}],
+                payMes:[],
+                formLabelWidth: "90px",
+                form: {},
+                preData:[],
+                approveMes:{},
+                multipleSelection:[],
+                ConsumeTypeList:[{}]
+            }
+        },
+        filters:{
+          filFunction(val){
+              
+//              008.卡券,009.积分,010.套餐,011.门票  001.现金
+              switch(val){
+                  case '008': return '卡券';
+                  case '009': return '积分';
+                  case '010': return '套餐';
+                  case '011': return '门票';
+                  case '001': return '现金';
+              }
+          },
+            filterC(val){
+                if(val){
+                    return val.substring(0,10)
+                }
+            }
+        },
+        watch:{
+            "FxCode":{
+                handler(curVal,oldVal){
+                    this.GetProofOrderDetail({
+                        fxcode:curVal
+                    })
+                },
+                deep:true
+            }
+        },
+        mounted(){
+            // 默认为上个月
+            let m = new Date().getMonth()
+            if(m>9){
+                this.month = m
+            }else{
+                if(m == 0){
+                    this.month = 12
+                    this.year = new Date().getFullYear()-1
+                }else{
+                    this.month = "0"+m
+                }
+            }
+            this.getBaseDate()
+            this.GetProofOrderDetail({
+                fxcode:this.FxCode
+            })
+        },
+        methods: {
+            getBaseDate(){
+                this.yearList = [new Date().getFullYear()+1,new Date().getFullYear(),new Date().getFullYear()-1,new Date().getFullYear()-2]
+                for(let i = 1 ;i<13;i++){
+                    if(i<10){
+                        this.monthList.push("0"+i)
+                    }else{
+                        this.monthList.push(i)
+                    }
+                }
+            },
+//            预览
+            async PreConsumeOrder(params){
+                try{
+                    let res = await PreConsumeOrder(params)
+                    this.preData = res.PreList
+                    this.HospitalList = res.HospitalList
+                    this.CrossList = res.CrossList
+                } catch (err) {
+                    console.log(err)
+                }
+            },
+//            code获取详情
+            async GetProofOrderDetail(params){
+                try{
+                    let [res,ConsumeTypeList] = await Promise.all([GetProofOrderDetail(params),getBaseDataByCode("0017")])
+                    this.ConsumeTypeList = ConsumeTypeList
+                    this.form = this.pictureDeal(res.ProofOrder)
+                    this.tableMes = res.OrderCommandList
+                    this.tableData = res.ProofOrderExtList
+                    this.payMes = res.ProofOrderPayList
+                    this.select()
+                } catch (err) {
+                    console.log(err)
+                }
+            },
+//            驳回
+            async CancelOrRejectOrder(params){
+                try {
+                    let res = await CancelOrRejectOrder(params)
+                    if (res.success) {
+                        this.$message({message: '成功驳回', type: 'success'});
+                        this.$emit("reject")
+                    } else {
+                        this.$message.error('驳回失败')
+                    }
+                } catch (err) {
+                    console.log(err)
+                    this.$message.error('驳回失败')
+                }
+            },
+//            审核   commandid={commandid}&fxcode={fxcode}&state={state}
+            async ApproveProofOrder(params,index){
+                try {
+                    this.saveLoading = true
+                    let res = await ApproveProofOrder(params)
+                    if (res.success) {
+                        this.$message({message: '审核通过', type: 'success'});
+                        this.$emit("closeAudit")
+                    } else {
+                        this.$message.error('审核失败');
+                    }
+                    this.saveLoading = false
+                } catch (err) {
+                    console.log(err)
+                    this.$message.error('审核失败');
+                }
+            },
+//            驳回
+            Reject(){
+                this.CancelOrRejectOrder({
+                    fxcode: this.FxCode,
+                    state: 3
+                })
+            },
+//            通过
+            pass(){
+                let id = []
+                this.tableMes.forEach(row=>{
+                    id.push(row.Id)
+                })
+                this.ApproveProofOrder({
+                    fxcode: this.FxCode,
+                    commandid: id.join(","),
+                    CommissionDate:this.year+"-"+this.month,
+                })
+//                }
+//                审核
+            },
+            pictureDeal(data){
+                data.ImgUrl1 = this.nullCheck(data.ImgUrl1)
+                data.ImgUrl2 = this.nullCheck(data.ImgUrl2)
+                data.ImgUrl3 = this.nullCheck(data.ImgUrl3)
+                data.ImgUrl4 = this.nullCheck(data.ImgUrl4)
+                data.ImgUrl5= this.nullCheck(data.ImgUrl5)
+                return data
+            },
+            nullCheck(url){
+                if(url){
+                    return baseImgPath+url
+                }else{
+                    return ""
+                }
+            },
+            handleSelectionChange(val) {
+                this.multipleSelection = val;
+            },
+            select(event,index,data){
+                //                预览
+                this.PreConsumeOrder({
+                    commandid: "",
+                    fxcode:this.tableMes[0].FxCode,
+                })
+            }
+        },
+        components: {}
+    }
+</script>
+
+<style scoped>
+    .checkDialog {
+
+        overflow-x: hidden;
+        overflow-y: auto;
+    }
+
+    .form_item_half {
+        width: 48%;
+    }
+
+    .dialog-footer {
+        text-align: center;
+        padding-top: 20px;
+    }
+
+    .form_item {
+        width: 100%;
+    }
+    span{
+        font-size: 12px ;
+    }
+    .status_tag{
+        margin: 10px;
+    }
+</style>

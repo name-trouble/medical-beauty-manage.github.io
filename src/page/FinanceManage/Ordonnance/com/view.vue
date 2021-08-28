@@ -1,0 +1,183 @@
+<template>
+   <div class="ord">
+        <el-form :model="ruleForm"  :inline="true" ref="ruleForm" label-width="80px" class="">
+            <el-form-item label="姓名：" prop="customerId" class="form_item_wt270 form_item_mt0">
+                <span>{{ruleForm.customerName}}[{{ruleForm.customerId}}]</span>
+            </el-form-item>
+             <el-form-item label="性别：" class="form_item_wt255 form_item_mt0">
+                <span v-if="ruleForm.sex == 0">女</span>
+                <span v-else>男</span>
+            </el-form-item>
+             <el-form-item label="年龄：" class="form_item_wt255 form_item_mt0">
+                <span>{{ruleForm.age}}</span>
+            </el-form-item>
+             <el-form-item label="科室：" class="form_item_wt255 form_item_mt0">
+               <span>{{ruleForm.deptName}}</span>
+            </el-form-item>
+             <el-form-item label="临床诊断："  class="form_item_wt270 form_item_mt0">
+                <span>{{ruleForm.diagnosis}}</span>
+            </el-form-item>
+             <el-form-item label="服务者："  class="form_item_wt255 form_item_mt0">
+                <span>{{ruleForm.nurseName}}</span>
+            </el-form-item>
+             <el-form-item label="日期：" class="form_item_wt255 form_item_mt0">
+                <span v-if="ruleForm.orderDate">{{ruleForm.orderDate.substring(0,10)}}</span>
+            </el-form-item>
+             <el-form-item label="费别：" class="form_item_wt255 form_item_mt0">
+                <span>{{ruleForm.costCategory}}</span>
+            </el-form-item>
+             <el-form-item label="联系电话："  class="form_item_wt270 form_item_mt0">
+                <span>{{ruleForm.phoneNumber}}</span>
+            </el-form-item>
+             <el-form-item label="地址：" style="width:600px" class=" form_item_mt0" >
+               <span>{{ruleForm.customerAddress}}</span>
+            </el-form-item><br/>
+            <el-form-item label="药品信息：" class="form_item_wt255 form_item_mt0" ></el-form-item>
+            <el-form-item label=" "  label-width="50px" >
+                <el-table :data="tableData"  border style="width: 820px;margin-bottom:10px">
+                    <el-table-column prop="catalogId" label="组别" min-width="50"> </el-table-column>
+                    <el-table-column prop="productName" label="药品名称" min-width="100"> </el-table-column>
+                    <el-table-column prop="unitName" label="规格" min-width="50"> </el-table-column>
+                    <el-table-column prop="quantity" label="数量" min-width="50"> </el-table-column>
+                    <el-table-column prop="price" label="价格"  min-width="50"> </el-table-column> 
+                    <el-table-column prop="dwName" label="单位"  min-width="50"> </el-table-column>
+                    <el-table-column prop="usage" label="用法"  min-width="70"> </el-table-column>
+                    <el-table-column prop="frequency" label="频次"  min-width="50"> </el-table-column>
+                    <el-table-column prop="days" label="天数"  min-width="50"> </el-table-column>
+                    <el-table-column prop="memo" label="备注"  min-width="90"> </el-table-column>
+                </el-table>
+                <span>药品金额：<span>{{ruleForm.totalAmount}}</span></span>
+            </el-form-item>
+            <el-form-item label="支付信息：" class="form_item_wt255 form_item_mt0" ></el-form-item>
+            <el-form-item label=" "  label-width="50px">
+                <el-table :data="payData" border style="width: 820px;margin-bottom:10px">
+                    <el-table-column prop="payTypeName" label="支付方式" min-width="100"></el-table-column>
+                    <el-table-column prop="receiveAccount" label="收款账户" min-width="80"> </el-table-column>
+                    <el-table-column prop="realAmount" label="支付金额" min-width="80"> </el-table-column>
+                    <el-table-column prop="payDate" label="支付日期" min-width="80">
+                        <template slot-scope="scope">
+                            <span v-if="scope.row.payDate">{{scope.row.payDate.substring(0,10)}}</span>
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="memo" label="备注"  min-width="80"> </el-table-column>
+                    <el-table-column prop="address" label="操作"  min-width="80">
+                        <template slot-scope="scope">
+                            <el-button type="primary" @click="del(scope.$index,payData)" size="small">删除</el-button>
+                        </template>
+                    </el-table-column>
+                </el-table>
+                <span>支付金额：{{totalPay}}</span>
+            </el-form-item>
+            <el-form-item label="备注：" class="form_item_mt10">
+                    <el-input type="textarea" v-model="ruleForm.memo" :rows="3" style="width:784px"></el-input>
+                </el-form-item>
+        </el-form>
+   </div>
+</template>
+
+<script>
+    import { getCookie } from "@/config/mUtils";
+    import {GetProofOrderProDet,getBaseDataByCode} from "@/api/myData"
+    import Vue from "vue"
+    import "../lib/ord.less"
+    export default {
+        props:{
+            mesCode:""
+        },
+        data() {
+            return {
+                payWayList:[],
+                tableData:[],
+                ruleForm: {},
+                payData:[],
+            };
+        },
+        computed:{
+        totalPrice(){
+            if(this.tableData.length == 0){
+                return 0
+            }else{
+                let sum = 0
+                this.tableData.forEach(row => {
+                    sum+=Number(row.price).mul(Number(row.quantity))
+                });
+                return sum
+            }
+        },
+        totalPay(){
+            if(this.payData.length == 0){
+                return 0
+            }else{
+                let sum = 0
+                this.payData.forEach(row => {
+                    sum= sum.add(row.realAmount)
+                });
+                return sum
+            }
+        }
+    },
+    mounted(){
+        this.date = new Date()
+        this.GetProofOrderProDet({
+            OrderProductCode:this.mesCode
+        })
+    },
+    methods: {
+        async GetProofOrderProDet(params){
+            let [payWay,res] = await Promise.all([getBaseDataByCode("0006"),GetProofOrderProDet(params)])
+            // let payWay = await getBaseDataByCode("0006")
+            
+            if(payWay.constructor==Array){
+               this.payWayList = payWay
+            }   
+            // let res = await GetProofOrderProDet(params)
+            
+            if(res.status){
+                let data = res.data.proofOrderProduct
+                for(var p in data){
+                    if(data[p] == null||data[p] == undefined||data[p] == "null"||data[p] == "undefined"){
+                        data[p] = ""
+                    }
+                }
+                this.ruleForm =data
+                this.tableData = res.data.proofOrderProductDetailList
+                this.payData = res.data.proofOrderPaylList
+                this.payData = this.deal(res.data.proofOrderPaylList)
+            }
+        },
+        deal(data){
+            data.forEach(row=>{
+                this.payWayList.forEach(ele=>{
+                    if(row.payType == ele.DataCode){
+                        row.payTypeName = ele.DataName
+                        return
+                    }
+                })
+            })
+            return data
+        },
+    }
+  }
+</script>
+
+<style scoped>
+.demo-ruleForm{
+    width: 300px
+}
+.form_footer{
+    text-align: center
+}
+.form_item_ipt153{
+    width: 153px
+}
+.form_item_wt255{
+    width: 200px
+}
+.form_item_wt270{
+    width: 230px
+}
+.ord{
+    min-height: 440px
+}
+</style>
+

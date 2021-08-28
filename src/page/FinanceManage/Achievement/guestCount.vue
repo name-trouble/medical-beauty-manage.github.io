@@ -1,0 +1,187 @@
+
+<template>
+    <div class="tag selCommon">
+        <el-form :inline="true"  class="demo-form-inline form_search" label-width="80px" >
+            <el-form-item label="截止日期：" class="form_item_mt10">
+                    <el-date-picker
+                        v-model="date"
+                        type="daterange"
+                        @change="dateChange"
+                        placeholder="选择日期">
+                    </el-date-picker>
+            </el-form-item>
+          
+            <el-form-item label="医院：" class="form_item_mt10">
+                <el-select v-model="formInline.hospitalCode"  style='width:200px;' @change="onSubmit" >
+                    <el-option v-for="(item,index) in hospitalList" :key="index" :label="item.supplierName" :value="item.code"></el-option>
+                </el-select>
+            </el-form-item>
+          <el-form-item label="关键字：" class="form_item_mt10">
+                <el-input v-model="formInline.Keywords" placeholder="" style='width:200px;'></el-input>
+            </el-form-item>
+            <el-form-item label=" " class="form_item_mt10">
+                <el-button type="primary" @click="onSubmit" class="searchBtn">查询</el-button>
+                <Export :tHeader="tHeader" :filterVal='filterVal'  :tableData1='tableData1' :name='name'></Export>
+            </el-form-item>
+        </el-form>
+         <el-table  :data="tableData" border style="width: 100%;margin-top:20px" max-height="560" class="min_table" v-loading="loading"  :summary-method="getSummaries"
+    show-summary>
+            <el-table-column prop="refrenceBranchName" label="店家" min-width="80" align="center"></el-table-column>
+            <el-table-column prop="phoneNumber" label="电话" min-width="80"></el-table-column>
+            <el-table-column prop="shopName" label="店铺" min-width="80"></el-table-column>
+            <el-table-column prop="hospitalName" label="医院" min-width="80"></el-table-column>
+            <el-table-column prop="orderAmount" label="总消费金额" min-width="80" align="right"></el-table-column>
+            <el-table-column prop="commissionAmount" label="总提成金额" min-width="80" align="right"></el-table-column>
+        </el-table>
+        <div class="block">
+            <el-pagination
+                @size-change="handleSizeChange"
+                @current-change="handleCurrentChange"
+                :current-page="currentPage"
+                :page-sizes="[10, 20, 30, 40]"
+                :page-size="pageSize"
+                layout="total, sizes, prev, pager, next, jumper"
+                :total="total">
+            </el-pagination>
+        </div>
+        <el-dialog title="编辑" :visible.sync="dialogView"  top="10%"  size="" :close-on-click-modal="false">
+            <updateDialog :editMes="editMes" @close='editClose' style="width: 450px" v-if="dialogView"></updateDialog>
+        </el-dialog>
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+    import  "@/style/selfCommon.less"
+    import Export from '@/components/export'
+    import { getCookie, delCookie } from '@/config/mUtils'
+    import {  GetBranchShopAmount,GetDropDownPermission} from "@/api/myData"
+    export default {
+        data () {
+            return {
+                dialogView:false,
+                allLoading:false,
+                loading:false,
+                date:'',
+                currentPage:1,
+                total:0,
+                pageSize:10,
+                branch:'',
+                formInline:{
+                    BranchCode:'',
+                    startDate:'',
+                    endDate:'',
+                    hospitalCode:'', 
+                    Keywords:'',    
+                },
+                tableData:[],
+                allData:[],
+                customerList:[],
+                editMes:{},
+                hospitalList:[],
+                sum:{
+                    orderAmount:0,
+                    commissionAmount:0,
+                },
+            }
+        },
+         computed: {
+             tHeader(){
+                return ['店家','电话','店铺','医院', '总消费金额','总提成金额']
+            },
+            filterVal(){
+                return ['refrenceBranchName', 'phoneNumber', 'shopName','hospitalName','orderAmount','commissionAmount' ]
+            },
+            tableData1(){
+                return this.allData
+            },
+            name(){
+                return '设计师'
+            },
+            /*导出报表参数 tHeader,filterVal,tableData1*/
+        },
+
+        mounted(){
+             let date = new Date()
+            date.setDate("1")
+            this.date = [date,new Date()]
+            this.GetDropDownPermission()
+        },
+        methods:{
+            getSummaries(param) {
+                return ['总计：','','','',this.sum.orderAmount,this.sum.commissionAmount];
+            },
+            async GetDropDownPermission(){
+                let res1 = await GetDropDownPermission({typeId: 1});
+                this.hospitalList = res1.data
+                this.hospitalCode = res1.data[0].code
+            },
+             dateChange(val){
+                if(val){
+                    val = val.formatDates()
+                    this.formInline.startDate = val.substring(0,10)
+                    this.formInline.endDate = val.substring(13)
+                }else{
+                    this.formInline.startDate = ""
+                    this.formInline.endDate = ""
+                }
+            },  
+            
+            handleSizeChange(val) {
+                this.pageSize = val
+                this.getPage()
+            },
+            handleCurrentChange(val) {
+                this.currentPage = val
+                this.getPage()
+            },
+
+            getSumdate(){
+                this.allData.forEach(row => {
+                    this.sum.orderAmount+= row.orderAmount
+                    this.sum.commissionAmount+= row.commissionAmount
+                });
+            },
+
+        
+            getPage(){
+                 this.tableData = this.allData.slice((this.currentPage-1)*this.pageSize,this.currentPage*this.pageSize)
+            },
+
+            async GetBranchShopAmount(params) {
+                let res = await GetBranchShopAmount(params)
+                if(res.status){
+                    this.total = res.data.length
+                    this.allData = res.data
+                    this.getPage()
+                    this.getSumdate()
+                }
+            },
+
+            onSubmit(){
+                this.currentPage = 1
+                this.search()
+            },
+            
+            search(){
+                this.GetBranchShopAmount({
+                    HospitalCode:this.formInline.hospitalCode,
+                    StartDate:this.formInline.startDate,
+                    EndDate:this.formInline.endDate,
+                    Keywords:this.formInline.Keywords,
+                })
+            },
+
+          
+        },
+        components: {
+Export
+        }
+    }
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+.block{
+    margin-top: 20px;
+}
+</style>

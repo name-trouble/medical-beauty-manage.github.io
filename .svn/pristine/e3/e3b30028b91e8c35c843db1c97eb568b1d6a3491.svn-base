@@ -1,0 +1,397 @@
+<template>
+    <div class="selCommon editRegister">
+        <!-- <slot name="TEST1"></slot>
+        <slot name="TEST2"></slot> -->
+        <el-form :model="ruleForm" ref="ruleForm" :inline="true" label-width="85px" class="demo-ruleForm">
+            <el-form-item label="盘点日期：" class="form_item_mt10">
+                 <el-date-picker
+                    v-model="ruleForm.date"
+                    type="date"
+                    style='width:200px;'
+                    placeholder="选择日期">
+                </el-date-picker>
+            </el-form-item>
+            <el-form-item label="医院：" class="form_item_mt10" prop="hospital" :rules="[{ required: true, message: '不能为空'}]">
+                <el-select v-model="ruleForm.hospital"  style='width:200px;'>
+                    <el-option label="空" value=""></el-option>
+                    <el-option v-for="(item,index) in hospitalList" :key="index" :label="item.SupplierName" :value="item.SupplierName+'|'+item.Code"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="盘点仓库："  class="form_item_mt10" prop="wareHouse" :rules="[{ required: true, message: '不能为空'}]">
+                <el-select v-model="ruleForm.wareHouse" style='width:200px;'>
+                    <el-option v-for="(item,index) in whList" :key="index" :label="item.warehouseName" :value="item.warehouseName+'|'+item.id"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="操作人："  class="form_item_mt10">
+                <span>{{ruleForm.operator}}</span>
+            </el-form-item>
+            <el-form-item label=" "  class="form_item_mt10" label-width="20px">
+                <el-table :data="tableData" border style="width: 950px;margin-top:15px;margin-bottom:10px;" max-height="400">
+                    <el-table-column type="expand">
+                        <template scope="props">
+                            <el-form label-position="left" inline class="demo-table-expand">
+                                <el-form-item label="商品编号：" style="margin-right:25px;line-height:30px">
+                                    <span class="form_span">{{ props.row.drugId }}</span>
+                                </el-form-item>
+                                <el-form-item label="剂型：" style="margin-right:25px;line-height:30px">
+                                    <span class="form_span">{{ props.row.jiType }}</span>
+                                </el-form-item>
+                                <el-form-item label="单位：" style="margin-right:25px;line-height:30px">
+                                    <span class="form_span">{{ props.row.dwName }}</span>
+                                </el-form-item>
+                                <el-form-item label="生产日期：" style="margin-right:25px;line-height:30px">
+                                     <span v-if="props.row.productionDate"  class="form_span">{{ props.row.productionDate.substring(0,10) }}</span>
+                                </el-form-item>
+                                <el-form-item label="有效期：" style="margin-right:25px;line-height:30px">
+                                    <span v-if="props.row.EffectiveDate"  class="form_span">{{ props.row.EffectiveDate.substring(0,10) }}</span>
+                                </el-form-item>
+                                <el-form-item label="生产厂家：" style="margin-right:25px;line-height:30px">
+                                    <span class="form_span">{{ props.row.manufacturer }}</span>
+                                </el-form-item>
+                                <el-form-item label="产地：" style="margin-right:25px;line-height:30px">
+                                    <span class="form_span">{{ props.row.originAddress }}</span>
+                                </el-form-item>
+                            </el-form>
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="drugName" label="药品名称" min-width="120">
+                       
+                    </el-table-column>
+                    <el-table-column prop="unitName" label="规格" min-width="100">
+                      
+                    </el-table-column> 
+                    <el-table-column prop="bookQuantity" label="账面数量" min-width="80"></el-table-column>
+                    <el-table-column prop="realPrice" label="采购进价" min-width="80"></el-table-column>
+                    <el-table-column prop="price" label="基础进价" min-width="80"></el-table-column>
+                    <el-table-column prop="bookAmount" label="账面金额" min-width="80"></el-table-column>
+                    <el-table-column prop="inventoryQuantity" label="盘点数量" min-width="80">
+                        <template scope="scope">
+                            <el-input-number style="width:70px;" v-model="scope.row.inventoryQuantity" :min="0" :controls="false" 
+                            @change="numChange(scope.$index)" :debounce='1000'></el-input-number>
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="inventoryAmount" label="盘点金额" min-width="80"></el-table-column>
+                    <el-table-column prop="profitLossQuantity" label="盈亏数量" min-width="80">
+                        
+                    </el-table-column>
+                    <el-table-column prop="profitLossAmount" label="盈亏金额" min-width="80"></el-table-column>
+                    <el-table-column prop="status" label="操作" width="80"  v-if="!editMes.view">
+                        <template scope="scope">
+                            <el-button @click="deleteRow(scope.$index,tableData)" type="primary" size="small">删除</el-button>
+                        </template>
+                    </el-table-column>
+                </el-table>
+                <el-button @click="addDrug" type="success" size="small"  v-if="!editMes.view">添加药品</el-button>
+            </el-form-item>
+             <el-form-item label="备注：" class="form_item_mt1">
+                <el-input v-model="ruleForm.memo" type="textarea" :rows="4" style="width:500px"></el-input>
+            </el-form-item>
+        </el-form>
+        <!-- v-if="!editMes.inventoryCode"  -->
+        <div class="form_footer" v-if="!editMes.view">
+            <el-button type="primary" @click="sure('ruleForm')" :loading="saveLoading">保存</el-button>
+            <el-button @click="cancel('ruleForm')">取消</el-button>
+        </div>
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+    import { getCookie, delCookie } from '@/config/mUtils'
+    import {GetBaseDataAll,GetGoodsByKeywords2,UpdateStockInventory,AddStockInventory,GetInventoryDetail,
+    GetDropDownPermission,getSupplierByPage,GetWarehouse} from "@/api/myData"
+    import Vue from "vue"
+    Vue.component('my-item-ordonPro', {
+        functional: true,
+        render: function(h, ctx) {
+            var item = ctx.props.item;
+            
+            return h('li', ctx.data, [
+                h('p', { attrs: { class: 'select_name', title: item.Name } }, ['名称：' + item.GoodsAlias]),
+                h('p', { attrs: { class: 'select_code', title: item.Name,  } }, ['编号：' + item.GoodsCode]),
+                h('p', { attrs: { class: 'select_code', title: item.Name, } }, ['医院：' + item.SupplierName]),
+                h('p', { attrs: { class: 'select_code', title: item.Name, } }, ['价格区间：' + item.priceRange])
+            ]);
+        },
+        props: {
+            item: { type: Object, required: true }
+        }
+    });
+    
+    export default {
+        props:{
+            editMes:{}
+        },
+        data () {
+            return {
+                isDrug:false,
+                ruleForm: {
+                    wareHouse:"",
+                    date:new Date(),
+                    hospital:"",
+                    operator:getCookie("userName"),
+                    memo:"",
+                },
+                saveLoading:false,
+                SpecList:[],
+                drugList:[],
+                opeIndex:"",
+                tableData:[],
+                hospitalList:[],//医院
+                whList:[],//仓库
+                allWhList:[],
+            }
+        },
+         watch:{
+            'ruleForm.hospital':{
+                handler(curVal,oldVal){
+                    if(oldVal != ""){
+                        this.ruleForm.wareHouse = ""
+                    }
+                    this.hosSel()
+                },
+                deep:true
+            },
+        },
+        mounted(){
+            if(this.addTable){
+                this.addLabel = {
+                    label1:"出库时间",
+                }
+            }
+            this.GetBaseDataAll()
+        },
+        methods: {
+            numChange(index){
+                setTimeout(()=>{
+                    this.tableData[index].inventoryAmount = this.tableData[index].inventoryQuantity.mul(this.tableData[index].realPrice)
+                    this.tableData[index].profitLossQuantity = this.tableData[index].bookQuantity.red(this.tableData[index].inventoryQuantity)
+                    this.tableData[index].profitLossAmount = this.tableData[index].bookAmount.red(this.tableData[index].inventoryAmount)
+                },20)
+                
+            },
+            hosSel(val){
+                
+                // this.ruleForm.wareHouse = ""
+                // 根据医院筛选仓库
+                if(val.length>0){
+                    let code = val.split("|")[1]
+                    this.whList = []
+                    this.allWhList.forEach(ele => {
+                        if(ele.hospitalCode == code){
+                            this.whList.push(ele)
+                        }
+                    });
+                }else{
+                    this.allWhList = []
+                }
+            },
+            addDrug(){
+                // this.tableData.push({
+                //     drug:'',
+                //     Spec:"",
+                // })
+                
+                this.$emit('addDrug',{
+                    "warehouseId": this.ruleForm.wareHouse.length>0?this.ruleForm.wareHouse.split("|")[1]:"",
+                    "hospitalCode": this.ruleForm.hospital.length>0?this.ruleForm.hospital.split("|")[1]:"",
+                    "pageIndex": 1,
+                    "pageSize": 10,
+                    "keywords": "hz100014"
+                })
+            },
+
+            addTable(data){
+                this.tableData.push(data)
+            },
+
+            clickIndex(index){
+                this.opeIndex = index
+            },
+            async GetInventoryDetail(id){
+                let res = await GetInventoryDetail({id:id})
+                this.tableData = res.data.stockInventoryDrugList
+            },
+            async GetBaseDataAll(){
+                try{
+                    let data = {startdate:"",enddate: "",suppliername: "",suptypecode: "",phonenumber: "",pageindex: 1,pagesize: 1000,}
+                    this.hospitalList = await  getSupplierByPage(data)
+                    let whList = await GetWarehouse({
+                        "hospitalCode": "",
+                        pageIndex:1,
+                        pageSize:100,
+                        keywords:"",
+                        typeId:1//药房
+                    })
+                    this.allWhList = JSON.parse(JSON.stringify(whList.data))
+                    this.whList = JSON.parse(JSON.stringify(whList.data))
+                    if(this.editMes.inventoryCode){
+                        this.GetInventoryDetail(this.editMes.id)
+                        this.copyData(this.editMes)
+                    }
+                }catch(err){
+                    console.log(err)
+                }
+            },
+            copyData(data){
+                for(var key in data){
+                    if(data[key] == null){
+                        data[key] = ""
+                    }
+                }
+                
+                this.ruleForm = {
+                    id:data.id,
+                    inventoryCode:data.inventoryCode,
+                    wareHouse:data.warehouseName.length>0?data.warehouseName+'|'+data.warehouseId:"",
+                    date:new Date(),
+                    hospital:data.hospitalCode.length>0?data.hospitalName+'|'+data.hospitalCode:"",
+                    operator:getCookie("userName"),
+                    memo:data.memo
+                }
+                
+                 if(data.inventoryDate){
+                    this.$set(this.ruleForm,'date',new Date(data.inventoryDate.substring(0,4),Number(data.inventoryDate.substring(5,7))-1,data.inventoryDate.substring(8,10)))
+                }
+            },
+             //点击获取 药品信息  Oject
+            selectPro(item) {
+                this.tableData[this.opeIndex].name = item.Name
+                this.tableData[this.opeIndex].code = item.code
+                this.SpecList[this.opeIndex] = item.GUList
+                this.SpecList.push()
+            },
+
+            // queryPro(queryString, cb) {
+                
+            //     this.drugList = []
+            //     if (queryString !== '' && queryString != undefined) {
+            //         this.getProject(queryString)
+            //     }
+
+            //     let _this = this
+            //     clearTimeout(this.timeout)
+            //     this.timeout = setTimeout(() => {
+            //         cb(_this.drugList)
+            //     }, 1000 * Math.random())
+            // },
+
+            // async getProject(str) {
+            //     let res = await GetGoodsByKeywords2({ "keywords": str.removeSP(), 'ConsumeTypeId': 11 })
+                
+            //     let arr = []
+            //     if (res instanceof Array && res.length > 0) {
+            //         for (let item of res) {
+                        
+            //             arr.push({
+            //                 // value: '(' + item["GoodsEntity"]["Code"] + ')' + item["GoodsEntity"]["GoodsAlias"],
+            //                 value: item["GoodsEntity"]["GoodsAlias"],
+            //                 code: item["GoodsEntity"]["Code"],
+            //                 GoodsCode:item["GoodsEntity"]["GoodsCode"],
+            //                 Name: item["GoodsEntity"]["Name"],
+            //                 GoodsAlias:item["GoodsEntity"]["GoodsAlias"],
+            //                 ServiceMan: item["GoodsEntity"]['ServiceMan'],
+            //                 ServiceManName: item["GoodsEntity"]['ServiceManName'],
+
+            //                 price: item["GoodsEntity"]['PriceSale'],
+            //                 priceRange:item["PriceRange"],
+            //                 FarePercent: item["GoodsEntity"]['FarePercent'],
+
+            //                 SupplierCode: item["GoodsEntity"]['SupplierCode'],
+            //                 SupplierName: item["GoodsEntity"]['SupplierName'],
+            //                 GUList: item["GUList"],
+            //                 UnitName:item["GoodsEntity"]["UnitName"]
+            //             })
+            //         }
+            //     }
+            //     this.drugList = arr
+            // },
+            deleteRow(index,data){
+                data.splice(index,1)
+            },
+            sure(form){
+                let arr = this.getAmount()
+                 this.$refs[form].validate((valid) => {
+                    if (valid) {
+                        let obj = {
+                            // "id": 1,
+                            // "inventoryCode": "sample string 1",
+                            InventoryDate:this.ruleForm.date.formatDate('yyyy-MM-dd'),
+                            "hospitalCode": this.ruleForm.hospital.length>0?this.ruleForm.hospital.split("|")[1]:"",
+                            "hospitalName": this.ruleForm.hospital.length>0?this.ruleForm.hospital.split("|")[0]:"",
+                            "inventoryId": this.ruleForm.wareHouse.length>0?this.ruleForm.wareHouse.split("|")[1]:"",
+                            "inventoryName": this.ruleForm.wareHouse.length>0?this.ruleForm.wareHouse.split("|")[0]:"",
+                            "bookAmount": arr[1],
+                            'bookQuantity':arr[0],
+                            "inventoryAmount": arr[3],
+                            'inventoryQuantity':arr[2],
+                            "profitLossAmount": arr[4],
+                            "memo": this.ruleForm.memo,
+                            "warehouseId": this.ruleForm.wareHouse.length>0?this.ruleForm.wareHouse.split("|")[1]:"",
+                            "warehouseName": this.ruleForm.wareHouse.length>0?this.ruleForm.wareHouse.split("|")[0]:"",
+                            inventoryDrugList:JSON.stringify(this.tableData)
+                        }
+                        this.saveLoading = true
+                        if(this.editMes.inventoryCode){ 
+                            obj.modifiedUserId = getCookie("userId")
+                            obj.modifiedBy = getCookie("userName")
+                            obj.id = this.ruleForm.id
+                            obj.inventoryCode = this.ruleForm.inventoryCode
+                            this.UpdateStockInventory(obj)
+                        }else{
+                            obj.createUserId = getCookie("userId")
+                            obj.createBy = getCookie("userName")
+                            this.AddStockInventory(obj)
+                        }
+                    }else{
+                        return false
+                    }
+                 })
+            },
+            getAmount(){
+                let bookQuantity = 0,inventoryQuantity = 0,bookAmount=0,inventoryAmount=0,lossAmount = 0
+                this.tableData.forEach(ele=>{
+                    bookQuantity = bookQuantity.add(ele.bookQuantity)
+                    bookAmount = bookAmount.add(ele.bookAmount)
+                    inventoryQuantity = inventoryQuantity.add(ele.inventoryQuantity)
+                    inventoryAmount = inventoryAmount.add(ele.inventoryAmount)
+                    lossAmount = lossAmount.add(ele.profitLossAmount)
+                })
+                return [bookQuantity,bookAmount,inventoryQuantity,inventoryAmount,lossAmount]
+            },
+            cancel(form){
+                this.$emit("addClose",false)
+            },
+            async AddStockInventory(params){
+                let res = await AddStockInventory(params)
+                this.saveLoading = false
+                if(res.status){
+                    this.$message({message: '添加成功', type: 'success'});
+                    this.$emit("addClose",true)
+                }else{
+                    this.$message.error('添加失败'+res.errorMessage);
+                }
+            },
+            async UpdateStockInventory(params){
+                let res = await UpdateStockInventory(params)
+                this.saveLoading = false
+                if(res.status){
+                    this.$message({message: '编辑成功', type: 'success'});
+                    this.$emit("addClose",true)
+                }else{
+                    this.$message.error('编辑失败'+res.errorMessage);
+                }
+            }
+        },
+        components: {
+
+        }
+    }
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+.form_span{
+    display: block;
+    line-height: 40px;
+}
+</style>

@@ -1,0 +1,183 @@
+<template>
+    <div class="comment">
+        <el-form :inline="true" :model="formInline" class="demo-form-inline form_search" label-width="80px"  >
+            <el-form-item label="发布时间："  class="form_item_mt10 form_item_wh280">
+                <el-date-picker v-model="date" type="daterange" style="width: 200px" @change="dateSelect" placeholder="选择日期范围"></el-date-picker>
+            </el-form-item>
+            <!-- <el-form-item label="关键字：" class="form_item_mt10 form_item_wh280">
+                <el-input v-model="formInline.keyWords" placeholder="发布人/项目小类/医院/医生" style="width: 200px;"></el-input>
+            </el-form-item> -->
+            <el-form-item label="状态：" class="form_item_mt10 form_item_wh280">
+                <el-select placeholder="请选择" v-model="formInline.isDelete">
+                    <el-option label="全部" value=""></el-option>
+                    <el-option label="正常" value="0"></el-option>
+                    <el-option label="删除" value="1"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="" class="form_item_mt10 form_item_wh280">
+                <el-button type="primary" @click="onSubmit" class="searchBtn">查询</el-button>
+                <el-button type="primary" @click="batchDelete" :disabled="multipleSelection.length==0" class="searchBtn">批量删除</el-button>
+            </el-form-item>
+        </el-form>
+        <!-- 楼层与楼层内回复同级显示 -->
+        <el-table :data="tableData" border style="width: 100%;margin-top:15px;margin-bottom:10px;"  class="smt min_table"
+        max-height="460" @selection-change="handleSelectionChange">
+            <el-table-column type="selection" width="55" align="center"></el-table-column>
+            <el-table-column type="index" width="40" label="序号"></el-table-column>
+            <el-table-column prop="createDate" label="回复时间" min-width="100"></el-table-column>
+            <el-table-column prop="userRealName" label="回复人" min-width="80"></el-table-column>
+            <el-table-column prop="parentUserId" label="被回复人" min-width="80">
+                <template slot-scope="scope">
+                    <!-- parentRealName楼层内回复层主 themUserId楼主-->
+                    <span v-if="scope.row.parentUserId">{{scope.row.parentRealName}}</span>
+                    <span v-else>{{scope.row.themeRealName}}</span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="content" label="回复内容" min-width="120" show-overflow-tooltip></el-table-column>
+            <el-table-column prop="RegistDate" label="状态" min-width="80">
+                <template slot-scope="scope">
+                    <el-tag type="success" v-if="scope.row.isDelete == 0||scope.row.isDelete == null">正常</el-tag>
+                    <el-tag type="danger" v-else>已删除</el-tag>
+                </template>
+            </el-table-column>
+            <el-table-column prop="RegistDate" label="操作" min-width="80">
+                <template slot-scope="scope">
+                    <el-button type="danger" @click="delComment(scope.row.id)" :disabled="scope.row.isDelete == 1" size="small">删除</el-button>
+                </template>
+            </el-table-column>
+        </el-table>
+        <!-- 分页 -->
+        <div class="block">
+            <el-pagination
+                @size-change="handleSizeChange"
+                @current-change="handleCurrentChange"
+                :current-page="currentPage"
+                :page-sizes="[10, 20, 30, 40]"
+                :page-size="size"
+                layout="total, sizes, prev, pager, next, jumper"
+                :total="total">
+            </el-pagination>
+        </div>
+        <!-- 分页 -->
+    </div>
+</template>
+
+<script>
+import {GetComment, DeleteComment} from "@/api/myData"
+    export default {
+        data () {
+            return {
+                date:'',
+                total:10,
+                size:10,
+                currentPage:1,
+                tableData:[],
+                multipleSelection: [],
+                formInline:{
+                    startDate:'',
+                    endDate:'',
+                    isDelete:''
+                }
+            }
+        },
+        props:{
+            propsId:'',
+            // 1：案例记录，2：帖子，3：活动，4：视频，5：商品6:案例
+            themeType:''
+
+        },
+        mounted(){
+            this.GetComment()
+        },
+        methods:{
+            delComment(id){
+                this.$confirm('删除后选中的评论将无法显示, 是否继续?', '提示', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    type: 'warning'
+                }).then(() => {
+                    DeleteComment({
+                        ids:id,
+                        themeId:this.propsId,
+                        Type:this.themeType
+                    }).then(res=>{
+                        if(res.status){
+                            this.$message({ type: 'success', message: '删除成功！' })
+                            this.GetComment()
+                            this.$emit("search")
+                        }else{
+                            this.$message({ type: 'error', message: '删除失败！' })
+                        }
+                    })
+                })
+                
+            },
+            onSubmit(){
+                this.currentPage = 1
+                this.GetComment()
+            },
+            GetComment(){
+                GetComment({
+                    ThemeId:this.propsId,
+                    StartDate:this.formInline.startDate,
+                    EndDate:this.formInline.endDate,
+                    IsDelete:this.formInline.isDelete,
+                    Type:this.themeType,
+                    PageSize:this.size,
+                    PageIndex:this.currentPage,
+                }).then(res=>{
+                    this.total = res.count
+                    this.tableData = res.data
+                    console.log(res)
+                })
+            },
+            handleSizeChange(val) {
+                this.size = val
+                this.GetComment()
+            },
+            handleCurrentChange(val) {
+                this.currentPage = val
+                this.GetComment()
+            },
+            toggleSelection(rows) {
+                if (rows) {
+                    rows.forEach(row => {
+                        this.$refs.multipleTable.toggleRowSelection(row);
+                    });
+                } else {
+                    this.$refs.multipleTable.clearSelection();
+                }
+            },
+            handleSelectionChange(val) {
+                this.multipleSelection = val;
+            },
+            dateSelect(val){
+                if(val.length!=0){
+                    val = val.formatDates()
+                    this.formInline.startDate = val.substring(0,10)
+                    this.formInline.endDate = val.substring(13)
+                }else{
+                    this.formInline.startDate = ""
+                    this.formInline.endDate = ""
+                }
+            },
+            batchDelete(){
+                let ids = []
+                this.multipleSelection.forEach(row=>{
+                    ids.push(row.id)
+                })
+                this.delComment(ids.join(","))
+            },
+        },
+        components: {
+
+        }
+    }
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+.block{
+    margin-bottom: 20px;
+}
+</style>

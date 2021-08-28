@@ -1,0 +1,217 @@
+<template>
+    <div class="settled selCommon">
+        <el-form :inline="true" :model="formInline" class="demo-form-inline form_search" label-width="80px">
+            <!-- <el-form-item label="选择日期："  class="form_item_mt10 ">
+                <el-date-picker
+                    v-model="date"
+                    type="daterange"
+                    @change="dateChange"
+                    style='width:200px;'
+                    placeholder="选择日期范围">
+                </el-date-picker>
+            </el-form-item> -->
+            <el-form-item label="用户名：" class="form_item_mt10">
+               <el-input v-model="formInline.customer"  style='width:200px;'></el-input>
+            </el-form-item>
+            <el-form-item label="手机号：" class="form_item_mt10">
+               <el-input v-model="formInline.phoneNumber"  style='width:200px;'></el-input>
+            </el-form-item>
+            <el-form-item label="" class="form_item_mt10 form_item_wh280">
+                <el-button type="primary" @click="search" class="searchBtn" icon="search">查询</el-button>
+            </el-form-item>
+        </el-form>
+        <el-table :data="tableData" border style="width: 100%;margin-top:15px;margin-bottom:10px;" max-height="600" class="min_table smt" :summary-method="getSummaries"
+         v-loading="loading" @sort-change = 'sortChange' show-summary>
+            <el-table-column prop="userId" label="用户编号" min-width="100" align="center"></el-table-column>
+            <el-table-column prop="createBy" label="用户名" min-width="100" ></el-table-column>
+            <el-table-column prop="mobile" label="手机号" min-width="100"   align="center"></el-table-column>
+            <el-table-column prop="invitedCode" label="分享码" min-width="200"  ></el-table-column>
+            <el-table-column prop="sends" label="分享数" min-width="100" >
+                <template scope="scope">
+                    <el-button type="text" @click="showDet(scope.row,1,scope.row.sends,'分享时间','分享数')">{{scope.row.sends}}</el-button>
+                </template>
+            </el-table-column>
+            <el-table-column prop="views" label="浏览数" min-width="100" sortable>
+                 <template scope="scope">
+                    <el-button type="text" @click="showDet(scope.row,2,scope.row.views,'浏览时间','浏览数')">{{scope.row.views}}</el-button>
+                </template>
+            </el-table-column>
+            <el-table-column prop="receives" label="领取数" min-width="100">
+                 <template scope="scope">
+                    <el-button type="text" @click="showDet(scope.row,3,scope.row.receives,'领取时间','领取数')">{{scope.row.receives}}</el-button>
+                </template>
+            </el-table-column>
+            <el-table-column prop="logins" label="登录数" min-width="100">
+                 <template scope="scope">
+                    <el-button type="text" @click="showDet(scope.row,4,scope.row.logins,'登录时间','登录数')">{{scope.row.logins}}</el-button>
+                </template>
+            </el-table-column>
+            <el-table-column prop="orders" label="下单量" min-width="100">
+                 <template scope="scope">
+                    <el-button type="text" @click="showDet(scope.row,5,scope.row.orders,'下单时间','下单量')">{{scope.row.orders}}</el-button>
+                </template>
+            </el-table-column>
+        </el-table>
+        <!-- 分页 -->
+        <div class="block">
+            <el-pagination
+                 @size-change="handleSizeChange"
+                 @current-change="handleCurrentChange"
+                 :current-page="currentPage"
+                 :page-sizes="[10, 30, 50, 100]"
+                 :page-size="size"
+                 layout="total, sizes, prev, pager, next, jumper"
+                 :total="total">
+             </el-pagination>
+        </div>
+
+        <el-dialog :title="title" :visible.sync="dialogTableVisible" size=''>
+            <dialogTbale :dialogMes="dialogMes" v-if="dialogTableVisible" style="width:900px;" @viewReportCode="viewReportCode"></dialogTbale>
+        </el-dialog>
+        <el-dialog title="订单详情" :visible.sync="viewReport" size=''>
+            <orderDet :code="viewFxCode" v-if="viewReport"></orderDet>
+        </el-dialog>
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+import orderDet from '@/page/MallCenter/orderManage/com/orderDet'
+import dialogTbale from './com/dialog.vue'
+import {GetDropDownPermission,GetBranchReceiveList,getBaseDataByCode,GetSummaryList } from "@/api/myData"
+import "@/style/selfCommon.less"
+    export default {
+        data () {
+            return {
+                dialogMes:{
+                    label:"",
+                    type:""
+                },
+                viewFxCode:"",
+                viewReport:false,
+                dialogTableVisible:false,
+                date:"",
+                total:1,
+                size:10,
+                currentPage:1,
+                HospitalList:[],
+                formInline: {
+                    customer:"",
+                    startDate:"",
+                    endDate:"",
+                    phoneNumber:"",
+                },
+                tableData:[],
+                loading:false,
+                title:"",
+                totalData:{
+                    sends:0,
+                    views:0,
+                    receives:0,
+                    logins:0,
+                    orders:0,
+                },
+                phoneNum:'',
+            }
+        },
+        computed: {
+            
+        },
+       
+        mounted(){
+            this.getSupplierByPage()
+        },
+        methods: {
+            viewReportCode(code){
+                
+                this.viewFxCode = code
+                this.viewReport = true
+            },
+            getSummaries(param) {
+                // if(this.tableData.length>0){
+                    return ['总合计','','','',this.totalData.sends,this.totalData.views,this.totalData.receives,this.totalData.logins,this.totalData.orders]
+                // }else{
+                //     return []
+                // }
+            },
+            sortChange(column, prop, order){
+                
+            },
+            dateChange(val){
+                if(val){
+                    this.formInline.startDate = val.substring(0,10)
+                    this.formInline.endDate = val.substring(13)
+                }else{
+                    this.formInline.startDate = ""
+                    this.formInline.endDate = ""
+                }
+            },
+            // 弹窗
+            showDet(data,type,num,label,title){
+                
+                this.title = title+' (' + num + ')'
+                this.dialogMes = data
+                this.dialogMes.type = type
+                this.dialogMes.label = label
+                this.dialogTableVisible = true
+            },
+           
+            async getSupplierByPage(){
+                this.serTypes = await getBaseDataByCode("0014")
+                let res = await GetDropDownPermission({typeId:1})
+                this.formInline.Hospital = res.data[0].code
+                this.HospitalList = res.data
+                // this.search()
+            },
+            search(){
+                this.currentPage = 1
+                this.submit()
+            },
+            submit(){
+                this.loading = true
+                this.GetSummaryList({
+                    name:this.formInline.customer,
+                    mobile:this.formInline.phoneNumber,
+                    // date1: this.formInline.startDate,
+                    // date2: this.formInline.endDate,
+                    pageIndex: this.currentPage,
+                    pageSize:this.size
+                })
+            },
+            async GetSummaryList(params){
+                let res = await GetSummaryList(params)
+                
+                if(res.data.length>1){
+                    
+                    this.total = res.count-1
+                    // 第一条或最后一条为合计数据
+                    this.totalData = res.data[0].userId?res.data.pop():res.data.shift()
+                    this.tableData = res.data
+                }else{
+                    this.tableData = []
+                }
+                this.loading = false
+            },
+
+            handleSizeChange(val) {
+                this.size = val
+                this.submit()
+             },
+            handleCurrentChange(val) {
+                this.currentPage = val
+                this.submit()
+            },
+        },
+        components: {
+            // Recommend,
+            // Combo,
+            // projectList
+            dialogTbale,
+            orderDet
+        }
+    }
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+
+</style>

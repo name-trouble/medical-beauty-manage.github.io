@@ -1,0 +1,420 @@
+<template>
+    <div class="supply">
+        <el-form ref="addform" :model="formData" label-width="100px" class="SupplyAdd" :rules="rules">
+
+            <el-form-item label="医院名称：" prop="SupplierName" class="form_item_mt10">
+                <el-input v-model="formData.SupplierName"></el-input>
+            </el-form-item>
+          <!--  <el-form-item label="供方类型" prop="SupTypeCode">
+                <el-select v-model="formData.SupTypeCode" placeholder="请选择">
+                    <el-option v-for="(item,$index) in types" :key="$index" :label="item.DataName" :value="item.DataCode">
+                    </el-option>
+                </el-select>
+            </el-form-item>-->
+
+            <el-form-item label="公司名称："  class="form_item_mt10">
+                <el-input v-model="formData.CompanyName"></el-input>
+            </el-form-item>
+
+            <el-form-item label="前缀：" class="form_item_mt10" prop="PrefixCode">
+                <el-input v-model="formData.PrefixCode"></el-input>
+            </el-form-item>
+
+            <el-form-item label="资质等级：" prop="HospLevelCode" class="form_item_mt10">
+                <el-select v-model="formData.HospLevelCode" placeholder="请选择">
+                    <el-option v-for="(item,$index) in levels" :key="$index" :label="item.DataName" :value="item.DataCode"></el-option>
+                </el-select>
+            </el-form-item>
+
+            <el-form-item label="省市：" prop="City" class="form_item_mt10">
+                <el-select v-model="formData.Province" filterable placeholder="请选择" @change="selectCity" class="area">
+                    <el-option v-for="item in provinceList" :key="item" :label="item" :value="item">
+                    </el-option>
+                </el-select>
+
+                <el-select v-model="formData.City" filterable placeholder="请选择" class="area">
+                    <el-option v-for="item in cityList" :key="item.name" :label="item.name" :value="item.name">
+                    </el-option>
+                </el-select>
+            </el-form-item>
+
+            <el-form-item label="详细地址：" prop="Address" class="form_item_mt10">
+                <el-input v-model="formData.Address"></el-input>
+            </el-form-item>
+
+            <el-form-item label="经纬度：">
+                <div>添加经纬度以便于手机端进行定位</div>
+                <div>经度：<el-input v-model="formData.longitude" style="width:200px"></el-input></div> 
+                <div>纬度：<el-input v-model="formData.latitude"  style="width:200px"></el-input></div>
+            </el-form-item>
+
+            <el-form-item label="联系电话：" prop="PhoneNumber" class="form_item_mt10">
+                <el-input v-model="formData.PhoneNumber"></el-input>
+            </el-form-item>
+
+            <el-form-item label="收款账户：" prop="phoneNumber" class="form_item_mt10">
+                <el-table :data="tableData" style="width:600px" border v-if="tableData.length>0" max-height="300">
+                    <el-table-column prop="ShortName" label="别名" width="120"></el-table-column>
+                    <el-table-column prop="CardNO" label="卡号" width="120"></el-table-column>
+                    <el-table-column prop="AccountHolder" label="开户人"></el-table-column>
+                    <el-table-column prop="BankName" label="开户行"></el-table-column>
+                    <el-table-column prop="address" label="操作">
+                        <template slot-scope="scope">
+                            <el-button @click="del(scope.$index,tableData)" size="small" type="danger">删除</el-button>
+                        </template>
+                    </el-table-column>
+                </el-table>
+                <el-button @click="add" type="primary" size="small" style="margin: 10px">添加</el-button>
+            </el-form-item>
+
+            <el-form-item label="客服短信功能：" class="form_item_mt10">
+                <el-switch v-model="IsSMS" on-color="#13ce66" off-color="#ff4949"></el-switch>
+            </el-form-item>
+
+            <div style="display:flex;" class="form_item_mt10">
+                <el-form-item label="主图：" required style="felx:0 45%">
+                    <el-upload class="avatar-uploader" :accept="acceptImage" :action="uploadUrl" :on-success="SuccessA" :show-file-list="false">
+                        <img v-if="MainImgUrl" :src="MainImgUrl" class="avatar">
+                        <i v-else class="el-icon-plus avatar-uploader-icon"></i>
+                    </el-upload>
+                </el-form-item>
+
+                <el-form-item label="头像：" required style="felx:0 45%">
+                    <el-upload class="avatar-uploader" :action="uploadUrl" :on-success="SuccessC" :show-file-list="false">
+                        <img v-if="ImgUrl" :src="ImgUrl" class="avatar">
+                        <i v-else class="el-icon-plus avatar-uploader-icon"></i>
+                    </el-upload>
+                </el-form-item>
+            </div>
+
+            <el-form-item label="相册图片：" class="form_item_mt10">
+                <div class="flex-box">
+                    <div v-for="(item,$index) in PhotoList" :key="$index" class="flex-item">
+                        <el-upload class="avatar-uploader" :action="uploadUrl" :accept="acceptImage" :show-file-list="false" :on-success="SuccessB">
+                            <img v-if="item.ImgUrl" :src="baseImgPath+item.ImgUrl" class="avatar" @click="setImgIndex($index)">
+                            <i v-else class="el-icon-plus avatar-uploader-icon" @click="setImgIndex($index)"></i>
+                        </el-upload>
+                        <el-button type="text" size="mini" icon="delete" @click="deleteImg($index)" class="del-btn" v-if="item.ImgUrl"></el-button>
+                        <el-input type="text" v-model="item.PhotoTitle" placeholder="图片标题" size="mini" style="width:150px"></el-input>
+                        <el-input type="text" v-model="item.PhotoDesc" placeholder="图片描述" size="mini" style="width:150px"></el-input>
+                    </div>
+                </div>
+            </el-form-item>
+        </el-form>
+        <div style="text-align:center;">
+            <el-button type="primary" @click="onSubmit" style="width:120px;" :loading="saveLoading">保存</el-button>
+            <el-button @click="cancel" style="width:120px;">取消</el-button>
+        </div>
+
+        <el-dialog title="添加账户" :visible.sync="dialogVisible" size="" :modal="modal">
+            <el-form label-position="right" label-width="80px" ref="form" :model="form" style="width: 400px" v-if="dialogVisible">
+                <el-form-item label="别名" prop="ShortName" :rules="[{ required: true, message: '不能为空'}]"  class="form_item_mt10">
+                    <el-input v-model="form.ShortName"></el-input>
+                </el-form-item>
+                <el-form-item label="卡号"  class="form_item_mt10">
+                    <el-input v-model="form.CardNO"></el-input>
+                </el-form-item>
+                <el-form-item label="开户人" class="form_item_mt10">
+                    <el-input v-model="form.AccountHolder"></el-input>
+                </el-form-item>
+                <el-form-item label="开户行" class="form_item_mt10">
+                    <el-input v-model="form.BankName"></el-input>
+                </el-form-item>
+            </el-form>
+            <div slot="footer" class="dialog-footer">
+                <el-button type="primary" @click="sure">确 定</el-button>
+                <el-button @click="cancelCard">取 消</el-button>
+            </div>
+        </el-dialog>
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+import '../lib/supply.less'
+import adressList from '../../../../static/addresss.json'
+import { xmxUrl, baseImgPath } from '@/config/env'
+import {  imgApi, acceptImage } from '@/config/common'
+let uploadUrl = xmxUrl + imgApi + '?op=supplier'
+import { getBaseDataByCode, updateSupplier, getSupplierById,DelImg } from '@/api/myData'
+export default {
+    props: {
+        id: String
+    },
+    data() {
+        return {
+            saveLoading:false,
+            modal:false,
+            dialogVisible:false,
+            form:{
+                ShortName:"",
+                BankName:"",
+                CardNO:"",
+                AccountHolder:""
+            },
+            tableData:[],
+
+            uploadUrl,
+
+            MainImgUrl: '',
+            ImgUrl: '',
+            imgIndex: '',
+
+            baseImgPath,
+            acceptImage,
+
+            provinceList: [],
+            cityList: [],
+
+            types: [],
+            levels: [],
+
+            PhotoList: [],
+            IsSMS:'',
+            formData: {
+                IsSMS:'',
+                SupplierName: 'dd',
+                PhoneNumber: '',
+                SupTypeCode: "",
+                Address: "",
+                HospLevelCode: "",
+                Province: "",
+                City: "",
+                MainImgUrl: "",
+                ImgUrl: '',
+                PhotoList: "",  //数组转化后的  string字符串
+                longitude:'',//经度
+                latitude:'',//纬度
+            },
+            rules: {
+                SupplierName: [
+                    { required: true, message: '不能为空', trigger: 'blur' }
+                ],
+                PhoneNumber: [
+                    { required: true, message: '不能为空', trigger: 'blur' }
+                ],
+                SupTypeCode: [
+                    { required: true, message: '不能为空', trigger: 'blur' }
+                ],
+                Address: [
+                    { required: true, message: '不能为空', trigger: 'blur' }
+                ],
+                PrefixCode:[
+                    { required: true, message: '不能为空', trigger: 'blur' }
+                ]
+            },
+        }
+    },
+    mounted() {
+        for (var item of adressList.area) {
+            this.provinceList.push(item.name)
+        }
+        this.initData()
+        this.getType()
+    },
+
+    watch: {
+        id() {
+            this.initData()
+        },
+    },
+
+    methods: {
+        async getType() {
+            let res = await getBaseDataByCode("0013")
+            this.types = res
+            this.getLeve()
+        },
+        async getLeve() {
+            let res = await getBaseDataByCode("0010")
+            this.levels = res
+        },
+        onSubmit() {
+            this.$refs["addform"].validate((valid) => {
+                if (valid) this.addData()
+                else return false;
+            })
+        },
+
+        selectCity(val) {
+            this.cityList = []
+            this.formData.City = ''
+            for (var item of adressList.area) {
+                if (item.name == val) {
+                    this.cityList = item['sub']
+                    break
+                }
+            }
+        },
+
+        async initData() {
+            let res = await getSupplierById(this.id)
+            let city = res.BaseSupplier.City
+            let _this = this
+            setTimeout(function() {
+                _this.formData.City = city
+            }, 100)
+            
+            this.formData = res.BaseSupplier
+            this.IsSMS = this.formData.IsSMS == '1'?true:false
+            this.PhotoList = []
+            
+            if (res.PhotoList && res.PhotoList.length > 0) {
+                this.PhotoList = res.PhotoList
+            }
+
+            this.PhotoList.push({ ImgUrl: "", PhotoDesc: "", PhotoTitle: "", SupplierCode: res.BaseSupplier.Code })
+
+            this.MainImgUrl = baseImgPath + res.BaseSupplier.MainImgUrl
+            this.ImgUrl = baseImgPath + res.BaseSupplier.ImgUrl
+            this.tableData = res.AccountList
+            this.formData.longitude = this.formData.MapAddress?this.formData.MapAddress.split(",")[0]:''
+            this.formData.latitude = this.formData.MapAddress?this.formData.MapAddress.split(",")[1]:''
+        },
+
+
+        //单张
+        SuccessA(res, file) {
+            if(this.formData.MainImgUrl!=''){
+                this.DelImg(this.formData.MainImgUrl)
+            }
+            this.MainImgUrl = URL.createObjectURL(file.raw);
+            this.formData.MainImgUrl = res
+        },
+
+        SuccessC(res, file) {
+            if(this.formData.ImgUrl!=''){
+                this.DelImg(this.formData.ImgUrl)
+            }
+            this.ImgUrl = URL.createObjectURL(file.raw);
+            this.formData.ImgUrl = res
+        },
+        
+            // 删除原图片/视频
+            async DelImg(filepath){
+                let res = await DelImg({filepath:filepath})
+                if(!res.status){
+                    this.$message({message: '原图片删除失败！'+res.errorMessage,type: 'warning'});
+                }
+            },
+
+        //相册
+        SuccessB(res, file) {
+            this.PhotoList[this.imgIndex].ImgUrl = res
+            if (this.imgIndex === (this.PhotoList.length - 1))
+                this.PhotoList.push({ ImgUrl: "", PhotoDesc: "", PhotoTitle: "", SupplierCode: this.formData.Code })
+        },
+
+        setImgIndex(index) {
+            this.imgIndex = index
+        },
+
+        async addData() {
+            this.PhotoList.pop()
+            this.formData.PhotoList = JSON.stringify(this.PhotoList)
+            this.formData.AccountList = JSON.stringify(this.tableData)
+            this.formData.IsSMS = this.IsSMS?1:0
+            this.saveLoading = true
+            this.formData.MapAddress = this.formData.longitude+','+this.formData.latitude //格式为 经度 ， 纬度
+            let res = await updateSupplier(this.formData)
+            if (res.success && res.success > 0) {
+                this.$message({ type: 'success', message: '保存成功!' })
+                this.cityList = []
+                this.$emit('close', true)
+            }
+            else {
+                this.$message({ type: 'warning', message: '保存失败!' })
+            }
+            this.saveLoading = false
+        },
+
+        deleteImg(index) {
+            this.PhotoList.splice(index, 1)
+        },
+
+        cancel() {
+            this.$emit('close', false)
+        },
+
+        add(){
+            this.dialogVisible = true
+        },
+        del(index,data){
+            
+            data.splice(index,1)
+        },
+        sure(){
+            this.$refs['form'].validate((valid) => {
+                if (valid) {
+                    this.tableData.push(this.form)
+                    this.cancelCard()
+                } else {
+                    console.log('error submit!!');
+                    return false;
+                }
+            });
+        },
+        cancelCard(){
+            this.dialogVisible = false
+            this.form = {
+                ShortName: "",
+                BankName: "",
+                CardNO: "",
+                AccountHolder: ""
+            }
+        }
+    }
+}
+</script>
+
+<style scoped lang="less">
+.avatar-uploader .el-upload {
+    border: 1px dashed #d9d9d9;
+    border-radius: 6px;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+}
+
+.avatar-uploader .el-upload:hover {
+    border-color: #20a0ff;
+}
+
+.avatar-uploader-icon {
+    font-size: 28px;
+    color: #8c939d;
+    width: 146px;
+    height: 146px;
+    line-height: 146px;
+    text-align: center;
+    border: 1px dashed #c0ccda;
+}
+
+.avatar {
+    width: 146px;
+    height: 146px;
+    display: block;
+}
+
+.flex-box {
+    display: flex;
+    display: -webkit-flex;
+    flex-wrap: wrap;
+    .flex-item {
+        position: relative;
+        flex: 0 33%;
+    }
+}
+
+.del-btn {
+    background: #1e1f20;
+    position: absolute; //opacity: 0.1;
+    width: 20px;
+    right: 53px;
+    top: 0;
+    color: white;
+}
+
+.del-btn:hover {
+    color: #20a0ff;
+}
+</style>

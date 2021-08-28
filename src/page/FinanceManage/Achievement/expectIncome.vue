@@ -1,0 +1,205 @@
+<template>
+    <div class="tag selCommon">
+        <el-form :inline="true"  class="demo-form-inline form_search" label-width="80px">
+            <el-form-item label="结算日期：" class="form_item_mt10">
+                     <el-date-picker
+                        v-model="date"
+                        type="daterange"
+                        @change="dateChange"
+                        placeholder="选择日期">
+                    </el-date-picker>
+            </el-form-item>
+            <el-form-item label="医院：" class="form_item_mt10">
+                <el-select v-model="hospitalCode"  style='width:200px;' @change="onSubmit" >
+                    <el-option v-for="(item,index) in hospitalList" :key="index" :label="item.supplierName" :value="item.code"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="关键字：" class="form_item_mt10">
+                <el-input v-model="keywords" placeholder="客户/店家"></el-input>
+            </el-form-item>
+            <el-form-item label=" " class="form_item_mt10">
+                <el-button type="primary" @click="onSubmit" class="searchBtn">查询</el-button>
+            </el-form-item>
+        </el-form>
+        <el-table  :data="tableData" border style="width: 100%;margin-top:20px" max-height="560" class="min_table" show-summary v-loading="loading"  :summary-method="getSummaries">
+            <el-table-column prop="customerName" label="结算日期" width="90" >
+                <template slot-scope="scope">
+                    <span v-if="scope.row.modifiedOn">{{scope.row.modifiedOn.substring(0,10)}}</span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="orderDate" label="订单日期" width="90" >
+                <template slot-scope="scope">
+                    <span v-if="scope.row.orderDate">{{scope.row.orderDate.substring(0,10)}}</span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="execDate" label="执行日期" width="90" >
+                <template slot-scope="scope">
+                    <span v-if="scope.row.execDate">{{scope.row.execDate.substring(0,10)}}</span>
+                </template>
+            </el-table-column>
+            
+            <el-table-column prop="fxCode" label="单号" min-width="80"></el-table-column>
+             <el-table-column prop="customerName" label="客户" min-width="80"></el-table-column>
+            <el-table-column prop="refrenceBranchName" label="店家" min-width="80"></el-table-column>
+            <el-table-column prop="projectName" label="项目明细" min-width="150" show-overflow-tooltip></el-table-column>
+            <el-table-column prop="projectName" label="比例" min-width="80">
+                <template slot-scope="scope">
+                    <span v-if="scope.row.expertRate">{{scope.row.expertRate}}%</span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="realAmount" label="提成金额" min-width="80" align="right">
+                <template slot-scope="scope">
+                    <span v-if="scope.row.realAmount||scope.row.realAmount==0">{{scope.row.realAmount.toQFW()}}</span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="mon" label="可提成金额" min-width="80" align="right">
+                <template slot-scope="scope">
+                    <span v-if="scope.row.mon||scope.row.mon==0">{{scope.row.mon.toQFW()}}</span>
+                </template>
+            </el-table-column>
+             <el-table-column prop="customerName" label="状态" min-width="90" >
+                <template slot-scope="scope">
+                    <el-tag type="success" v-if="scope.row.isFinished ==1">已结算</el-tag>
+                    <el-tag type="danger" v-if="scope.row.isFinished ==0">未结算</el-tag>
+                </template>
+            </el-table-column>
+        </el-table>
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+    import  "@/style/selfCommon.less"
+    import { getCookie, delCookie } from '@/config/mUtils'
+    import {GetExpertReport,GetDropDownPermission} from "@/api/myData"
+    export default {
+        // name: "VideoManage",
+        data () {
+            return {
+                loading:false,
+                hospitalCode:"",
+                date:new Date(),
+                project:"",
+                title:"",
+                opeIndex:0,
+                currentPage:1,
+                total:0,
+                pageSize:10,
+                keywords:"",
+                formInline:{
+                    hospital:"",
+                    hospitalCode:"",
+                    hospitalName:"",
+                    date:"",
+                    startDate:"",
+                    endDate:"",
+                    IsFinished:"0",
+                },
+                tableData:[],
+                projectList:[],
+                hospitalList:[],
+            }
+        },
+
+        mounted(){
+            this.GetDropDownPermission()
+        },
+        methods:{
+            dateChange(val){
+                if(val){
+                    val = val.formatDates()
+                    this.formInline.startDate = val.substring(0,10)
+                    this.formInline.endDate = val.substring(13)
+                }else{
+                    this.formInline.startDate = ""
+                    this.formInline.endDate = ""
+                }
+            },  
+            getSummaries(param) {
+                const { columns, data } = param;
+                const sums = [];
+                columns.forEach((column, index) => {
+                    if (index === 0) {
+                        sums[index] = '合计';
+                        return;
+                    }
+                    const values = data.map(item => Number(item[column.property]));
+                    if (!values.every(value => isNaN(value))) {
+                        sums[index] = values.reduce((prev, curr) => {
+                        const value = Number(curr);
+                        if (!isNaN(value)) {
+                            return prev.add(curr);;
+                        } else {
+                            return prev;
+                        }
+                        }, 0);
+                        sums[index] =sums[index].toQFW();
+                    } else {
+                        sums[index] = '';
+                    }
+                });
+                sums[5] = ""
+                return sums;
+            },
+            
+            hosSelect(){
+                if(this.formInline.hospital.length>0){
+                    this.formInline.hospitalCode = this.formInline.hospital.split("|")[0]
+                    this.formInline.hospitalName = this.formInline.hospital.split("|")[1]
+                }else{
+                    this.formInline.hospitalCode = ""
+                    this.formInline.hospitalName = ""
+                }
+                
+            },
+            async GetDropDownPermission(){
+                let res1 = await GetDropDownPermission({typeId: 1});
+                this.hospitalList = res1.data
+                this.hospitalCode = res1.data[0].code
+            },
+
+            onSubmit(){
+                this.currentPage = 1
+                this.search()
+            },
+            
+            async GetExpertReport(params){
+                let res = await GetExpertReport(params)
+                this.loading = false
+                if(res.status){
+                    res.data.forEach(row=>{
+                        row.mon = row.expertRate.mul(row.realAmount)
+                        row.expertRate = row.expertRate.mul(100)
+                    })
+                }else{
+                    this.$message({ type: 'error', message: '获取数据失败!'+res.errorMessage })
+                }
+                
+                this.tableData = res.data
+            },
+           
+            pageIndexChange(index) {
+                this.search()
+            },
+            pageSizeChange(size) {
+                this.pageSize = size
+                this.search()
+            },
+            search(){
+                this.loading = true
+                this.GetExpertReport({
+                    startDate:this.formInline.startDate,
+                    endDate:this.formInline.endDate,
+                    HospitalCode:this.hospitalCode,
+                    Keywords:this.keywords.removeSP(),
+                    IsFinished:1
+                })
+            }
+        },
+        components: {
+        }
+    }
+</script>
+
+<style scoped>
+
+</style>

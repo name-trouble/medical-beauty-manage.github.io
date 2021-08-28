@@ -1,0 +1,353 @@
+<template>
+    <div>
+        <reportSearch :searchCondition="searchCondition" ref="search" :filter-back="filter"></reportSearch>
+        <el-table :data="tableData" border style="width: 100%;margin-top:15px;margin-bottom:10px;" max-height="560" class="min_table" v-loading="loading"  @selection-change="handleSelectionChange">
+            <el-table-column type="selection" width="55" align="center"></el-table-column>
+            <el-table-column prop="FxCode" width="100" label="订单编号">
+                <template scope="scope">
+                    <span class="table_btn" @click="read(scope.$index)" type="text" size="small" >{{scope.row.FxCode}}</span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="OrderType" label="订单来源" min-width="80" align="center">
+                <template scope="scope">
+                    <el-tag type="success" v-text="scope.row.OrderType==1?'app订单':'线下订单'"></el-tag>
+                </template>
+            </el-table-column>
+             <el-table-column prop="OrderType" label="规则类型" min-width="85">
+                <template scope="scope">
+                    <el-tag type="success">{{scope.row.ConsumeTypeId|filFun}}</el-tag>
+                </template>
+            </el-table-column>
+            <el-table-column prop="MedicalTypeId" label="支付类型" width="85">
+                <template scope="scope">
+                    <el-tag type="success" v-if="scope.row.MedicalTypeId != null">{{scope.row.MedicalTypeId|filFunM}}</el-tag>
+                </template>
+            </el-table-column>
+            <el-table-column prop="OrderDate" min-width="100" label="订单日期">
+                <template scope="scope">
+                     <span v-if="scope.row.OrderDate">
+                        {{scope.row.OrderDate.substring(0,10)}}
+                    </span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="FormNO" label="纸质单号" min-width="95"></el-table-column>
+            <el-table-column prop="HospitalName" label="医院" min-width="150"></el-table-column>
+            <el-table-column prop="CustomerName" label="客户" min-width="95">
+                <template scope="scope">
+                    <el-button type="text" @click="view(scope.$index,tableData)" v-if="scope.row.IsBranch == 1" style="color:black">{{scope.row.CustomerName}}</el-button>
+                    <el-button type="text" @click="view(scope.$index,tableData)" v-else style="color:red">{{scope.row.CustomerName}}</el-button>
+                </template>
+            </el-table-column>
+            <el-table-column prop="RefrenceBranchName" label="推荐人" min-width="95">
+                <template scope="scope">
+                    {{scope.row.RefrenceBranchName}}<span v-if="scope.row.RefrenceBranchTags">({{scope.row.RefrenceBranchTags}})</span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="ProjectName" label="项目名称" min-width="150">
+                <template scope="scope">
+                    <div class="overflow_col" :title="scope.row.ProjectName">
+                        {{scope.row.ProjectName}}
+                    </div>
+                </template>
+            </el-table-column>
+            <el-table-column prop="OrderAmount" label="订单金额" min-width="90" align="right">
+                <template scope="scope">
+                    <span v-if="scope.row.OrderAmount">￥{{scope.row.OrderAmount.toQFW()}}</span>
+                    <span v-else>￥0</span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="Price" label="已支付" min-width="90" align="right">
+                <template scope="scope">
+                    <span v-if="scope.row.RealAmount">￥{{scope.row.RealAmount.toQFW()}}</span>
+                    <span v-else>￥0</span>
+                </template>
+            </el-table-column>
+            <el-table-column label="付款状态" min-width="95">
+                <template scope="scope">
+                    <div v-if="scope.row.ApproveState !=6&&scope.row.ApproveState!=10">
+                        <el-tag type="success" v-if="scope.row.IsPayOff==true">已付清</el-tag>
+                        <el-tag type="warning" v-else>未付清</el-tag>
+                    </div>
+
+                </template>
+            </el-table-column>
+            <el-table-column prop="CommandState" label="执行状态" min-width="145">
+                <template scope="scope">
+                    <div style="width: 80px;float: left">
+                        <el-tag type="gray" v-if="scope.row.CommandState == 0">未执行</el-tag>
+                        <el-tag type="warning" v-if="scope.row.CommandState == 1">执行中</el-tag>
+                        <el-tag type="success" v-if="scope.row.CommandState == 2">执行完毕</el-tag>
+                    </div>
+                    <div style="float: left" v-if="scope.row.IsPayOff==true">
+                        <span v-if="scope.row.CurrentCourse">{{scope.row.CurrentCourse}}</span>
+                        <span v-else>0</span>
+                        <span v-if="scope.row.Course">/{{scope.row.Course}}</span>
+                    </div>
+                </template>
+            </el-table-column>
+            <el-table-column prop="ApproveState" label="订单状态" min-width="100">
+                <template scope="scope">
+                    <el-tag type='gray' v-if="scope.row.ApproveState==0||scope.row.ApproveState==null">未审核</el-tag>
+                    <el-tag type="warning" v-if="scope.row.ApproveState==1">部分审核</el-tag>
+                    <el-tag type="success" v-if="scope.row.ApproveState==2">审核完毕</el-tag>
+                   <el-tag type="danger" v-if="scope.row.ApproveState ==6">已退款</el-tag>
+                    <el-tag type="danger" v-if="scope.row.ApproveState ==10">已关闭</el-tag>
+                </template>
+            </el-table-column>
+               <el-table-column prop="RefundAmount" label="退款金额" min-width="85">
+                <template scope="scope">
+                    <span style="float:right" v-if="scope.row.RefundAmount">{{scope.row.RefundAmount.toQFW()}}</span>
+                </template>
+             </el-table-column>
+            <el-table-column prop="CommandState" label="操作" fixed="right" min-width="145">
+                <template scope="scope">
+                    <el-button @click="copy(scope.$index)" type="primary" size="small" :disabled="scope.row.ApproveState!=10">复制</el-button>
+                    <el-button @click="closePro(scope.$index,tableData)" type="danger" size="small" :disabled="scope.row.ApproveState!=0">关闭</el-button>
+                </template>
+            </el-table-column>
+        </el-table>
+        <el-button type="danger" @click="batchClose" style="float:left">批量关闭</el-button>
+        <!-- 分页 -->
+        <div class="block">
+            <el-pagination @size-change="handleSizeChange" @current-change="handleCurrentChange" :current-page="currentPage" :page-sizes="[10, 20, 30, 40]" :page-size="size" layout="total, sizes, prev, pager, next, jumper" :total="total">
+            </el-pagination>
+        </div>
+
+
+        <el-dialog ref="pay" title="查看详情" :visible.sync="ispopRead" top="5%" @close="ispopRead=false" size="">
+            <pop-read v-if="ispopRead" :data="selectData" style="width:950px"></pop-read>
+        </el-dialog>
+
+        <el-dialog title="客户详情" :visible.sync="dialogView"  top="5%"  size="" :close-on-click-modal="false">
+            <CustomerView :mes="cusMes" style="width: 1100px"  v-if="dialogView"></CustomerView>
+        </el-dialog>
+
+        <el-dialog title="复制" :visible.sync="ispopCopy"  top="5%"  size="" :close-on-click-modal="false">
+            <Popcopy :ope="!ispopCopy" @popAddClose='addFinish' :data="selectData" style="width:950px" v-if="ispopCopy"></Popcopy>
+        </el-dialog>
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+import reportSearch from "./com/reportSeach.vue"
+import { GetProofOrderClose, ProofOrderClose ,getBaseDataByCode} from "@/api/myData"
+import PopRead from './com/reportRead.vue'
+import Popcopy from "./com/copy.vue"
+import CustomerView from "./com/customerDetail.vue"
+import '@/style/yqCom.less'
+var _this
+export default {
+    components: { reportSearch, PopRead,CustomerView ,Popcopy },
+    data() {
+        return {
+            loading:false,
+            cusMes:{},
+            dialogView:false,
+            currentIndex: 0,
+            size: 10,
+            total: 0,
+            currentPage: 1,
+            tableData: [],
+            searchCondition: {
+                payOff: "true",
+                label: "更新时间",
+                type: "0",
+                tHeader: ['订单编号', '订单日期', '纸质单号', '客户', '推荐人', '项目名称', '订单金额', '已支付', '付款状态', '疗程', '已执行', '执行状态', '订单类型'],
+                filterVal: ['FxCode', 'CreateOn', 'FormNO', 'CustomerName', 'RefrenceBranchName', 'ProjectName', 'OrderAmount', 'RealAmount', 'IsPayOff', 'Course', 'CurrentCourse', 'CommandState', 'OrderType'],
+                tableData1: [],
+                name: "报单管理"
+            },
+            ispopRead: false,
+            ispopCopy:false,
+            selectData: [],
+            fxCode: "",  //当前选中的 fxCode
+            consumeList:[],
+            medicalList:[],
+            multipleSelection:[],
+        }
+    },
+     filters:{
+            filFun(val){
+                let len = _this.consumeList.length
+                let list =  _this.consumeList
+                for(var i = 0;i<len;i++){
+                    if(val == list[i].DataCode){
+                        return list[i].DataName
+                    }
+                }
+            },
+            filFunM(val){
+                let len = _this.medicalList.length
+                let list =  _this.medicalList
+                for(var i = 0;i<len;i++){
+                    if(val == list[i].DataCode){
+                        return list[i].DataName
+                    }
+                }
+            },
+        },
+    mounted() {
+        _this = this
+        this.getType()
+    },
+    methods: {
+        view(index,data){
+                this.cusMes = data[index]
+                this.dialogView = true
+            },
+        async getType(){
+            let [consumeList,medicalList] = await Promise.all([getBaseDataByCode("0017"),getBaseDataByCode("0022")])
+            this.consumeList = consumeList
+            this.medicalList = medicalList
+        },
+        async ProofOrderClose(params) {
+            try {
+                let res = await ProofOrderClose(params)
+                if (res.status) {
+                    this.$message({
+                        message: '成功关闭',
+                        type: 'success'
+                    });
+                    this.$refs.search.onSubmit()
+                } else {
+                    this.$message.error('操作失败');
+                }
+            } catch (err) {
+            }
+        },
+        async getProofOrder(params, index) {
+            this.loading = true
+            try {
+                let res = await GetProofOrderClose(params)
+                if(res.status){
+                    this.total = res.count
+                    this.tableData = res.data
+                    this.searchCondition.tableData1 = this.dealData(res.data)
+                }else{
+                    this.$message({ type: 'error', message: '获取数据失败!'+res.errorMessage })
+                }
+                this.loading = false
+            } catch (err) {
+            }
+        },
+
+        dealData(data) {
+            let arr = JSON.parse(JSON.stringify(this.tableData))
+            arr.forEach(row => {
+                row.CommandState = this.getStep(row.CommandState)
+                row.OrderType = row.OrderType == '1' ? '线上' : '线下'
+                if (row.ApproveState == 10) {
+                    row.IsPayOff = "已关闭"
+                } else if (row.ApproveState == 6) {
+                    row.IsPayOff = "已退款"
+                } else {
+                    if (row.IsPayOff) {
+                        row.IsPayOff = "已结清"
+                    } else {
+                        row.IsPayOff = "未结清"
+                    }
+                }
+            })
+            return arr
+        },
+
+        getStep(step) {
+            switch (step) {
+                case 0: return '未执行';
+                case 1: return '执行中';
+                case 2: return '执行完毕';
+            }
+        },
+
+        addFinish() {
+            this.ispopCopy = false
+            this.$refs.search.onSubmit()
+        },
+
+
+        copy(index){
+                this.selectData = this.tableData[index]
+                this.ispopCopy = true
+            },
+
+        //            搜索获取条件
+        filter(val) {
+            this.getProofOrder({
+                startDate: val.startTimeF,
+                endDate: val.endTimeF,
+                mStartDate: val.startTimeS,
+                mEndDate: val.endTimeS,
+                fxCode: val.bill,
+                formNO: val.num,
+                projectName: val.projectName,
+                // isPayOff: 0,
+                isPayOff: val.IsPayOff,
+                commandState: val.CommandState,
+                orderType: val.OrderType,
+                customerName: val.customer,
+                referrerName: val.rec,
+                ApproveState: val.ApproveState,
+                SettState: val.SettState,
+                pageIndex: this.currentPage,
+                pageSize: this.size,
+                hospitalCode: val.hospital,
+                ConsumeTypeId:val.ConsumeTypeId,//提成类型
+                // phoneNumber:val.phoneNumber,
+                // cardNO:val.cardNO,
+            })
+        },
+        handleSizeChange(val) {
+            this.size = val
+            this.$refs.search.onSubmit()
+        },
+
+        handleCurrentChange(val) {
+            this.currentPage = val
+            this.$refs.search.onSubmit()
+        },
+        //  查看
+        read(index) {
+            this.selectData = this.tableData[index]
+            this.ispopRead = true
+        },
+
+        closePro(index, data) {
+            this.$confirm('是否关闭该报单？?', '提示', {
+                confirmButtonText: '确定',
+                cancelButtonText: '取消',
+                type: 'warning'
+            }).then(() => {
+                this.ProofOrderClose({
+                    fxcode: data[index].FxCode
+                })
+            }).catch(() => {
+            });
+        },
+        batchClose(){
+            let ids = []
+            this.multipleSelection.forEach(ele=>{
+                ids.push(ele.FxCode)
+            })
+            this.$confirm('是否批量关闭选定的报单？?', '提示', {
+                confirmButtonText: '确定',
+                cancelButtonText: '取消',
+                type: 'warning'
+            }).then(() => {
+                this.ProofOrderClose({
+                    fxcode: ids.join(',')
+                })
+            })
+        },
+        handleSelectionChange(val) {
+            this.multipleSelection = val;
+        }
+    },
+
+}
+</script>
+
+<style scoped>
+.block{
+    float: right
+}
+</style>

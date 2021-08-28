@@ -1,0 +1,288 @@
+<template>
+    <div class="CommentManage selCommon">
+        <el-form :inline="true" :model="formInline" class="demo-form-inline form_search" label-width="90px" >
+            <el-form-item label="评论时间："  class="form_item_mt10 form_item_wh280">
+                <el-date-picker
+                    style="width: 200px"
+                    v-model="date"
+                    type="daterange"
+                    @change="dateSelect"
+                    placeholder="选择日期范围">
+                </el-date-picker>
+            </el-form-item>
+            <el-form-item label="评论人："  class="form_item_mt10 form_item_wh280">
+                <el-input v-model="formInline.name" placeholder="" style="width: 200px;"></el-input>
+            </el-form-item>
+            <el-form-item label="评论人角色："  class="form_item_mt10 form_item_wh280">
+                <el-select v-model="formInline.userName" placeholder="" style="width: 200px;">
+                    <el-option label="全部" value=""></el-option>
+                    <el-option v-for="item in roleList" :label="item.realname" :value="item.realname" :key="item.code"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="关键字：" class="form_item_mt10 form_item_wh280">
+                <el-input v-model="formInline.keyWords" placeholder="评论人/板块/主题" style="width: 200px;"></el-input>
+            </el-form-item>
+            <el-form-item label="点赞量："  class="form_item_mt10 form_item_wh280">
+                <el-input v-model="formInline.praiseStart" placeholder="" style="width: 92px;"></el-input>
+                <span style="float: left;margin-right: 5px">-</span>
+                <el-input v-model="formInline.praiseEnd" placeholder="" style="width: 92px;"></el-input>
+            </el-form-item>
+            <el-form-item label="回复量：" class="form_item_mt10 form_item_wh280">
+                <el-input v-model="formInline.FloorCountStart" placeholder="" style="width: 92px;"></el-input>
+                <span style="float: left;margin-right: 5px">-</span>
+                <el-input v-model="formInline.FloorCountEnd" placeholder="" style="width: 92px;"></el-input>
+            </el-form-item>
+            <el-form-item label=" " class="form_item_mt10 form_item_wh280">
+                <el-button type="primary" @click="onSubmit" class="searchBtn">查询</el-button>
+            </el-form-item>
+        </el-form>
+        <!-- 信息表 -->
+        <el-table :data="tableData" border style="width: 100%;margin-top:15px;margin-bottom:10px;"  class="smt min_table" max-height="560">
+            <el-table-column type="index" width="40" ></el-table-column>
+            <el-table-column prop="createDate" label="评论时间" min-width="100">
+                <template scope="scope">
+                    {{scope.row.createDate.substring(0,10)}}
+                </template>
+            </el-table-column>
+            <el-table-column prop="userName" label="评论人" min-width="100"></el-table-column>
+            <el-table-column prop="type" label="板块" min-width="100">
+                <template scope="scope">
+                    <span v-if="scope.row.type==1">案例回复</span>
+                    <span v-if="scope.row.type==2">帖子回复</span>
+                    <span v-if="scope.row.type==3">活动回复</span>
+                </template>
+            </el-table-column>          
+            <el-table-column prop="title" label="主题" min-width="100"></el-table-column>
+            <el-table-column prop="content" label="评论" min-width="100">
+                <template scope="scope">
+                    <el-button @click="comment(scope.$index,tableData,1)" type="text">{{scope.row.content}}</el-button>
+                </template>
+            </el-table-column>
+            <el-table-column prop="praiseCount" label="点赞量" min-width="100"></el-table-column>
+            <el-table-column prop="floorCount" label="回复量" min-width="100">
+                <template scope="scope">
+                    <el-button @click="Reply(scope.$index,tableData,1)" type="text">{{scope.row.floorCount}}</el-button>
+                </template>
+            </el-table-column>
+          <!--  <el-table-column prop="grade" label="操作" min-width="100">
+                <template scope="scope">
+                    <el-button @click="setTop(scope.$index,tableData,1)" type="text">置顶</el-button>
+                </template>
+            </el-table-column>-->
+        </el-table>
+        <!-- 信息表 -->
+        <!-- 分页 -->
+        <div class="block">
+            <el-pagination
+                @size-change="handleSizeChange"
+                @current-change="handleCurrentChange"
+                :current-page="currentPage"
+                :page-sizes="[10, 20, 30, 40]"
+                :page-size="size"
+                layout="total, sizes, prev, pager, next, jumper"
+                :total="total">
+            </el-pagination>
+        </div>
+        <!-- 分页 -->
+        <el-dialog title="评论" :visible.sync="dialogTableVisible" size="">
+            <div v-if="dialogTableVisible" style="width: 600px">
+                <comment></comment>
+            </div>
+        </el-dialog>
+        <el-dialog title="回复量" :visible.sync="dialogTableVisible1" size="">
+            <div v-if="dialogTableVisible1" style="width: 600px">
+                <replay></replay>
+            </div>
+        </el-dialog>
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+    import  "../../../style/selfCommon.less"
+    import {Getreply,GetRoles} from "@/api/myData"
+    import comment from "./components/commentView.vue"
+    import replay from "./components/replayView.vue"
+    export default {
+        data () {
+            return {
+                date:"",
+                total:0,
+                size:10,
+                currentPage:1,
+                roleList:[],
+                dialogTableVisible:false,
+                dialogTableVisible1:false,
+                tableData:[],
+                formInline: {
+                    keyWords:"",
+                    date1: '',
+                    date2: '',
+                    userName:"",
+                    FloorCountStart:"",
+                    FloorCountEnd:"",
+                    PraiseCountStart:"",
+                    PraiseCountEnd:"",
+                },
+            }
+        },
+        computed: {
+            /* 导出报表参数 tHeader,filterVal,tableData1*/
+            // tHeader(){
+            //     return ['评论时间', '评论人', '板块', '主题', '评论', '点赞量', '回复量']
+            // },
+            // filterVal(){
+            //     return ['createDate', 'userName', 'type', 'title', 'content', 'praiseCount', 'floorCount']
+            // },
+            // tableData1(){
+            //     let arr = JSON.parse(JSON.stringify(this.tableData))
+            //     arr.forEach(row=>{
+            //         row.type = this.getName(row.type)
+            //     })
+            //     return arr
+            // },
+            // name(){
+            //     return '案例管理'
+            // },
+            /*导出报表参数 tHeader,filterVal,tableData1*/
+        },
+        mounted(){
+            this.getRoles()
+        },
+        methods:{
+            getName(data){
+                switch (data){
+                    case 1: return '案例回复' ;
+                    case 2: return '帖子回复' ;
+                    case 3: return '活动回复' ;
+                }
+            },
+//            获取角色
+            async getRoles(){
+                try{
+                    let res = await GetRoles()
+                    this.roleList = res.data
+                    this.getreply({
+                     pageIndex:this.currentPage,
+                     pageSize:this.size
+                     })
+                }catch(err){
+                    console.log(err)
+                }
+            },
+            async getreply(params){
+                try{
+                    let res = await Getreply(params)
+                    this.tableData = res.data
+                    this.total = res.count
+                }catch(err){
+                    console.log(err)
+                }
+            },
+            onSubmit(){
+                this.currentPage = 1
+                this.search()
+            },
+            Reply(index,data){
+                this.dialogTableVisible1 = true
+            },
+            comment(index,data){
+                this.dialogTableVisible = true
+            },
+            handleSizeChange(val) {
+                console.log(`每页 ${val} 条`);
+                this.size = val
+                this.search()
+            },
+            handleCurrentChange(val) {
+                console.log(`当前页: ${val}`);
+                this.currentPage = val
+                this.search()
+            },
+            search(){
+                this.getreply({
+                    pageIndex:this.currentPage,
+                    pageSize:this.size,
+                    where:this.getConditions()
+                })
+            },
+            dateSelect(val){
+                if(val.length!=0){
+                    this.formInline.date1 = val.substring(0,10)
+                    this.formInline.date2 = val.substring(13)
+                }else{
+                    this.formInline.date1 = ""
+                    this.formInline.date2 = ""
+                }
+                
+            },
+            getConditions(){
+                let date1 = this.formInline.date1
+                let date2 = this.formInline.date2
+                let abstract = this.formInline.keyWords
+                let abs = abstract.length>0?"userName like '%"+abstract+"%' or title like '%"+abstract +"%' or type like '%"+abstract +"%'":""
+                let conditions = ''
+                if(date1){conditions+="CreateDate>='"+date1+"'"}
+                if(date2){conditions+=" and CreateDate<='"+date2+"'"}
+
+                if(this.formInline.ViewsStart){conditions+=" and Views>='"+this.formInline.ViewsStart+"'"}
+                if(this.formInline.ViewsEnd){conditions+=" and Views<='"+this.formInline.ViewsEnd+"'"}
+
+                if(this.formInline.PraiseCountStart){conditions+="and PraiseCount>='"+this.formInline.PraiseCountStart+"'"}
+                if(this.formInline.PraiseCountEnd){conditions+=" and PraiseCount<='"+this.formInline.PraiseCountEnd+"'"}
+
+                if(this.formInline.CommentCountStart){conditions+="and CommentCount>='"+this.formInline.CommentCountStart+"'"}
+                if(this.formInline.CommentCountEnd){conditions+=" and CommentCount<='"+this.formInline.CommentCountEnd+"'"}
+
+                if(abstract){ conditions+=" and "+abs}
+                return conditions
+            },
+            getStr(date1,date2,key){
+                if(date1.length!=0&&date2.length!=0){
+                    return key+this.getMinStr(date1)+" and " + key + this.getMaxStr(date2)
+                }else{
+                    if(date1.length!=0){
+                        return key+this.getMinStr(date1)
+                    }else{
+                        if(date2.length!= 0){
+                            return key + this.getMaxStr(date2)
+                        }else{
+                            return ""
+                        }
+                    }
+                }
+            },
+            getMinStr(data){
+                if(data.length !=0){
+                    return ">="+"'"+data+"'"
+                }else{
+                    return ""
+                }
+            },
+            getMaxStr(data){
+                if(data.length !=0){
+                    return "<="+"'"+data+"'"
+                }else{
+                    return ""
+                }
+            },
+            getNull(data,key){
+                if(data.length!=0){
+                    return key+"="+"'"+data+"'"
+                }else{
+                    return ""
+                }
+            },
+        },
+        components: {
+            comment,
+            replay
+        }
+    }
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+.selCommon{
+
+}
+</style>

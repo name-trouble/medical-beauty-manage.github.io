@@ -1,0 +1,196 @@
+<template>
+    <div class="tag selCommon">
+       
+        <!-- 信息表 -->
+        <el-table :data="tableData" border style="width:600px;margin-top:15px;margin-bottom:10px;" max-height="560" 
+        class="smt min_table" v-loading="loading">
+            <el-table-column prop="gradeName" label="等级名称" min-width="90"></el-table-column>
+            <el-table-column prop="priorities" label="优先级" min-width="90"></el-table-column>
+            <el-table-column prop="extractRatio" label="提成比例%" min-width="90"></el-table-column>
+            <el-table-column prop="quantityOut" label="操作" min-width="120" >
+                <template slot-scope="scope">
+                    <el-button size="small" type="primary" @click="changeGrade(scope.row,'修改等级',true)">修改等级</el-button>
+                    <el-button size="small" type="primary" @click="delGrade(scope.row.id)">删除等级</el-button>
+                </template>
+            </el-table-column>
+        </el-table>
+        <!-- 信息表 -->
+        <el-button type="primary" @click="changeGrade('','添加等级',false)">添加等级</el-button>
+        <el-dialog :title="title" :visible.sync="addGrade" size="">
+            <el-form :model="ruleForm" ref="ruleForm2" label-width="80px" class="demo-ruleForm">
+                <el-form-item label="等级名称" prop="pass" class="form_item_mt10">
+                    <el-input v-model="ruleForm.gradeName" auto-complete="off" style="width:200px"></el-input>
+                </el-form-item>
+                <el-form-item label="优先级" prop="checkPass" class="form_item_mt10">
+                    <el-input v-model="ruleForm.priorities" auto-complete="off" style="width:200px"></el-input>
+                </el-form-item>
+                <el-form-item label="提成比例" prop="age" class="form_item_mt10">
+                    <el-input v-model.number="ruleForm.extractRatio" style="width:200px"></el-input>%
+                </el-form-item>
+                <el-form-item>
+                    <el-button type="primary" @click="submitForm('ruleForm')">提交</el-button>
+                    <el-button @click="resetForm('ruleForm')">重置</el-button>
+                </el-form-item>
+            </el-form>
+        </el-dialog>
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+    import {baseImgPath} from "@/config/env"
+    import  "@/style/selfCommon.less"
+    import { getCookie, delCookie } from '@/config/mUtils'
+    import {GetDropDownPermission,GetStockTicket,GetGradeList,AddNewGrade,DeleteGrade,ModifyGrade} from "@/api/myData"
+    // import Export from '@/components/export'
+    export default {
+        data () {
+            return {
+                date:"",
+                loading:false,
+                title:"",
+                addGrade:false,
+                total:0,
+                size:10,
+                currentPage:1,
+                ruleForm: {
+                    "gradeName": "",
+                    "priorities": "",
+                    "extractRatio": 0,
+                },
+                tableData:[],
+                edit:false,
+            }
+        },
+        computed: {
+            /* 导出报表参数 tHeader,filterVal,tableData1*/
+            // tHeader(){
+            //     return ['仓库', '卡券名称', '前缀', '入库总数', '出库总数', '库存数量']
+            // },
+            // filterVal(){
+            //     return ['warehouseName', 'batchNumber', 'ticketName', 'ticketPrefixCode', 'quantityIn','quantityOut','remainingCount']
+            // },
+            // tableData1(){
+            //     return this.allData
+            // },
+            // name(){
+            //     return '卡券库存'
+            // },
+            /*导出报表参数 tHeader,filterVal,tableData1*/
+        },
+        mounted(){
+            let date= new Date()
+            date = date.setDate(1)
+            this.date = [date,new Date()]
+            this.onSubmit()
+        },
+        methods:{
+            submitForm(formName){
+                
+                if(this.edit){
+                    this.AddNewGrade(this.ruleForm)
+                }else{
+                    this.AddNewGrade({
+                        "gradeName": this.ruleForm.gradeName,
+                        "priorities": this.ruleForm.priorities,
+                        "extractRatio": this.ruleForm.extractRatio,
+                        "remark": "",
+                        "submitUserId": getCookie("userId"),
+                        "submitUserName": getCookie("userName"),
+                    })
+                }
+            },
+            resetForm(formName){
+                this.ruleForm = {
+                    "gradeName": "",
+                    "priorities": "",
+                    "extractRatio": 0,
+                }
+            },
+            dateChange(val){
+                if(val){
+                    val = val.formatDates()
+                    this.formInline.startDate = val.substring(0,10)
+                    this.formInline.endDate = val.substring(13)
+                }else{
+                    this.formInline.startDate = ""
+                    this.formInline.endDate = ""
+                }
+            },
+            async GetGradeList(params,ope){
+                try{
+                    this.loading = true
+                    let res = await GetGradeList()
+                    this.tableData = res.data
+                    this.total = res.count
+                    this.loading = false
+                }catch(err){
+                    console.log(err)
+                }
+            },
+            async AddNewGrade(params){
+                let res
+                if(this.edit){// 编辑
+                     res = await ModifyGrade(params)
+                     this.showMes(res,'编辑')
+                }else{// 添加
+                    res = await AddNewGrade(params)
+                    this.showMes(res,'添加')
+                }
+            },
+            showMes(data,mes){
+                
+                if(data.status){
+                    this.$message({message: mes+'成功',type: 'success'});
+                    this.addGrade = false
+                    this.search()
+                }else{
+                    this.$message.error(mes+"失败"+data.errorMessage);
+                }
+            },
+            async DeleteGrade(id){
+                let res = await DeleteGrade({id:id})
+                this.showMes(res,'删除')
+            },
+            delGrade(id){
+                this.$confirm('是否删除本条等级数据?', '提示', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    type: 'warning'
+                }).then(() => {
+                    this.DeleteGrade(id)
+                })
+            },
+            onSubmit(){
+                this.currentPage = 1
+                this.search()
+            },
+            search(){
+                this.GetGradeList()
+            },
+            handleSizeChange(val) {
+                this.size = val
+                this.search()
+            },
+            handleCurrentChange(val) {
+                this.currentPage = val
+                this.search()
+            },
+            changeGrade(data,title,flg){
+                this.edit = flg
+                this.addGrade = true
+                this.title = title
+                if(data){
+                    this.ruleForm  = JSON.parse(JSON.stringify(data))
+                }
+            },
+        },
+        components: {
+            // Export,
+        }
+    }
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+
+</style>

@@ -1,0 +1,468 @@
+<template>
+    <div>
+        <div class="head">
+            <span>订单编号：{{data.FxCode}}</span>
+            <span>客户：{{data.CustomerName}}</span>
+            <span>项目名称：{{ data.ProjectName.substr(0,5)+'...' }}</span>
+            <span>项目规格：</span>
+            <span>疗程： {{data.Course}}</span>
+            <span>执行中： {{ getState(data.CommandState)}}</span><br/>
+            <span>备注：{{data.Memo}}</span>
+        </div>
+        <div>
+            <el-form :model="formData" ref="ruleForm" :inline="true" label-width="120px">
+                <el-form-item label="执行序号：" class="form_item_mt10" style="width:440px" v-if="operate == 'command'">
+                    {{ data.CurrentCourse+1}}
+                </el-form-item>
+
+                <el-form-item label="执行次数：" class="form_item_mt10" style="width:440px" v-if="operate == 'command'">
+                    <el-select v-model="formData.ExecTimes" class="form_item_ipt220" placeholder="请选择">
+                        <el-option v-for="(item,index) in courseList" :key="index" :label="item" :value="item"></el-option>
+                    </el-select>
+                </el-form-item>
+                <!-- ExecTimes -->
+                <el-form-item label="执行日期：" class="form_item_mt10" style="width:440px" v-if="operate == 'command'">
+                    <el-date-picker v-model="date" @change="dateChange" class="form_item_ipt220"></el-date-picker>
+                </el-form-item>
+                <el-form-item label="医生：" class="form_item_mt10" style="width:440px" v-if="operate == 'command'">
+                    <el-select v-model="doctor" class="form_item_ipt220" filterable placeholder="请选择">
+                        <el-option v-for="(item,index) in doctorList" :key="index" :label="item.name" :value="item.code+'|'+item.name"></el-option>
+                    </el-select>
+                </el-form-item>
+                <el-form-item label="护士：" class="form_item_mt10" style="width:440px" v-if="operate == 'command'">
+                    <el-select v-model="service" class="form_item_ipt220" filterable placeholder="请选择">
+                        <el-option v-for="(item,index) in serviceList" :key="index" :label="item.name" :value="item.code+'|'+item.name"></el-option>
+                    </el-select>
+                </el-form-item>
+                <el-form-item label="医生助理：" class="form_item_mt10" style="width:440px" v-if="operate == 'command'">
+                    <el-select v-model="doctorAssit" class="form_item_ipt220" filterable placeholder="请选择">
+                        <el-option v-for="(item,index) in doctorAssitList" :key="index" :label="item.name" :value="item.code+'|'+item.name"></el-option>
+                    </el-select>
+                </el-form-item>
+                <el-form-item label="回访类型：" class="form_item_mt10" prop="curveTypeName" :rules="[ { required: true, message: '不能为空'}]" v-if="operate == 'command'">
+                    <el-select v-model="formData.curveTypeName" class="form_item_ipt220" filterable placeholder="请选择">
+                        <el-option v-for="(item,index) in cuveList" :key="index" :value="item.curveTypeName" :label="item.curveTypeName"></el-option>
+                    </el-select>
+                </el-form-item>
+                <el-form-item label="首次回访日期：" class="form_item_mt10" style="width:440px" v-if="operate == 'command'">
+                    <span>{{formData.visitDate}}</span> 
+                </el-form-item>
+                <el-form-item label="客服："  class="form_item_mt10"  prop="kf" v-if="operate == 'command'">
+                    <el-select v-model="formData.kf"  class="form_item_ipt220" @change="kfChange" filterable placeholder="请选择">
+                        <el-option v-for="(item,index) in kfList" :key="index" :label="item.text" :value="item.name+'|'+item.code"></el-option>
+                    </el-select>
+                </el-form-item>
+                <el-form-item label="备注："  class="form_item_mt10" style="width:800px;" v-if="operate == 'command'">
+                    <el-input v-model="formData.memo" class="form_item_ipt220"> </el-input>
+                </el-form-item>
+                <el-form-item label="上传图片："  class="form_item_mt0" style="width:900px;">
+                        <el-button type="primary" size="small" @click="uploadOpe=uploadOpe=='收起'?'添加照片':'收起'">{{uploadOpe}}</el-button>
+                </el-form-item>
+                    <el-form-item label="术前：" class="form_item_mt10"  style="width:780px" v-show="uploadOpe=='收起'">
+                        <span style="color:red">(请上传 800*800px以上小于10M的图片, 最多10张)</span>
+                        <upload @onSuccess="onSuccess1" :downLoadApi="downLoadApi" :fileList="fileListImg1" @onRemove="onRemove1" :action="action" @imgView="imgView" style="width:660px"></upload>
+                    </el-form-item>
+                    <el-form-item label="术中：" class="form_item_mt10" style="width:780px" v-show="uploadOpe=='收起'">
+                        <span style="color:red">(请上传 800*800px以上小于10M的图片, 最多10张)</span>
+                            <upload @onSuccess="onSuccess2" :downLoadApi="downLoadApi" :fileList="fileListImg2" @onRemove="onRemove2" @imgView="imgView" :action="action" style="width:660px"></upload>
+                    </el-form-item>
+                    <el-form-item label="术后：" class="form_item_mt10" style="width:780px" v-show="uploadOpe=='收起'">
+                        <span style="color:red">(请上传 800*800px以上小于10M的图片, 最多10张)</span>
+                        <upload @onSuccess="onSuccess3" :downLoadApi="downLoadApi" :fileList="fileListImg3" @onRemove="onRemove3" @imgView="imgView" :action="action" style="width:660px"></upload>
+                    </el-form-item>
+            </el-form>
+        </div>
+
+        <div>
+            <span style="line-height:36px">执行记录</span>
+            <el-table :data="tableData" border min-width="500">
+                <el-table-column type="index" label="" min-width="90"></el-table-column>
+                <el-table-column prop="CreateOn" label="创建日期" min-width="90">
+                    <template slot-scope="scope">
+                    <span v-if="scope.row.CreateOn">
+                        {{scope.row.CreateOn.substring(0,10)}}
+                    </span>               
+                    </template>
+                </el-table-column>
+                 <el-table-column prop="ExecDate" label="执行日期" min-width="130">
+                    <template slot-scope="scope">
+                         <span v-if="scope.row.ExecDate">
+                        {{scope.row.ExecDate.substring(0,10)+ ' ' +scope.row.ExecDate.substring(11)}}
+                         </span>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="DoctorName" label="执行医生" min-width="90">
+                        </el-table-column>
+
+                        <el-table-column prop="NurseName" label="执行护士" min-width="90">
+                        </el-table-column>
+
+                        <el-table-column prop="DoctorAssistName" label="医生助理" min-width="90">
+                        </el-table-column>
+                <el-table-column prop="CreateBy" label="提交人" min-width="100"></el-table-column>
+                <el-table-column prop="Memo" label="备注" min-width="120" show-overflow-tooltip></el-table-column>
+                <el-table-column prop="Memo" label="操作" width="80">
+                    <template slot-scope="scope">
+                        <el-button size="small" type="primary" @click="editDate(scope.$index,tableData)" disabled>编辑</el-button>
+                    </template>
+                </el-table-column>
+            </el-table>
+        </div>
+        <div class="dialog_footer" >
+            <el-button @click="save" type="primary" :loading="commandLoding">保存 </el-button>
+            <el-button @click="cancel">取消 </el-button>
+        </div>
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+import upload from '@/components/upload'
+import "../lib/report.less"
+import { xmxUrl, baseImgPath } from '@/config/env'
+import { imgApi, acceptImage } from '@/config/common'
+let uploadUrl = xmxUrl + imgApi + '?op=CusPhoto&customerName='
+import { getProofOrderDetail, addCommandOrder,GetServiceManList,UpdateOrderCommand,GetPhotoByFxCode,AddFxPhoto,GetCurveSet,DelImg} from "@/api/myData"
+import { getCookie } from '@/config/mUtils'
+export default {
+    props: {
+        fxCode: String,
+        operate:"",
+    },
+    components:{
+        upload
+    },
+    data() {
+        return {
+            downLoadApi:xmxUrl+'/Image/DownLoadImg?filePath=',
+            uploadOpe:'添加图片',
+            cuveList:[],//回访类型
+            fileListImg1:[],
+            fileListImg2:[],
+            fileListImg3:[],
+            acceptImage,
+            dialogImageUrl:"",
+            dialogVisible:false,
+            action:uploadUrl,
+            date:'',
+            date1:"",
+            formData: {
+                fxCode: "",
+                memo: "",
+                createUserId: "",
+                createBy: "",
+                execDate:(new Date()).formatDate("yyyy-MM-dd"),
+                visitDate:'',
+                curveTypeName:"",
+                kf:"",
+                serviceCode:"",
+                serviceName:"",
+                ExecTimes:1,
+            },
+            kfList:[],
+            editMes:{},
+            loading:false,
+            commandLoding:false,
+            serciceManList:[],
+            doctorList:[],
+            serviceList:[],
+            doctorAssitList:[],
+            doctor:"",
+            service:"",
+            doctorAssit:"",
+            
+            courseList:[],
+            tableData: [],
+            data: {
+                ProjectName:""
+            },
+            fileList1:[],
+            fileList2:[],
+            fileList3:[],
+            visitDate:'',
+        }
+    },
+
+    mounted() {
+        this.date = new Date()
+        this.getData()
+    },
+
+    methods: {
+        kfChange(val){
+            this.formData.serviceCode = val.split("|")[1]
+            this.formData.serviceName = val.split("|")[0]
+        },
+        onSuccess1(fileList){
+            this.fileListImg1 = fileList
+        },
+        onRemove1(file,fileList){
+            
+            this.DelImg(file.url)
+            this.fileListImg1 = fileList
+        },
+         onSuccess2(fileList){
+            this.fileListImg2 = fileList
+        },
+        onRemove2(file,fileList){
+            this.DelImg(file.url)
+            this.fileListImg2 = fileList
+        },
+        onSuccess3(fileList){
+            this.fileListImg3 = fileList
+        },
+        onRemove3(file,fileList){
+            this.DelImg(file.url)
+            this.fileListImg3 = fileList
+        },
+            // 删除原图片/视频
+            async DelImg(filepath){
+                let res = await DelImg({filepath:filepath})
+                if(!res.status){        
+                this.$message({message: '原图片删除失败！'+res.errorMessage,type: 'warning'});
+                }
+                
+            },
+        dateChange1(val){
+            if(val){
+                this.form.date = val
+            }else{
+                this.form.date = ""
+            }
+            
+        },
+        dateChange(val){            
+            if(val){
+                this.formData.execDate = val
+            }else{
+                this.formData.execDate = ""
+            }
+            let date = new Date(val.substring(0,4),Number(val.substring(5,7))-1,Number(val.substring(8,10))+1)
+            this.$set(this.formData,'visitDate',date.formatDate('yyyy-MM-dd'))
+        },
+        // 图片预览
+        imgView(url) {
+            this.$emit("photoShow",url)
+        },
+
+        //获取所有 医生
+        async getServiceMan(code) {
+            let ser = await GetServiceManList()
+            this.serciceManList =ser.data
+            this.filterDoctor(code)
+            this.copyWorth(this.data)
+        },
+        async getData() {
+            let [cuvList,res,pictures] = await Promise.all([GetCurveSet(),getProofOrderDetail(this.fxCode),GetPhotoByFxCode({FxCode:this.fxCode})])
+            this.picturesSplit(pictures.data)
+            this.cuveList = cuvList.data
+            this.data = res['ProofOrder']
+            this.getCourse()
+            this.tableData=res["OrderCommandList"]
+            this.getServiceMan(this.data.HospitalId)
+            this.action = this.action+this.data.CustomerId+'_'+this.data.CustomerName
+        },
+        getCourse(){
+            
+            this.courseList = []
+            let times = this.data.Course - this.data.CurrentCourse
+            for(let i=1;i<=times;i++){
+                this.courseList.push(i)
+            }
+        },
+        //获取 医生，设计师，助理  选择列表
+        filterDoctor(hospitalCode) {
+            //医生助理列表 
+            let des = []
+            for (let item of this.serciceManList) {
+                let hosCodes = item.hospitalCode.split(",")
+                if(hosCodes.indexOf(hospitalCode)>=0){
+                // if (item.HospitalCode === hospitalCode) {
+                    if (item.serTypeCode === '005') {    //医生助理
+                        this.doctorAssitList.push({ 'code': item["code"], 'name': item["serviceName"], text: item["serviceName"] + '(' + item["code"] + ')' })
+                    }
+                    if(item.serTypeCode === '003'){// 护士003
+                        this.serviceList.push({ 'code': item["code"], 'name': item["serviceName"], text: item["serviceName"] + '(' + item["Code"] + ')' })
+                    }
+                    if(item.serTypeCode === '001'){//医生001
+                        this.doctorList.push({ 'code': item["code"], 'name': item["serviceName"], text: item["serviceName"] + '(' + item["Code"] + ')' })
+                    }
+                    if(item.serTypeCode == "009"){//客服
+                        this.kfList.push({code: item["code"],name: item["serviceName"],text: item["serviceName"] + "(" + item["code"] + ")"});
+                    }
+                    if(item.serTypeCode == "006"){//设计师助理列表  006
+                        des.push({code: item["code"],name: item["serviceName"],text: item["serviceName"] + "(" + item["code"] + ")"});
+                    }
+                }
+            }
+            // 客服为空时取设计师助理当做客服
+            if(this.kfList.length == 0){
+                this.kfList = des
+            }
+            this.formData.kf = this.kfList.length>0?this.kfList[0].name+'|'+this.kfList[0].code:""
+            
+        },
+        copyWorth(data){          
+            this.doctor = data.ServiceManId ? data.ServiceManId+"|"+data.ServiceManName:""
+            this.service = data.NurseName?data.NurseId+"|"+data.NurseName:""
+            this.doctorAssit = data.DoctorAssist?data.DoctorAssist+"|"+data.DoctorAssistName:""
+        },
+        async addData() {
+            this.formData.fxCode = this.fxCode
+            this.formData.createUserId = getCookie("userId")
+            this.formData.createBy = getCookie("userName")
+            this.formData.doctorId = this.doctor.split("|")[0]?this.doctor.split("|")[0]:""
+            this.formData.doctorName = this.doctor.split("|")[1]?this.doctor.split("|")[1]:""
+            this.formData.nurseId = this.service.length>0?this.service.split("|")[0]:""
+            this.formData.nurseName = this.service.length>0?this.service.split("|")[1]:""
+            this.formData.doctorAssist = this.doctorAssit.length>0?this.doctorAssit.split("|")[0]:""
+            this.formData.doctorAssistName = this.doctorAssit.length>0?this.doctorAssit.split("|")[1]:""
+            this.formData.CustomerPhotoList = JSON.stringify(this.getPictures())
+            this.formData.execDate = this.formData.execDate == new Date().formatDate("yyyy-MM-dd")?new Date().formatDate("yyyy-MM-dd hh:mm:ss"):this.formData.execDate
+            let res = await addCommandOrder(this.formData)
+            if (res.success && res.success > 0) {
+                this.$message({ type: 'success', message: '执行成功！' })
+                this.$emit('close',1)
+            }
+            else{
+                 this.$message({ type: 'error', message: '执行失败！'+res.error})
+            }
+            this.commandLoding = false
+        },
+
+        getPictures(){
+            let arr = []
+            this.fileListImg1.forEach(ele=>{
+                arr.push({
+                    FxCode:this.fxCode,
+                    customerId:this.data.CustomerId,
+                    customerName:this.data.CustomerName,
+                    photoType:1,
+                    photoUrl:ele.url,
+                    createUserId:getCookie('userId'),
+                    createBy:getCookie('userName')
+                })
+            })
+            this.fileListImg2.forEach(ele=>{
+                arr.push({
+                    FxCode:this.fxCode,
+                    customerId:this.data.CustomerId,
+                    customerName:this.data.CustomerName,
+                    photoType:2,
+                    photoUrl:ele.url,
+                    createUserId:getCookie('userId'),
+                    createBy:getCookie('userName')
+                })
+            })
+            this.fileListImg3.forEach(ele=>{
+                arr.push({
+                    FxCode:this.fxCode,
+                    customerId:this.data.CustomerId,
+                    customerName:this.data.CustomerName,
+                    photoType:3,
+                    photoUrl:ele.url,
+                    createUserId:getCookie('userId'),
+                    createBy:getCookie('userName')
+                })
+                
+            })
+            return arr
+        },
+        async AddFxPhoto(params){
+            let res = await AddFxPhoto(params)
+            if(res.status){
+                this.$message({ type: 'success', message: '编辑成功！' })
+                this.$emit('close',1)
+            }else{
+                this.$message({ type: 'error', message: '编辑失败！' })
+            }
+        },
+        
+        picturesSplit(data){// 图片分离
+            if(data){
+                data.forEach(ele=>{
+                    if(ele.photoType == 1){// 术前
+                        this.fileListImg1.push({
+                            localUrl:baseImgPath+ele.photoUrl,
+                            url:ele.photoUrl,
+                        })
+                    }
+                    if(ele.photoType == 2){// 术中
+                        this.fileListImg2.push({
+                            localUrl:baseImgPath+ele.photoUrl,
+                            url:ele.photoUrl,
+                        })
+                    }
+                    if(ele.photoType == 3){// 术后
+                        this.fileListImg3.push({
+                            localUrl:baseImgPath+ele.photoUrl,
+                            url:ele.photoUrl,
+                        })
+                    }
+                })
+            }
+        },
+
+        cancel() {
+            this.$emit('close',0)
+         },
+
+        save() {
+            this.$refs["ruleForm"].validate((valid) => {
+                if (valid) {
+                    if(!(this.formData.execDate.substring(5,7) == (new Date()).formatDate("yyyy-MM-dd").substring(5,7))){
+                        this.$message({ type: 'warning', message: '执行日期只能选择本月！' })
+                        return false
+                    }
+                    this.commandLoding = true
+                    if(this.operate == 'command'){ // 添加执行
+                        this.addData()
+                    }else{
+                        this.AddFxPhoto({// 编辑图片
+                            jsonStr:JSON.stringify(this.getPictures()),
+                            code:this.fxCode
+                        })
+                    }
+                }
+                else {
+                    this.$message({ type: 'info', message: '请填写完整信息!' })
+                    return false
+                }
+            })
+        },
+
+        getState(val) {
+            if (val == null || val == "" || val == 0) return '未执行'
+            if (val == 1) return '执行中'
+            if (val == 2) return '执行完毕'
+        },
+    },
+    watch: {
+        // fxCode: function(val) {
+        //     this.getData()
+
+        // }
+    }
+}
+</script>
+
+<style scoped>
+.head {
+    margin: -10px 0 20px 0;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #ddd;
+}
+
+.head span {
+    margin: 5px 20px;
+}
+    .dialog_footer{
+        text-align: center;
+        margin-top: 10px;
+    }
+    .flex-box{
+        width: 660px;
+        max-height: 225px;
+        overflow: hidden;
+    }
+</style>
+

@@ -1,0 +1,170 @@
+<template>
+    <div class="selCommon addRP">
+        <el-form :inline="true" :model="formInline" class="demo-form-inline form_search" label-width="100px" >
+            <el-form-item label="未来院时间：" class="form_item_mt10">
+                <el-select v-model="formInline.date"  class=" form_item_ipt220" @change="onSubmit">
+                    <el-option label="全部" value="0"></el-option>
+                    <el-option label="一个月未来院" value="-30"></el-option>
+                    <el-option label="三个月未来院" value="-90"></el-option>
+                    <el-option label="六个月未来院" value="-180"></el-option>
+                    <el-option label="一年未来院" value="-365"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="医院：" class="form_item_mt10">
+                <el-select v-model="formInline.hospital" placeholder="请选择" @change="onSubmit"  class="form_item_ipt220">
+                    <el-option v-for="item in hospitalList" :label="item.supplierName" :value="item.code" :key="item.code"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="关键字：" class="form_item_mt10">
+                <el-input v-model="formInline.keyWords" placeholder="客户/设计师/设计师助理" class=" form_item_ipt220"  v-on:keyup.enter.native="onSubmit"></el-input>
+            </el-form-item>
+            <el-form-item label="" class="form_item_mt10" label-width="20px">
+                <el-button type="primary" @click="onSubmit" class="searchBtn">查询</el-button>
+            </el-form-item>
+        </el-form>
+        <el-table :data="tableData" border style="width: 100%;margin-top:15px;margin-bottom:10px;" max-height="600" class="min_table smt" v-loading="loading">
+            <el-table-column prop="customerName" label="客户" min-width="100">
+                 <template scope="scope">
+                     <el-button type="text" @click="viewCus(scope.row)">
+                        {{scope.row.customerName}}
+                    </el-button>
+                </template>
+            </el-table-column>
+            <el-table-column prop="execDate" min-width="100" label="最近來院日期">
+                <template scope="scope">
+                     <span v-if="scope.row.execDate">
+                        {{scope.row.execDate.substring(0,10)}}
+                    </span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="hospitalName" label="医院" min-width="150"></el-table-column>
+            <el-table-column prop="projectName" label="项目名称" min-width="150" show-overflow-tooltip></el-table-column>
+            <el-table-column prop="designerName" label="设计师" min-width="100"></el-table-column>
+            <el-table-column prop="designerAssistName" label="设计师助理" min-width="100"></el-table-column>
+            <el-table-column prop="CommandState" label="操作" width="100" align="center">
+                <template scope="scope">
+                    <el-button @click="select(scope.row)" type="primary" size="small" >选择</el-button>
+                </template>
+            </el-table-column>
+        </el-table>
+
+        <!-- 分页 -->
+        <div class="block">
+            <el-pagination 
+                @size-change="handleSizeChange" 
+                @current-change="handleCurrentChange" 
+                :current-page="currentPage" 
+                :page-sizes="[10, 20, 30, 40]" 
+                :page-size="size" 
+                layout="total, sizes, prev, pager, next, jumper" 
+                :total="total">
+            </el-pagination>
+        </div>
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+    import {GetCustomerLeastDate,GetDropDownPermission} from "@/api/myData"
+    import { getCookie } from "@/config/mUtils";
+    var _this 
+    export default {
+        components: {},
+        data() {
+            return {
+                loading:false,
+                tableData:[],
+                allData:[],
+                currentPage:1,
+                size:10,
+                total:0,
+                hospitalList:[],
+                formInline:{
+                    hospital:'',
+                    startDate:'',
+                    endDate:'',
+                    keyWords:'',
+                    date:'-30',
+                },
+            }
+        },
+        filters:{
+          
+        },
+        // watch:{
+        //     "visitForm.kf":{
+        //         handler(oldVal,curVal){
+        //         },
+        //         deep:true
+        //     }
+        // },
+        mounted() {
+            this.GetDropDownPermission()
+        },
+        methods: {
+            select(data){
+                this.$emit('select',data)
+            },
+            viewCus(data){
+                this.$emit('viewCus',data)
+            },
+            // dateSelect(val){
+            //     if(val){
+            //         this.formInline.startDate = val.substring(0,10)
+            //         this.formInline.endDate = val.substring(13)
+            //     }else{
+            //         this.formInline.startDate = val.substring(0,10)
+            //         this.formInline.endDate = val.substring(13)
+            //     }
+            // },
+            async GetDropDownPermission() {
+                let hospital = await GetDropDownPermission({typeId: 1})
+                this.hospitalList = hospital.data
+                this.formInline.hospital = hospital.data[0].code
+            },
+            handleSizeChange(val){
+                this.size = val
+                this.getData()
+            },
+            handleCurrentChange(val){
+                this.currentPage = val
+                this.getData()
+            },
+            onSubmit(){
+                this.currentPage = 1
+                this.getData()
+            },
+            getData(){
+                this.GetCustomerLeastDate({
+                    HospitalCode:this.formInline.hospital,
+                    Keywords:this.formInline.keyWords,
+                    TypeId:Number(this.formInline.date),
+                    pageSize:this.size,
+                    pageIndex:this.currentPage,
+                })
+            },
+            async GetCustomerLeastDate(params){
+                this.loading = true
+                let res = await GetCustomerLeastDate(params)
+                if(res.status){
+                    this.tableData = res.data
+                    this.allData = res.data
+                    this.total = res.count
+                    // this.getPageData()
+                }else{
+                    this.$message.error('查询失败！'+res.errorMessage);
+                }
+                this.loading = false
+            },
+            // getPageData(){
+            //     this.tableData = this.allData.slice((this.currentPage-1)*this.size,this.currentPage*this.size)
+            // },
+        },
+    }
+</script>
+
+<style scoped>
+.block{
+    float: right;
+    margin-bottom: 10px;
+}
+</style>

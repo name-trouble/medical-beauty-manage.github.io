@@ -1,0 +1,200 @@
+<template>
+    <div class="tag selCommon" style="text-align:center">
+        <el-form :inline="true" :model="formInline" class="demo-form-inline" label-width="80px">
+            <el-form-item label="关键字" style='margin-bottom:10px'>
+                <el-input v-model="formInline.keywords" placeholder="" style="width: 200px;"></el-input>
+            </el-form-item>
+            <el-form-item label=" " style='margin-bottom:10px;float:left'>
+                <el-button type="primary" @click="onSubmit" class="searchBtn">查询</el-button>
+            </el-form-item>
+        </el-form>
+        <!-- 信息表 -->
+        <el-table :data="tableData" border style="width: 100%;margin-top:15px;margin-bottom:10px;" height="460">
+            <el-table-column prop="shopCode" label="商户编号" min-width="110px"></el-table-column>
+            <el-table-column prop="code" label="logo" min-width="120px">
+                <template slot-scope="scope">
+                    <img :src="baseImgPath+scope.row.shopLogo" alt="" height="40">
+                </template>
+            </el-table-column>
+            <el-table-column prop="shopName" label="商户全称" min-width="150"></el-table-column>
+            <el-table-column prop="shopShortName" label="简称" min-width="100"></el-table-column>
+            <!-- <el-table-column prop="shopTagsName" label="商户分类" min-width="100"></el-table-column> -->
+            <!-- <el-table-column prop="code" label="门店地址" min-width="150">
+                <template slot-scope="scope">
+                   {{scope.row.Province}}{{scope.row.City}}{{scope.row.Area}}{{scope.row.AddrDetail}}
+                </template>
+            </el-table-column> -->
+            <!-- <el-table-column prop="contactPerson" label="联系人" min-width="150"></el-table-column>
+            <el-table-column prop="mobile" label="联系方式" min-width="150"></el-table-column> -->
+            <el-table-column prop="branchName" label="代理商" min-width="100"></el-table-column>
+            <el-table-column prop="status" label="操作" min-width="100">
+                <template slot-scope="scope">
+                     <el-button  size="mini" icon="edit" @click="select(scope)"> 选择</el-button>
+                    <!-- <el-button @click="addTag('编辑',scope.$index,tableData)" type="text">选择</el-button> -->
+                    <!-- <el-button @click="deleteRow(scope.$index,tableData)" type="text">删除</el-button> -->
+                </template>
+            </el-table-column>
+        </el-table>
+        <!-- 信息表 -->
+
+        <!-- 分页 -->
+        <div class="block">
+            <el-pagination
+                @size-change="handleSizeChange"
+                @current-change="handleCurrentChange"
+                :current-page="currentPage"
+                :page-sizes="[10, 20, 30, 40]"
+                :page-size="size"
+                layout="total, sizes, prev, pager, next, jumper"
+                :total="total">
+            </el-pagination>
+        </div>
+        <!-- 分页 -->
+
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+    import {baseImgPath} from "@/config/env"
+    import  "@/style/selfCommon.less"
+    import { getCookie, delCookie } from '@/config/mUtils'
+    import {GetShopByPage,AddTags,UpdateTags,DeleteTagsById} from "@/api/myData"
+    export default {
+        // name: "merchantList",
+        data () {
+            return {
+                baseImgPath:baseImgPath,
+                mes:{},
+                title:"",
+                tag:false,
+                total:0,
+                size:10,
+                currentPage:1,
+                formInline: {
+                    keywords: '',
+                    typeCode:'',
+                    branch:"",
+                },
+                UserList:[],
+                form:{
+                    TypeCode:'',
+                    TagName:''
+                },
+                tableData:[],
+            }
+        },
+        
+        mounted(){
+            this.onSubmit()
+        },
+        methods:{
+            select(item) {
+                // item.column.type='primary';
+                ;
+                this.$emit('MerchantSelectInfo',item.row.id, item.row.shopLogo,item.row.shopName)
+            },
+
+            async GetShopByPage(params){
+                try{
+                    let res = await GetShopByPage(params)
+                    this.tableData = res.data
+                    // this.tableData = this.dealData(res.data)
+                    this.total = res.count
+                }catch(err){
+                    console.log(err)
+                }
+            },
+            async UpdateTags(params){
+                try{
+                    let res = await UpdateTags(params)
+                    if(res.success){
+                        this.$message({message: '编辑成功', type: 'success'});
+                        this.onSubmit()
+                        this.tag = false
+                    }else{
+                        this.$message.error('编辑失败');
+                    }
+                }catch(err){
+                    console.log(err)
+                    this.$message.error('编辑失败');
+                }
+            },
+            onSubmit(){
+                this.GetShopByPage({
+                    pageIndex:this.currentPage,
+                    pageSize:this.size,
+                    keywords:this.formInline.keywords.removeSP(),
+                })
+            },
+            handleSizeChange(val) {
+                console.log(`每页 ${val} 条`);
+                this.size = val
+                this.onSubmit()
+            },
+            handleCurrentChange(val) {
+                console.log(`当前页: ${val}`);
+                this.currentPage = val
+                this.onSubmit()
+            },
+
+            // 时间格式转化
+            formatTen (num) {
+                return num > 9 ? (num + "") : ("0" + num)
+            },
+
+            formatDate(date) {
+                if (date === '') {
+                    return ''
+                } else {
+                    var year = date.getFullYear();
+                    var month = date.getMonth() + 1;
+                    var day = date.getDate();
+                    var hour = date.getHours();
+                    var minute = date.getMinutes();
+                    var second = date.getSeconds();
+                    return year + "-" + this.formatTen(month) + "-" + this.formatTen(day)+" "+this.formatTen(hour)+":"+this.formatTen(minute)+":"+this.formatTen(second);
+                }
+            },
+            addTag(ope,index,data){
+                this.reset()
+                this.tag = true
+                this.title = ope
+                if(data){
+                    this.mes = JSON.parse(JSON.stringify(data[index]))
+                }
+            },
+            deleteRow(index,data){
+                this.$confirm('此操作将永久删除该数据, 是否继续?', '提示', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    type: 'warning'
+                }).then(() => {
+                    
+                    this.DeleteTagsById({
+                        id:data[index].Id
+                    })
+                }).catch(() => {
+
+                });
+            },
+            reset(){
+                this.form = {
+                    TypeCode:'',
+                    TagName:''
+                }
+            },
+            close(val){
+              this.tag = false
+                this.onSubmit()
+            },
+        },
+
+    }
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+    .VideoManage{
+        text-align: left
+    }
+</style>

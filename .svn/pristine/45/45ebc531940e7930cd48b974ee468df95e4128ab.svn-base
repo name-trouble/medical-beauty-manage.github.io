@@ -1,0 +1,164 @@
+<template>
+    <div>
+        <div class="select" id="userinfo_select">
+            <el-input size="small" v-model="filterWord"  v-on:keyup.enter.native="search" placeholder="编号/名称"></el-input>
+            <el-button type="primary" size="small" icon="search" @click="search">搜索</el-button>
+            <span style="margin-left:20px;">已选中：</span>
+            <el-tag type="success" style="font-size:14px" v-show="Realname!=''">{{Realname}}</el-tag>
+        </div>
+        <el-table :data="tableData" ref="multipleTable" v-loading="loading"
+         style="width: 100%;margin-top:10px;margin-bottom:10px;" border row-key="id" @selection-change="selectChange" @row-click="rowClick" highlight-current-row>
+
+            <el-table-column type="index" width="80" label="序号">
+            </el-table-column>
+
+            <el-table-column prop="Code" label="编号" min-width="100">
+            </el-table-column>
+
+            <el-table-column prop="UserName" label="机构名称" min-width="100">
+                <template scope="scope">
+                    <span v-if="scope.row.TypeCode == '01'">平台</span>
+                <span v-else>
+                     {{scope.row.HospitalName}}
+                     <!-- {{scope.row.HospitalCode}} -->
+                </span>
+                </template>
+            </el-table-column>
+
+            <el-table-column prop="UserName" label="代理商" min-width="100">
+                <template scope="scope">
+                    {{scope.row.BranchName}}<br/>
+                    {{scope.row.BranchCode}}
+                </template>
+            </el-table-column>
+
+            <el-table-column prop="Realname" label="名称" min-width="100">
+            </el-table-column>
+        </el-table>
+        <!-- 分页 -->
+        <div class="block">
+            <el-pagination @size-change="pageSizeChange"
+                           @current-change="pageIndexChange"
+                           :total="dataCount"
+                           :current-page.sync="currentPage"
+                           :page-size="pageSize"
+                           :page-sizes="[10, 20, 50, 100,500 ,1000]"
+                           layout="total, sizes, prev, pager, next, jumper">
+            </el-pagination>
+        </div>
+        <!-- 分页 -->
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+import { getRoleAll,GetRoleByPage } from '../../../api/myData'
+import '../lib/role.less'
+
+export default {
+    props: {
+        userClick: Function
+    },
+
+    data() {
+        return {
+            loading:false,
+            dataCount: 0, //总数
+            currentPage: 1,   //当前页面index
+            pageSize: 10,  //每页显示条数
+            filterWord: "",
+            Realname: "",
+            tableData: [],
+            allData: [],
+            selectData: [],
+        }
+    },
+
+    mounted() {
+        this.getUserInfo()
+    },
+
+    methods: {
+        async getUserInfo() {
+            this.loading = true
+            let res = await GetRoleByPage({
+                keywords:this.filterWord.removeSP(),
+                pageIndex:this.currentPage,
+                pageSize:this.pageSize
+            })
+            this.loading = false
+            this.dataCount = res.count
+            // this.allData = res.data
+            this.tableData = res.data
+        },
+
+        pageIndexChange(index) {
+            this.getUserInfo()
+        },
+
+        pageSizeChange(size) {
+            this.pageSize = size
+            this.getUserInfo()
+        },
+
+        //checkbox选择事件
+        selectChange(val) {
+            this.selectData = val
+        },
+
+        //row单击事件
+        rowClick(row, event, column) {
+            this.Realname = row["Realname"]
+            this.userClick && this.userClick(row["Id"])
+        },
+
+        search() {
+            this.currentPage = 1
+            this.getUserInfo()
+            // if (this.filterWord === "" || this.filterWord === null) {
+            //     this.tableData = this.allData.slice(0)
+            //     return;
+            // }
+            // let _this = this
+            // this.tableData = []
+            // debugger
+            // this.allData.forEach((item, index) => {
+            //     if (item["Code"].indexOf(_this.filterWord) >= 0 || item["Realname"].indexOf(_this.filterWord) >= 0) {
+            //         _this.tableData.push(item)
+            //     }
+            // })
+        },
+
+    }
+
+}
+</script>
+
+<style lang="less" scoped>
+.select {
+    .el-input {
+        position: static;
+        width: 60px;
+        float: none;
+    }
+
+    .el-input,
+    .el-input__inner {
+        width: auto;
+    }
+
+    .el-select {
+        padding-right: 0;
+        float: none;
+    }
+}
+
+.block {
+    float: right;
+    margin-right: 30px;
+    padding-right: 0!important;
+}
+
+.tbRow {
+    cursor: pointer
+}
+</style>

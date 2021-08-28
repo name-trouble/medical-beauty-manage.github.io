@@ -1,0 +1,323 @@
+<template>
+    <div class="tag selCommon">
+        <el-form :inline="true" :model="formInline" class="demo-form-inline form_search" label-width="80px">
+            <!-- <el-form-item label="入库日期：" class="form_item_mt10">
+                <el-date-picker
+                    v-model="date"
+                    style="width: 200px;"
+                    type="daterange"
+                    @change="dateChange"
+                    placeholder="选择日期">
+                </el-date-picker>
+            </el-form-item> -->
+            <el-form-item label="出库医院：" class="form_item_mt10">
+                <el-select v-model="formInline.outHospitalCode" @change="outHosChange" style='width:200px;'>
+                    <el-option v-for="(item,index) in outHospitalList" :key="index" :label="item.SupplierName" :value="item.Code"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="入库医院：" class="form_item_mt10">
+                <el-select v-model="formInline.inHospitalCode" @change="inHosChange" style='width:200px;'>
+                    <el-option v-for="(item,index) in inHospitalList" :key="index" :label="item.SupplierName" :value="item.Code"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="付款状态：" class="form_item_mt10">
+                <el-select v-model="formInline.orderState"  style='width:200px;'>
+                    <el-option label="全部" value=""></el-option>
+                    <el-option label="待付款" value="0"></el-option>
+                    <el-option label="已付款" value="1"></el-option>
+                    <el-option label="已入库" value="2"></el-option>
+                </el-select>
+            </el-form-item>
+            <!-- <el-form-item label="记账状态：" class="form_item_mt10">
+                <el-input v-model="formInline.keywords" placeholder="请输入" style="width: 200px;" v-on:keyup.enter.native="onSubmit"></el-input>
+            </el-form-item>
+            <el-form-item label="审核状态：" class="form_item_mt10">
+                <el-select v-model="formInline.hospitalCode"  style='width:200px;'>
+                    <el-option label="全部" value=""></el-option>
+                    <el-option label="未审核" value="0"></el-option>
+                    <el-option label="已审核" value="1"></el-option>
+                </el-select>
+            </el-form-item> -->
+            <el-form-item label=" " class="form_item_mt10">
+                <el-button type="primary" @click="onSubmit" class="searchBtn">查询</el-button>
+                <el-button type="primary" class="searchBtn" @click="exportTable" :disabled="tableData.length == 0">导出报表</el-button>
+                <Export :tHeader="tHeader"  ref="exportTable" :filterVal=' filterVal' :tableData1='tableData1' :name='name' style="display:none"></Export>
+            </el-form-item>
+        </el-form>
+        <!-- 信息表 -->
+        <el-table :data="tableData" border style="width: 100%;margin-top:15px;margin-bottom:10px;" max-height="560" class="smt min_table" v-loading="loading">
+            <!-- <el-table-column prop="drugInOutId" label="出库编号" min-width="90"></el-table-column> -->
+            <el-table-column prop="createOn" label="出库日期" min-width="90">
+                <template scope="scope">
+                    <span v-if="scope.row.createOn">{{scope.row.createOn.substring(0,10)}}</span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="hospitalName" label="出库医院" min-width="90"></el-table-column>
+            <el-table-column prop="toHospitalName" label="入库医院" min-width="90"></el-table-column>
+          
+            <!-- <el-table-column prop="drugInType" label="入库类别" min-width="90"></el-table-column> -->
+            <!-- <el-table-column prop="warehouseInName" label="入库仓库" min-width="90"></el-table-column> -->
+            <el-table-column prop="orderAmount" label="出库金额" min-width="90"></el-table-column>
+            <el-table-column prop="createBy" label="操作人" min-width="90"></el-table-column>
+            <!-- <el-table-column prop="address" label="审核人" min-width="90"></el-table-column>
+            <el-table-column prop="address" label="审核日期" min-width="90"></el-table-column> -->
+            <el-table-column prop="memo" label="备注" min-width="90"></el-table-column>
+            <el-table-column prop="address" label="付款状态" min-width="90">
+                <template scope="scope">
+                    <el-tag type="danger" v-if="scope.row.orderState == 0">待付款</el-tag>
+                    <el-tag type="success" v-if="scope.row.orderState == 1">已付款</el-tag>
+                    <el-tag type="success" v-if="scope.row.orderState == 2">已入库</el-tag>
+                </template>
+            </el-table-column>
+            <!-- <el-table-column prop="status" label="操作" width="250" fixed="right">
+                <template scope="scope">
+                    <el-button @click="pay(scope.row)" type="primary" size="small" :disabled="scope.row.orderState!=0">付款</el-button>
+                    <el-button @click="approve(scope.row)" type="primary" size="small" :disabled="scope.row.orderState!=1">审核入库</el-button>
+                </template>
+            </el-table-column> -->
+        </el-table>
+        <!-- 信息表 -->
+
+        <!-- 分页 -->
+        <div class="block">
+            <el-pagination
+                @size-change="handleSizeChange"
+                @current-change="handleCurrentChange"
+                :current-page="currentPage"
+                :page-sizes="[10, 20, 30, 40]"
+                :page-size="size"
+                layout="total, sizes, prev, pager, next, jumper"
+                :total="total">
+            </el-pagination>
+        </div>
+        <!-- 分页 -->
+
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+    import {baseImgPath} from "@/config/env"
+    import  "@/style/selfCommon.less"
+    import { getCookie, delCookie } from '@/config/mUtils'
+    import {GetSupplierBySupTypeCode,GetDrugPay,UpdateDrugPayApproved,UpdateDrugPayFinished} from "@/api/myData"
+    import Export from '@/components/export'
+    export default {
+        // name: "VideoManage",
+        data () {
+            return {
+                date:"",
+                loading:false,
+                total:0,
+                size:10,
+                currentPage:1,
+                formInline: {
+                    keywords: '',
+                    orderState:"",
+                    outHospitalCode:"",
+                    inHospitalCode:"",
+                },
+                tableData:[],
+                hospitalList:[],
+                outHospitalList:[],
+                inHospitalList:[],
+                allData:[],
+            }
+        },
+        computed: {
+            /* 导出报表参数 tHeader,filterVal,tableData1*/
+           tHeader(){
+                return ['出库日期', '出库医院', '入库医院', '出库金额', '操作人',  '备注','付款状态']
+            },
+            filterVal(){
+                return ['createOn', 'hospitalName', 'toHospitalName', 'orderAmount', 'createBy','memo','orderState']
+            },
+            tableData1(){
+                let data = JSON.parse(JSON.stringify(this.allData))
+                data.forEach(ele=>{
+                    if(ele.orderState === 0){
+                        ele.orderState = '待付款'
+                    }
+                    if(ele.orderState === 1){
+                        ele.orderState = '已付款'
+                    }
+                    if(ele.orderState === 2){
+                        ele.orderState = '已入库'
+                    }
+                    
+                })
+                return data
+            },
+            name(){
+                return '付款'
+            },
+            /*导出报表参数 tHeader,filterVal,tableData1*/
+        },
+        mounted(){
+            this.date = [new Date(),new Date()]
+            this.GetDropDownPermission()
+        },
+        methods:{
+           exportTable(){
+                this.GetDrugPay({
+                    "hospitalCode": this.formInline.outHospitalCode,
+                    "toHospitalCode": this.formInline.inHospitalCode,
+                    "orderState": this.formInline.orderState,
+                    pageIndex:1,
+                    pageSize:this.total,
+                    keywords:this.formInline.keywords
+                },'export')
+            },
+             hosChange(){
+                this.hospitalList.forEach(ele=>{
+                    if(ele.Code == getCookie('hospitalCode')){
+                        this.outHospitalList.push(ele)
+                    }else{
+                         this.inHospitalList.push(ele)
+                    }
+                })
+            },
+            // dateChange(val){
+            //     if(val){
+            //         this.formInline.startDate = val.substring(0,10)
+            //         this.formInline.endDate = val.substring(13)
+            //     }else{
+            //         this.formInline.startDate = ""
+            //         this.formInline.endDate = ""
+            //     }
+            // },
+            async GetDropDownPermission(){
+                let res1 = await GetSupplierBySupTypeCode({SupTypeCode:"001,002,003"});
+                this.hospitalList = res1
+                this.hosChange()
+                if(getCookie("hospitalCode")){
+                    this.formInline.outHospitalCode = getCookie("hospitalCode")
+                }else{
+                    this.outHospitalList = res1
+                }
+            },
+       
+            async GetDrugPay(params,ope){
+                try{
+                    
+                    let res = await GetDrugPay(params)
+                    if(ope == 'export'){
+                        this.allData = res.data
+                        let _this = this
+                        setTimeout(()=>{
+                            _this.$refs.exportTable.handleDownload()
+                        },50)
+                    }else{
+                        this.tableData = res.data
+                        this.total = res.count
+                    }
+                    this.loading = false
+                }catch(err){
+                    console.log(err)
+                }
+            },
+            
+            onSubmit(){
+                this.currentPage = 1
+                this.search()
+            },
+            search(){
+                this.loading = true
+                this.GetDrugPay({
+                    "hospitalCode": this.formInline.outHospitalCode,
+                    "toHospitalCode": this.formInline.inHospitalCode,
+                    "orderState": this.formInline.orderState,
+                    pageIndex:this.currentPage,
+                    pageSize:this.size,
+                    keywords:this.formInline.keywords
+                })
+            },
+            handleSizeChange(val) {
+                this.size = val
+                this.search()
+            },
+            handleCurrentChange(val) {
+                this.currentPage = val
+                this.search()
+            },
+
+            approve(data){
+                this.$confirm('此操作将永久删除该文件, 是否继续?', '提示', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    type: 'warning'
+                }).then(() => {
+                    
+                    this.UpdateDrugPayApproved({
+                        id:data.id,
+                        StockType:data.stockType,
+                        DrugInOutId:data.drugInOutId
+                    })
+                }).catch(() => {
+                        
+                });
+            },
+
+            pay(data){
+                const h = this.$createElement;
+                this.$msgbox({
+                    title: '提示',
+                    message: h('p', null, [
+                        h('div', { style: 'font-weight:bold;line-height:36px' }, '核查信息无误后点击确认'),
+                        h('div', { style: 'line-height:36px' }, '收款医院：'+data.hospitalName),
+                        h('div', { style: 'line-height:36px' }, '付款医院：'+data.toHospitalName),
+                        h('div', { style: 'line-height:36px' }, '金额：'+data.orderAmount),
+                    ]),
+                    showCancelButton: true,
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    beforeClose: (action, instance, done) => {
+                        if (action === 'confirm') {
+                            instance.confirmButtonLoading = true;
+                            instance.confirmButtonText = '执行中...';
+                            let obj = {id:data.id}
+                            this.UpdateDrugPayFinished(obj)
+                            instance.confirmButtonLoading = false;
+                            done();
+                        } else {
+                            done();
+                        }
+                    }
+                }).then(action => {
+                    // this.$message({
+                    //     type: 'info',
+                    //     message: 'action: ' + action
+                    // });
+                });
+            },
+            // 审核
+            async UpdateDrugPayApproved(params){
+                
+                let res = await UpdateDrugPayApproved(params)
+                    if(res.status){
+                        this.$message({message: '操作成功', type: 'success'});
+                        this.search()
+                    }else{
+                        this.$message.error('操作失败');
+                    }
+            },
+            // 收款状态
+            async UpdateDrugPayFinished(params){
+                let res = await UpdateDrugPayFinished(params)
+                if(res.status){
+                    this.$message({message: '操作成功', type: 'success'});
+                    this.search()
+                }else{
+                    this.$message.error('操作失败');
+                }
+            }
+        },
+        components: {
+            Export,
+        }
+    }
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+
+</style>

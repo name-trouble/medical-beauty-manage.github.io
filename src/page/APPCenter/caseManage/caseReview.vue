@@ -1,0 +1,254 @@
+<template>
+    <div class="settled selCommon">
+        <el-form :inline="true" :model="formInline" class="demo-form-inline form_search" label-width="80px"  >
+            <el-form-item label="注册日期："  class="form_item_mt10 ">
+                <el-date-picker
+                    v-model="date"
+                    type="daterange"
+                    @change="dateChange"
+                    style='width:200px;'
+                    placeholder="选择日期范围">
+                </el-date-picker>
+            </el-form-item>
+            <el-form-item label="上传日期："  class="form_item_mt10 ">
+                <el-date-picker
+                    v-model="date1"
+                    type="daterange"
+                    @change="dateChange1"
+                    style='width:200px;'
+                    placeholder="选择日期范围">
+                </el-date-picker>
+            </el-form-item>
+           
+            <el-form-item label="关键字：" class="form_item_mt10">
+               <el-input v-model="formInline.customer"  style='width:200px;' placeholder="项目/ 发布人/ 医生/ 医院" @keyup.enter.native="search"></el-input>
+            </el-form-item>
+            <el-form-item label="" class="form_item_mt10 form_item_wh280">
+                <el-button type="primary" @click="search" class="searchBtn" icon="search">查询</el-button>
+            </el-form-item>
+        </el-form>
+        <el-table :data="tableData" border style="width: 100%;margin-top:15px;margin-bottom:10px;" max-height="600" class="min_table smt" v-loading="loading" @sort-change = 'sortChange'>
+            <el-table-column prop="code" label="术前照片" min-width="100"></el-table-column>
+            <el-table-column prop="registDate" label="术后照片" min-width="100">
+                <template slot-scope="scope">
+                      <span v-if="scope.row.registDate">
+                          {{scope.row.registDate.substring(0,10)}}
+                      </span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="memberName" label="最新日记" min-width="100"  >
+                <template slot-scope="scope">
+                    <el-button type="text" v-if="scope.row.type == 1" style="color:black" @click="view(scope.row)">{{scope.row.memberName}}</el-button>
+                    <el-button type="text" v-else style="color:red" @click="view(scope.row)">{{scope.row.memberName}}</el-button>
+                    <span v-if="scope.row.memberTags">({{scope.row.memberTags}})</span>
+                </template>
+            </el-table-column>
+         
+            <el-table-column prop="phoneNumber" label="项目名称" min-width="100" >
+                <template slot-scope="scope">
+                    <span v-if="scope.row.phoneNumber">{{scope.row.phoneNumber.substring(0,3)+'****'+scope.row.phoneNumber.substring(7)}}</span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="cardNO" label="发布人" min-width="100" ></el-table-column>
+            <el-table-column prop="sex" label="医院" min-width="100">
+                <template slot-scope="scope">
+                    <span v-html="scope.row.sex == '1'?'男':'女'"></span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="customerName" label="设计师" min-width="100">
+                <template slot-scope="scope">
+                    <span v-if="scope.row.birthday">{{scope.row.birthday|filterFun}}</span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="hospitalName" label="医生" min-width="100"></el-table-column>
+            <el-table-column prop="amount" label="操作" min-width="100" align="center" >
+                <template slot-scope="scope">
+                    <el-button type="primary" @click="sure(scope.row)" size="small">通过</el-button>
+                    <el-button type="danger" @click="reject(scope.row)" size="small">拒绝</el-button>
+                    <!-- <el-button type="danger" @click="Revoke(scope.row)" size="small">撤销</el-button> -->
+                </template>
+            </el-table-column>
+        </el-table>
+        <!-- 分页 -->
+        <div class="block">
+            <el-pagination
+                 @size-change="handleSizeChange"
+                 @current-change="handleCurrentChange"
+                 :current-page="currentPage"
+                 :page-sizes="[10, 30, 50, 100]"
+                 :page-size="size"
+                 layout="total, sizes, prev, pager, next, jumper"
+                 :total="total">
+             </el-pagination>
+        </div>
+        <el-dialog title="客户详情" :visible.sync="dialogView"  top="5%"  size="" :close-on-click-modal="false">
+            <CustomerView :mes="cusMes" style="width: 1100px"  v-if="dialogView"></CustomerView>
+        </el-dialog>
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+import CustomerView from "@/page/FinanceManage/ReportManage/com/customerDetail.vue"
+import {GetDropDownPermission,GetBranchReceiveList,getBaseDataByCode,getServiceManAllByPage,GetUserAllByKeywords,ApprovePortraitureState} from "@/api/myData"
+import "@/style/selfCommon.less"
+    export default {
+        data () {
+            return {
+                cusMes:{},
+                dialogView:false,
+                data1:"",
+                date:"",
+                total:1,
+                size:10,
+                currentPage:1,
+                HospitalList:[],
+                formInline: {
+                    customer:"",
+                    startDate:"",
+                    endDate:"",
+                    startDate1:"",
+                    endDate1:"",
+                },
+                tableData:[],
+                loading:false,
+            }
+        },
+        computed: {
+            
+        },
+        filters: {
+            // 过滤不正确的年龄
+            filterFun(val){
+                if(!isNaN(Number(val.substring(0,4)))){
+                    return new Date().getFullYear()-Number(val.substring(0,4))
+                }else{
+                    return ''
+                }
+            }
+        },
+       
+        mounted(){
+            let date1 = new Date()
+            date1.setDate(1)
+            this.date = [date1,new Date()]
+            this.date1 = [date1,new Date()]
+            this.getSupplierByPage()
+        },
+        methods: {
+            view(data){
+                this.cusMes = {
+                    CustomerId:data.code
+                }
+                this.dialogView = true
+            },
+            sortChange(column, prop, order){
+                
+            },
+            dateChange(val){
+                if(val){
+                    val = val.formatDates()
+                    this.formInline.startDate = val.substring(0,10)
+                    this.formInline.endDate = val.substring(13)
+                }else{
+                    this.formInline.startDate = ""
+                    this.formInline.endDate = ""
+                }
+            },
+            dateChange1(val){
+                if(val){
+                    val = val.formatDates()
+                    this.formInline.startDate1 = val.substring(0,10)
+                    this.formInline.endDate1 = val.substring(13)
+                }else{
+                    this.formInline.startDate1 = ""
+                    this.formInline.endDate1 = ""
+                }
+            },
+           
+            async getSupplierByPage(){
+                this.serTypes = await getBaseDataByCode("0014")
+                let res = await GetDropDownPermission({typeId:1})
+                this.formInline.Hospital = res.data[0].code
+                this.HospitalList = res.data
+                // this.search()
+            },
+            search(){
+                this.currentPage = 1
+                this.submit()
+            },
+            submit(){
+                this.loading = true
+                this.getMes({
+                    keywords: this.formInline.customer,
+                    hospitalCode: this.formInline.hospital,
+                    startDate: '',
+                    State:this.formInline.status,
+                    endDate: '',
+                    pageIndex: this.currentPage,
+                    pageSize:this.size
+                })
+            },
+            async getMes(params){
+                let res = await GetUserAllByKeywords(params)
+                this.total = res.count
+                this.tableData = res.data
+                this.loading = false
+            },
+
+            handleSizeChange(val) {
+                this.size = val
+                this.submit()
+             },
+             handleCurrentChange(val) {
+                this.currentPage = val
+                this.submit()
+             },
+            reject(data){
+                this.$confirm('是否确认拒绝该案例发布？', '提示', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    type: 'warning'
+                }).then(() => {
+                    this.ApprovePortraitureState({
+                        state:2,
+                        code:data.code
+                    })
+                }).catch(() => {
+
+                });
+            },
+            sure(data){
+                this.$confirm('此操作将确认签署肖像权，是否确认？', '提示', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    type: 'warning'
+                }).then(() => {
+                    this.ApprovePortraitureState({
+                        state:1,
+                        code:data.code
+                    })
+                }).catch(() => {
+                      
+                });
+            },
+            
+            async ApprovePortraitureState(params){
+                let res = await ApprovePortraitureState(params)
+                if(res.status == true){
+                    this.$message({message: '操作成功', type: 'success'});
+                    this.submit()
+                }else{
+                    this.$message.error('操作失败');
+                }
+            },
+        },
+        components: {
+           CustomerView
+        }
+    }
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+
+</style>

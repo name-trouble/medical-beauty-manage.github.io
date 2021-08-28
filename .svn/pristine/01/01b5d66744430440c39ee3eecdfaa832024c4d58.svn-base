@@ -1,0 +1,9 @@
+ .el-form-item__error {
+    color: #ff4949;
+    font-size: 12px;
+    line-height: 1 !important; 
+    padding-top: 4px;
+    position: static !important;
+    top: 100%;
+    left: 0;
+}

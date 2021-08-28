@@ -1,0 +1,293 @@
+<template>
+    <div class="MemberManage">
+        <el-form :inline="true" :model="formInline" class="demo-form-inline form_search" label-width="80px" >
+            <el-form-item label="日期：" class="form_item_mt10">
+                <el-date-picker
+                    v-model="date"
+                    type="daterange"
+                    class="form_item_ipt220"
+                    @change="dateSelect"
+                    placeholder="选择日期范围">
+                </el-date-picker>
+            </el-form-item>
+            <el-form-item label="反馈类型：" class="form_item_mt10">
+                 <el-select v-model="formInline.feedType" class="form_item_ipt220" @change="onSubmit">
+                    <el-option label="全部" value=""></el-option>
+                    <el-option v-for="(item,index) in feedTypeList" :key="index" :label="item.name" :value="item.value"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="优先级：" class="form_item_mt10">
+                 <el-select v-model="formInline.priorityType" class="form_item_ipt220" @change="onSubmit">
+                     <el-option label="全部" value=""></el-option>
+                    <el-option v-for="(item,index) in priorityList" :key="index" :label="item.name" :value="item.value"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="反馈状态：" class="form_item_mt10">
+                 <el-select v-model="formInline.feedState" class="form_item_ipt220" @change="onSubmit">
+                    <el-option label="全部" value=""></el-option>
+                    <el-option label="待解决" value="0"></el-option>
+                    <el-option label="已解决" value="1"></el-option>
+                    <el-option label="需求不明确" value="2"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="医院：" class="form_item_mt10">
+                <el-select v-model="formInline.hospital" placeholder="请选择" @change="onSubmit"  class="form_item_ipt220">
+                    <el-option v-for="item in hospitalList" :label="item.supplierName" :value="item.code" :key="item.code"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="关键字：" class="form_item_mt10">
+                <el-input v-model="formInline.keywords" placeholder="" class="form_item_ipt220" v-on:keyup.enter.native="onSubmit"></el-input>
+            </el-form-item>
+            <el-form-item label=" " class="form_item_mt10">
+                <el-button type="primary" @click="onSubmit" class="searchBtn">查询</el-button>
+                <el-button type="primary" @click="addFeedB" class="searchBtn" icon="plus">添加反馈</el-button>
+            </el-form-item>
+        </el-form>
+        <!-- 信息表 -->
+        <el-table :data="tableData" border style="width: 100%;margin-top:15px;margin-bottom:10px;" height="460" v-loading="loading">
+            <el-table-column prop="createOn" width="120" label="提交日期" >
+                <template scope="scope">
+                    <span v-if="scope.row.createOn">
+                        {{scope.row.createOn.substring(0,10)}}
+                    </span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="userName" label="用户" min-width="120"></el-table-column>
+            <el-table-column prop="mobile" label="电话" min-width="120"></el-table-column>
+            <el-table-column prop="hospitalName" label="医院" min-width="120"></el-table-column>
+            <el-table-column prop="title" label="问题标题" min-width="200" show-overflow-tooltip></el-table-column>
+            <el-table-column prop="customerName" label="反馈类型" min-width="120" align="center">
+                <template scope="scope">
+                    <span v-if="scope.row.feedType == 1">系统错误</span>
+                    <span v-if="scope.row.feedType == 2">需求变更</span>
+                    <span v-if="scope.row.feedType == 3">新需求</span>
+                    <span v-if="scope.row.feedType == 4">其他</span>
+                </template>
+            </el-table-column>
+            
+            <el-table-column prop="customerName" label="反馈状态" min-width="120" align="center">
+                <template scope="scope">
+                    <el-tag type="warning" v-if="scope.row.feedState==0">待解决</el-tag>
+                    <el-tag type="success" v-if="scope.row.feedState==1">已解决</el-tag>
+                    <el-tag type="gray" v-if="scope.row.feedState==2">需求不明确</el-tag>
+                </template>
+            </el-table-column>
+            <el-table-column prop="priorityType" label="优先级" min-width="120" align="center">
+                <template scope="scope">
+                    <el-tag type="gray" v-if="scope.row.priorityType==1">低</el-tag>
+                    <el-tag type="gray" v-if="scope.row.priorityType==2">中</el-tag>
+                    <el-tag type="warning" v-if="scope.row.priorityTyp==3">高</el-tag>
+                    <el-tag type="warning" v-if="scope.row.priorityType==4">紧急</el-tag>
+                    <el-tag type="danger" v-if="scope.row.priorityType==5">严重</el-tag>
+                </template>
+            </el-table-column>
+            <el-table-column prop="createBy" label="创建人" min-width="120"></el-table-column>
+            <el-table-column prop="IsAuth" label="操作" min-width="150" align="center">
+                <template scope="scope">
+                    <el-button @click="update(scope.row)" type="primary" size="small">编辑</el-button>
+                    <el-button @click="del(scope.row)" type="primary" size="small">删除</el-button>
+                </template>
+            </el-table-column>
+        </el-table>
+        <!-- 信息表 -->
+
+        <!-- 分页 -->
+        <div class="block">
+            <el-pagination
+                @size-change="handleSizeChange"
+                @current-change="handleCurrentChange"
+                :current-page="currentPage"
+                :page-sizes="[10, 20, 30, 40]"
+                :page-size="size"
+                layout="total, sizes, prev, pager, next, jumper"
+                :total="total">
+            </el-pagination>
+        </div>
+        <!-- 分页 -->
+
+        <el-dialog :title="title" :visible.sync="dialogVisible"  top="5%"  size="" :close-on-click-modal="false">
+            <addFeed :editMes="editMes" style="width: 800px" v-if="dialogVisible" :hospitalList='hospitalList' @dialogClose='dialogClose'></addFeed>
+        </el-dialog>
+
+    </div>
+</template>
+<script type="text/ecmascript-6">
+    import  "@/style/selfCommon.less"
+    import addFeed from './com/addFeedB'
+    import { getCookie } from "@/config/mUtils";
+    import {GetDropDownPermission,GetReservation,UpdateReservationStatus,DeleteFeedback,GetFeedback} from "@/api/myData"
+    export default {
+        data () {
+            return {
+                title:'',
+                loading:false,
+                mes:{},
+                total:10,
+                size:10,
+                currentPage:1,
+                hospitalList:[],
+                date:"",
+                priorityList:[{name:'低',value:'1'},{name:'中',value:'2'},{name:'高',value:'3'},{name:'紧急',value:'4'},{name:'严重',value:'5'}],
+                feedTypeList:[{name:'系统错误',value:'1'},{name:'需求变更',value:'2'},{name:'新需求',value:'3'},{name:'其他',value:'4'}],
+                formInline:{
+                    doctor:"",
+                    date1:"",
+                    date2:"",
+                    status:"",
+                    name:"",
+                    phone:"",
+                    hospital:'',
+                    keywords:"",
+                    feedType:'',
+                    priorityType:'',
+                    feedState:'',
+                },
+                tableData:[],
+                mes:{},
+                editMes:{},
+                dialogVisible:false,
+            }
+        },
+        computed: {
+            /* 导出报表参数 tHeader,filterVal,tableData1*/
+            // tHeader(){
+            //     return ['预约日期','时间段', '科室', '预约医生', '客户', '项目', '状态']
+            // },
+            // filterVal(){
+            //     return ['reservationDate', 'startTime', 'deptName', 'doctorName', 'customerName','projectName','reservationStatus']
+            // },
+            // tableData1(){
+            //     let data = JSON.parse(JSON.stringify(this.tableData))
+            //     data.forEach(row => {
+            //         row.startTime = row.startTime+"-"+row.endTime
+            //         row.reservationStatus = this.getStatus(row.reservationStatus)
+            //     });
+            //     return data
+            // },
+            // name(){
+            //     return '预约管理'
+            // },
+            /*导出报表参数 tHeader,filterVal,tableData1*/
+        },
+        filters:{
+            filterAddr(val){
+                if(val){
+                    let add = val.split(",").join("")
+                    return add
+                }else{
+                    return ""
+                }
+            }
+        },
+       
+        mounted(){
+            let date = new Date()
+            date.setDate("01")
+            this.date = [date,new Date()]
+            this.GetDropDownPermission()
+        },
+        methods:{
+            addFeedB(){
+                this.title = '添加反馈'
+                this.editMes = {}
+                this.dialogVisible = true
+            },
+                
+            dialogClose(val){
+                if(val){
+                    this.search()
+                }
+                this.dialogVisible = false
+            },
+
+            async GetDropDownPermission() {
+                let hospital = await GetDropDownPermission({typeId: 1})
+                this.hospitalList = hospital.data
+                this.formInline.hospital = hospital.data[0].code
+            },
+
+            async GetFeedback(params){
+                let res =await GetFeedback(params)
+                this.loading = false
+                if(res.status){
+                    this.total = res.count
+                    this.tableData = res.data
+                }else{
+                    console.log(res)
+                }
+            },
+            onSubmit(){
+                this.currentPage = 1
+                this.search()
+            },
+            search(){
+                this.loading = true
+                this.GetFeedback({
+                    'keywords':this.formInline.keywords,
+                    'hospitalCode':this.formInline.hospital,
+                    "feedType": this.formInline.feedType,
+                    "feedState": this.formInline.feedState,
+                    'startDate':this.formInline.date1,
+                    'enddate':this.formInline.date2,
+                    'pageIndex':this.currentPage,
+                    'pageSize':this.size,
+                    'priorityType':this.formInline.priorityType
+                })
+            },
+            dateSelect(val){
+                if(val.length!=0){
+                    this.formInline.date1 = val.substring(0,10)
+                    this.formInline.date2 = val.substring(13)
+                }else{
+                    this.formInline.date1 = ""
+                    this.formInline.date2 = ""
+                }
+            },
+            handleSizeChange(val) {
+                console.log(`每页 ${val} 条`);
+                this.size = val
+                this.search()
+            },
+            handleCurrentChange(val) {
+                console.log(`当前页: ${val}`);
+                this.currentPage = val
+                this.search()
+            },
+            addReport(index,data){
+                this.dialogFormVisible = true
+                this.mes = data[index]
+            },
+            update(data){
+                this.title = '编辑'
+                this.editMes = data
+                this.dialogVisible = true
+            },
+            del(data){
+                this.$confirm('此操作将永久删除该文件, 是否继续?', '提示', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    type: 'warning'
+                }).then(() => {
+                    this.DeleteFeedback({id:data.id})
+                })
+            },
+            async DeleteFeedback(params){
+                let res = await DeleteFeedback(params)
+                if(res.status == true){
+                    this.$message({message: '删除成功', type: 'success'});
+                    this.search()
+                }else{
+                    this.$message.error('删除失败');
+                }
+            },
+        },
+        components: {
+            addFeed,
+        }
+    }
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+
+</style>

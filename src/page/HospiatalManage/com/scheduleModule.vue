@@ -1,0 +1,40 @@
+<template>
+    <div class="selCommon">
+        <el-table :data="tableData" border style="width: 100%;margin-bottom:10px;" max-height="600" class="min_table smt">
+            <el-table-column type="index" label="序号" min-width="150"></el-table-column>
+            <el-table-column prop="designerName" label="设计师" min-width="150" show-overflow-tooltip></el-table-column>
+            <el-table-column prop="designerName" :label="day" min-width="100"></el-table-column>
+            
+            <el-table-column prop="CommandState" label="操作" width="100" align="center">
+                <template slot-scope="scope">
+                    <el-button @click="showSedule(scope.row)" type="primary" size="small" >查看当月排班</el-button>
+                </template>
+            </el-table-column>
+        </el-table>
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+    import {} from "@/api/myData"
+    import { getCookie } from "@/config/mUtils";
+    export default {
+        components: {},
+        data() {
+            return {
+                tableData:[],
+                day:new Date().getDate(),
+            }
+        },
+        mounted() {
+
+        },
+        methods: {
+            showSedule(){}
+
+        },
+    }
+</script>
+
+<style scoped>
+
+</style>

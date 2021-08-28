@@ -1,0 +1,243 @@
+<template>
+    <el-row :gutter="20">
+        <el-col :span="11">
+            <el-form label-width="100px" ref="dataForm" :model="roledata" class="demo-dynamic" :rules="rules">
+
+                <el-form-item label="权限编号：" prop="Code">
+                    <el-input v-model="roledata.Code" size="small" :disabled="true"></el-input>
+                </el-form-item>
+
+                <el-form-item label="权限名称：" prop="Realname">
+                    <el-input v-model="roledata.Realname" size="small"></el-input>
+                </el-form-item>
+
+                <el-form-item label="是否有效：">
+                    <el-switch v-model="roledata.Enabled" on-text="有效" off-text="无效" :on-value='1' :off-value='0'
+                               :width="60">
+                    </el-switch>
+                </el-form-item>
+
+                <el-form-item label="组织机构：" v-if="typeCode == '02'">
+                    <el-select v-model="data.organize">
+                        <el-option v-for="(item,index) in organize" :key="index" :value="item" :label="item.name"></el-option>
+                    </el-select>
+                    <el-select v-model="data.organizeName" v-if="data.organize['value'] != '02'">
+                        <el-option v-for="item in data.organize['sub']" :key="item.value" :value="item.value" :label="item.name"></el-option>
+                    </el-select>
+                    <el-select v-model="data.organizeName" filterable remote placeholder="请输入关键词" v-if="data.organize['value'] == '02'"
+                               :remote-method="remoteMethod" :loading="loading">
+                        <el-option v-for="item in UserList" :key="item.Code" :value="item.Code" :label="item.BranchName+'|'+item.Code"></el-option>
+                    </el-select>
+                </el-form-item>
+
+                <el-form-item label="描述：">
+                    <el-input type="textarea" v-model="roledata.Description"></el-input>
+                </el-form-item>
+
+                <el-form-item style="padding-left:20%">
+                    <el-button type="primary" @click="Submit()" :loading="saveLoading">保存</el-button>
+                    <el-button @click="Cancel">取消</el-button>
+                </el-form-item>
+            </el-form>
+        </el-col>
+
+        <el-col :span="11">
+            <el-table ref="multipleTable" :data="userdata" border tooltip-effect="dark" fit stripe height="500"
+                      style="width: 100%">
+                <el-table-column prop="UserName" label="用户名"></el-table-column>
+                <el-table-column prop="RealName" label="姓名"></el-table-column>
+            </el-table>
+        </el-col>
+    </el-row>
+</template>
+
+<script type="text/ecmascript-6">
+    import { updateRole, getBaseUserRole,GetBranchByKeywords,getSupplierByPage } from '../../../api/myData'
+    import {getStore,getCookie} from "@/config/mUtils"
+    import { ArrayToTree } from '../lib/data'
+    import '../lib/role.less'
+    export default {
+        props: {
+            roledata: Object,
+            onFinish: Function
+        },
+        data() {
+            return {
+                saveLoading:false,
+                loading:false,
+                typeCode:"",
+                data: {
+                    organize:{},
+                    organizeName:""
+                },
+                organize: [
+                    {name: "平台", value: "01", sub: [{name: "平台", value: "1"}]},
+                    {name: "代理商", value: "02", sub: []},
+                    {name: "医院", value: "03", sub: []},
+                ],
+                UserList:[],
+                userdata: [],
+                rules: {
+                    Code: [
+                        {required: true, message: '请输入编号', trigger: 'blur'},
+                        {min: 3, max: 25, message: '长度在 3 到 25 个字符', trigger: 'blur'}
+                    ],
+                    Realname: [
+                        {required: true, message: '请输入名称', trigger: 'blur'},
+                        {min: 2, max: 10, message: '长度在 2 到 10 个字符', trigger: 'blur'}
+                    ]
+                },
+
+                treedata: [],
+                defaultProps: {
+                    children: 'children',
+                    label: 'FullName'
+                },
+            }
+        },
+
+        watch:{
+            "data.organize":{
+                handler(curVal,oldVal){
+                    
+                    this.data.organizeName = ""
+                },
+                deep:true
+            },
+            'roledata':{
+                handler(curVal,oldVal){
+                    this.copyWorth(curVal)
+                },
+                deep:true
+            }
+        },
+
+        mounted() {
+            this.typeCode = getStore('typeCode')
+            this.getUser()
+            this.copyWorth(this.roledata)
+        },
+
+        methods: {
+            copyWorth(data){
+                
+                this.organize.forEach(row=>{
+                    
+                    if(row.value == data.TypeCode){
+                        this.data.organize = row
+                    }
+                })
+                let _this=this
+                setTimeout(()=>{
+                    _this.data.organizeName = data.BranchCode+""
+                },50)
+            },
+            Cancel() {
+                this.onFinish && this.onFinish()
+            },
+
+            Submit() {
+                this.$refs["dataForm"].validate((valid) => {
+
+                    if (valid) this.updateRole()
+                    else return false;
+                })
+            },
+
+            async getUser() {
+                
+                let id = this.roledata["Id"]
+                let res = await getBaseUserRole(id)
+                let _this = this
+                res.forEach(item => {
+                    _this.userdata.push(item)
+                })
+                this.organizeInfo()
+            },
+
+            async organizeInfo(){
+                
+                if (getStore('typeCode') == '02') {
+                    let data = {
+                        startdate: "",
+                        enddate: "",
+                        suppliername: "",
+                        suptypecode: "",
+                        phonenumber: "",
+                        pageindex: 1,
+                        pagesize: 999,
+                    }
+                    let _this = this
+                    let supply = await getSupplierByPage(data)
+                    if (supply instanceof Array && supply.length > 0) {
+                        supply.forEach(item => {
+                            _this.organize[2].sub.push({name: item.SupplierName, value: item.SupTypeCode})
+                        })
+                    }
+
+//                let branch = await GetBranchByKeywords({keyWords:""})
+                }
+            },
+
+            async updateRole() {
+                let data = this.roledata
+                data.branchCode = this.data.organizeName
+                data.typeCode = this.data.organize
+                data.modifiedUserId = getCookie("userId")
+                data.modifiedUserName = getCookie("userName")
+                try {
+                    this.saveLoading = true
+                    let res = await updateRole(data)
+                    this.saveLoading = false
+                    let _this = this
+                    if (res > 0) {
+                        _this.$message({type: 'success', message: '保存成功!'})
+                    }
+                    
+                    this.onFinish && this.onFinish('')
+                }
+                catch (err) {
+                    this.$message({type: 'warning', message: '保存失败!'})
+                    this.onFinish && this.onFinish('')
+                }
+            },
+            async GetBranchByKeywords(params){
+                try{
+                    let branch = await GetBranchByKeywords(params)
+                    this.loading = false;
+                    if(getCookie("hospitalCode")){
+                        this.UserList = branch.filter(row=>{
+                            return row.HospitalCode == getCookie("hospitalCode")
+                        })
+                    }else this.UserList = branch
+                }catch(err){
+                    console.log(err)
+                }
+            },
+
+            remoteMethod(query) {
+                
+                if (query !== '') {
+                    this.loading = true;
+                    this.GetBranchByKeywords({
+                        keyWords:query.removeSP()
+                    })
+                } else {
+
+                }
+            },
+        }
+    }
+</script>
+
+<style lang="less" scoped>
+    .roleInfo {
+     border: 1px solid #d1dbe5;
+        height: 100%;
+    }
+
+    .menuInfo {
+     border: 1px solid #d1dbe5;
+        height: 100%;
+    }
+</style>

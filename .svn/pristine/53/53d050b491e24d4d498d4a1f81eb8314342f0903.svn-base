@@ -1,0 +1,716 @@
+<template>
+    <div class="rechargeList selCommon">
+        <el-form :inline="true" :model="form" class="demo-form-inline form_search" >
+            <el-form-item label="关键字：" class="form_item_mt10" label-width="80px">
+                <el-input v-model="form.keyWords" style="width: 200px;" placeholder="姓名/编号/卡号/手机号" v-on:keyup.enter.native="onSubmit"></el-input>
+            </el-form-item>
+            <!-- <el-form-item label="医院:" class="form_item_mt10">
+                <el-select v-model="form.hospital"  style='width:200px;' @change="onSubmit">
+                    <el-option v-for="(item,index) in hospitalList" :key="index" :label="item.supplierName" :value="item.code"></el-option>
+                </el-select>
+            </el-form-item> -->
+            <el-form-item label="充值时间：" class="form_item_mt10">
+                <el-date-picker
+                    v-model="date"
+                    type="daterange"
+                    @change="dateSelect"
+                    style="width: 200px"
+                    placeholder="选择日期范围">
+                </el-date-picker>
+            </el-form-item> 
+            <el-form-item label="类型：" class="form_item_mt10">
+                <el-select v-model="form.payType"  style='width:200px;' @change="onSubmit">
+                    <el-option label="全部" value=""></el-option>
+                    <el-option label="预付款" value="1"></el-option>
+                    <el-option label="医院积分" value="2"></el-option>
+                    <el-option label="纹绣积分" value="3"></el-option>
+                    <el-option label="皮肤科积分" value="4"></el-option>
+                    <el-option label="至尊VIP" value="5"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="" class="form_item_mt10">
+                <el-button type="primary" @click="onSubmit" class="searchBtn">查询</el-button>
+                <el-button @click="move('moveData')" type="primary" class="searchBtn">积分转赠</el-button>
+            </el-form-item>
+        </el-form>
+        <!-- 信息表 -->
+        <el-table :data="tableData" border style="width: 100%;margin-top:15px;margin-bottom:10px;" max-height="500" class="min_table smt" v-loading="loading">
+            <el-table-column prop="fromBranchName" label="来源" min-width="100"></el-table-column>
+            <el-table-column prop="intoBranchName" label="转到" min-width="100"></el-table-column>
+            <el-table-column prop="hospitalName" label="医院" min-width="150"></el-table-column>
+            <el-table-column prop="amount" label="转赠类型" min-width="100">
+                <template scope="scope">
+                    <span v-if="scope.row.payType==1">预付款</span>
+                    <span v-if="scope.row.payType==2">医院积分</span>
+                    <span v-if="scope.row.payType==3">纹绣积分</span>
+                    <span v-if="scope.row.payType==4">皮肤科积分</span>
+                    <span v-if="scope.row.payType==5">至尊VIP</span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="systemPoints" label="转赠医院积分" min-width="100">
+                <template scope="scope">
+                    <span v-text="scope.row.payType==2?scope.row.systemPoints:0"></span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="goldCoin" label="转赠纹绣积分" min-width="100">
+                <template scope="scope">
+                    <span v-text="scope.row.payType==3?scope.row.systemPoints:0"></span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="goldCoin" label="转赠皮肤科积分" min-width="100">
+                <template scope="scope">
+                    <span v-text="scope.row.payType==4?scope.row.systemPoints:0"></span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="goldCoin" label="转赠VIP积分" min-width="100">
+                <template scope="scope">
+                    <span v-text="scope.row.payType==5?scope.row.systemPoints:0"></span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="amount" label="转赠预付款" min-width="100"></el-table-column>
+            <el-table-column label="操作" width="150">
+                <template scope="scope">
+                    <el-button @click="view(scope.$index,tableData)" type="primary" size="small">查看流水</el-button>
+                </template>
+            </el-table-column>
+        </el-table>
+        <!-- 信息表 -->
+        <!-- 分页 -->
+        <div class="">
+            <el-pagination
+                @size-change="handleSizeChange"
+                @current-change="handleCurrentChange"
+                :current-page="currentPage"
+                :page-sizes="[10, 20, 30, 40]"
+                :page-size="size"
+                layout="total, sizes, prev, pager, next, jumper"
+                :total="total">
+            </el-pagination>
+        </div>
+        <!-- 分页 -->
+        <el-dialog title="变更流水" :visible.sync="dialogFormVisible1" size=''>
+            <!-- 信息表 -->
+            <span style="float: left;line-height: 46px;"> 账户：{{name}}</span>
+                <span style="float: left;line-height: 46px;margin-left:10px">
+                    日期：
+                </span>
+                 <el-date-picker
+                        v-model="value1"
+                        type="daterange"
+                        @change="dateChange"
+                        placeholder="选择日期范围">
+                    </el-date-picker>
+
+                    <el-button @click="detailSearch" class="searchBtn">搜索</el-button>
+                    <el-table :data="tableData1" border style="width: 850px;margin-top:15px;margin-bottom:10px;" height="250">
+                    <el-table-column prop="createOn" label="充值日期" width="100">
+                        <template scope="scope">
+                            <span v-if="scope.row.createOn">  {{scope.row.createOn.substring(0,10)}}</span>
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="fromBranchName" label="来源" min-width="70"></el-table-column>
+                    <el-table-column prop="intoBranchName" label="转到" min-width="70"></el-table-column>
+                    <el-table-column prop="fromBranchName" label="类型" width="70">
+                        <template scope="scope">
+                            <span v-if="scope.row.payType == 1">预付款</span>
+                            <span v-if="scope.row.payType == 2">医院积分</span>
+                            <span v-if="scope.row.payType == 3">纹绣积分</span>
+                            <span v-if="scope.row.payType == 4">皮肤科积分</span>
+                            <span v-if="scope.row.payType == 5">至尊VIP</span>
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="spendAmount" label="金额" width="80"></el-table-column>
+                    <!-- <el-table-column prop="multiple" label="积分倍数" width="80"></el-table-column> -->
+                    <el-table-column prop="systemPoints" label="积分" min-width="80"></el-table-column>
+                    <el-table-column prop="amount" label="预付款" width="80"></el-table-column>
+                    <el-table-column prop="multiple" label="查看凭证" width="80">
+                        <template scope="scope">
+                            <el-button @click="viewList(scope.row)" type="text">查看凭证</el-button>
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="createBy" label="操作人" min-width="80"></el-table-column>
+                    <el-table-column prop="memo" label="备注" min-width="120" show-overflow-tooltip=""></el-table-column>
+                </el-table>
+                <span>共计：{{logTotal}}条数据</span> <br/>
+                <span>医院收款：</span>
+                <el-table :data="hosTable" border style="width: 850px;margin-top:15px;margin-bottom:10px;" max-height="250">
+                    <el-table-column prop="payType" min-width="100" label="支付方式">
+                        <template scope="scope">
+                            <span>{{scope.row.payType|filterFun}}</span>
+                        </template>
+                    </el-table-column>
+                        <el-table-column prop="receiveAccount" label="收款账户" min-width="100"></el-table-column>
+                        <el-table-column prop="realAmount" label="实际金额" min-width="100">
+                            <template scope="scope">
+                                {{scope.row.realAmount.toQFW()}}
+                            </template>
+                        </el-table-column>
+                        <!-- <el-table-column prop="procFee" label="手续费" min-width="80"></el-table-column> -->
+                        <el-table-column prop="payDate" label="收款时间" min-width="100"></el-table-column>
+                        <el-table-column prop="receiveBranchName" label="医院（销售公司）" min-width="100"></el-table-column>
+                        <el-table-column prop="memo" label="备注" min-width="100"></el-table-column>
+                </el-table>
+                <span>销售公司收款：</span>
+                <el-table :data="branchTable" border style="width: 850px;margin-top:15px;margin-bottom:10px;" max-height="250">
+                    <el-table-column prop="payType" min-width="100" label="支付方式">
+                        <template scope="scope">
+                            <span>{{scope.row.payType|filterFun}}</span>
+                        </template>
+                    </el-table-column>
+                        <el-table-column prop="receiveAccount" label="收款账户" min-width="100"></el-table-column>
+                        <el-table-column prop="realAmount" label="实际金额" min-width="100">
+                            <template scope="scope">
+                                {{scope.row.realAmount.toQFW()}}
+                            </template>
+                        </el-table-column>
+                        <el-table-column prop="procFee" label="手续费" min-width="80"></el-table-column>
+                        <el-table-column prop="payDate" label="收款时间" min-width="100"></el-table-column>
+                        <el-table-column prop="receiveBranchName" label="医院（销售公司）" min-width="100"></el-table-column>
+                        <el-table-column prop="memo" label="备注" min-width="100"></el-table-column>
+                </el-table>
+            
+        </el-dialog>
+        <el-dialog title="转赠" :visible.sync="dialogMove" size=''>
+            <el-form :model="moveData" :rules="rules" style="width: 400px" ref="moveData" label-width="100px">
+                <el-form-item label="转出账户：" class="form_item_mt10" prop="fromBranchCode">
+                    <el-autocomplete v-model="moveData.fromBranch" :fetch-suggestions="queryCusFrom" placeholder="请输入内容" :trigger-on-focus="false" 
+                     custom-item="my-item-transMember" @select="selectCusIn" style="width:260px;margin-right:5px"></el-autocomplete>
+                </el-form-item>
+                <el-form-item label="医院：" class="form_item_mt10">
+                    <span style="color:red">{{fromHospital}}</span>
+                </el-form-item>
+                <el-form-item label=" " style="margin:-10px 0 0 0" v-if="moveData.fromBranchCode.length>0">
+                    <span>账户剩余医院积分：{{fromJF}}</span>, <span>纹绣积分：{{fromWXJF}}</span>, <span>预付款：{{fromYF}}</span>,
+                    <span>皮肤科积分：{{fromPFKJF}}</span>,<span>至尊VIP：{{fromVIPJF}}</span>
+                </el-form-item>
+                <el-form-item label="转到账户：" class="form_item_mt10" prop="toBranchCode">
+                    <el-autocomplete v-model="moveData.toBranch" :fetch-suggestions="queryCusTo" placeholder="请输入内容" :trigger-on-focus="false" 
+                     custom-item="my-item-transMember" @select="selectCusTo" style="width:260px;margin-right:5px"></el-autocomplete>
+                </el-form-item>
+                <el-form-item label="类型：" class="form_item_mt0" prop="type">
+                    <el-radio class="radio" v-model="moveData.type" label="1">预付款</el-radio>
+                    <el-radio class="radio" v-model="moveData.type" label="2">医院积分</el-radio>
+                    <el-radio class="radio" v-model="moveData.type" label="3">纹绣积分</el-radio>
+                    <el-radio class="radio" v-model="moveData.type" label="4">皮肤科积分</el-radio>
+                    <el-radio class="radio" v-model="moveData.type" label="5">至尊VIP</el-radio>
+                </el-form-item>
+                <el-form-item label="数额：" class="form_item_mt10" prop="jfAmount">
+                    <el-input-number v-model="moveData.jfAmount" :min="1" :controls="false"
+                        class="form_item_ipt_60" style="width: 240px"></el-input-number>
+                </el-form-item>
+                <el-form-item label=" " style="margin:-10px 0 0 0" v-if="(moveData.type == 2&&moveData.jfAmount>fromJF)||(moveData.type == 1&&moveData.jfAmount>fromYF)||(moveData.type == 3&&moveData.jfAmount>fromWXJF)||
+                    (moveData.type == 4&&moveData.jfAmount>fromPFKJF)||(moveData.type == 5&&moveData.jfAmount>fromVIPJF)">
+                    <span style="color:red">积分必须大于0小于余额</span>
+                </el-form-item>
+                <el-form-item label="图片" class="form_item_mt10" >
+                    <el-upload
+                        :accept="acceptImage"
+                        :action="uploadUrl"
+                        list-type="picture-card"
+                        :file-list="fileList"
+                        :on-preview="handlePictureCardPreview"
+                        :on-success="onSuccess"
+                        :on-remove="handleRemove">
+                        <i class="el-icon-plus"></i>
+                    </el-upload>
+                </el-form-item>
+                <el-form-item label="备注：" class="form_item_mt10">
+                    <el-input type="textarea" v-model="moveData.memo" style="width: 240px"></el-input>
+                </el-form-item>
+            </el-form>
+            <div class="footer_ope">
+                <el-button @click="save('moveData')" type="primary" :loading="saveLoading">保存</el-button>
+                <el-button @click="cancel('moveData')">取消</el-button>
+            </div>
+        </el-dialog>
+        <el-dialog title="查看凭证" v-model="imgView" size="">
+            <div style="min-width:600px">
+                <el-upload
+                        :accept="acceptImage"
+                        :action="uploadUrl"
+                        list-type="picture-card"
+                        :file-list="fileList"
+                        :on-preview="handlePictureCardPreview"
+                        :on-success="onSuccess"
+                        :on-remove="handleRemove">
+                        <i class="el-icon-plus"></i>
+                    </el-upload>
+            </div>
+            <div class="form_footer">
+                <el-button type="primary" @click="editImg">确定</el-button>
+                <el-button @click="imgView = false">取消</el-button>
+            </div>
+        </el-dialog>
+        <el-dialog v-model="dialogVisible" size="">
+            <img width="100%" :src="dialogImageUrl" alt="">
+        </el-dialog>
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+    import "@/style/selfCommon.less"
+    import "@/page/FinanceManage/ReportManage/lib/report.less"
+    import { xmxUrl, baseImgPath } from '@/config/env'
+    import { imgApi, acceptImage } from '@/config/common'
+    let uploadUrl = xmxUrl + imgApi + '?op=prooforder'
+    import {GetUserAccountTransfer,GetAccountDetail,GetUserAllByKeywords,GetUserAccountByCode,AddAccount,GetDropDownPermission,ModifyUserAccountImgUrl,
+    GetHospitalChargePay,GetBranchChargePay,getBaseDataByCode} from "@/api/myData"
+    import { getCookie } from '@/config/mUtils'
+    import Vue from 'vue'
+    Vue.component('my-item-transMember', {
+        functional: true,
+        render: function(h, ctx) {
+            var item = ctx.props.item;
+            return h('li', ctx.data, [
+                h('p', { attrs: { class: 'select_name'+item.Type, title: item.name } }, ['名字：' + item.name]),
+                h('p', { attrs: { class: 'select_name'+item.Type, title: item.name} }, ['编号：' + item.code]),
+                h('p', { attrs: { class: 'select_name'+item.Type, title: item.name} }, ['手机号：' + item.phone]),
+                h('p', { attrs: { class: 'select_name'+item.Type, title: item.name} }, ['卡号：' + item.CardNO]),
+                h('p', { attrs: { class: 'select_name'+item.Type, title: item.HospitalName} }, ['医院：' + item.HospitalName]),
+            ]);
+        },
+        props: {
+            item: { type: Object, required: true }
+        }
+    });
+    var _this
+    export default {
+        // name:"rechargeList",
+        data () {
+            return {
+                imgList:[],
+                imgView:false,
+                uploadUrl,
+                acceptImage,
+                baseImgPath,
+                dialogVisible:false,
+                dialogImageUrl:"",
+                fileList:[],
+                date:"",
+                saveLoading:false,
+                customer:"",
+                customerList:[],
+                dialogMove:false,
+                total: 0,
+                logTotal:0,
+                size: 10,
+                currentPage: 1,
+                referList: [],
+                loading:false,
+                dialogFormVisible:false,
+                dialogFormVisible1:false,
+                name:"",
+                form: {
+                    date1:"",
+                    date2:"",
+                    type:"",
+                    keyWords: "",
+                    hospital:"",
+                    payType:"",
+                },
+                moveData:{
+                    fromBranch:"",
+                    fromBranchName:"",
+                    fromBranchCode:"",
+                    toBranchName:"",
+                    toBranchCode:"",
+                    toBranch:"",
+                    jfAmount:"",
+                    memo:"",
+                    type:"",
+                },
+                value1:"",
+                startDate:"",
+                endDate:"",
+                fromJF:10,
+                fromYF:10,
+                fromWXJF:0,
+                fromPFKJF:0,
+                fromVIPJF:0,
+                tableData:[],
+                tableData1:[],
+                hospitalList:[],
+                payWayList:[],
+                hosTable:[],
+                branchTable:[],
+                rules: {
+                    amount: [
+                        {required: true, message: '请输入'}
+                    ],
+                    fromBranchCode: [
+                        {required: true, message: '请选择', trigger: 'change'}
+                    ],
+                    toBranchCode: [
+                        {required: true, message: '请选择', trigger: 'change'}
+                    ],
+                    type:[
+                        {required: true, message: '请选择', trigger: 'change'}
+                    ]
+                },
+                imgId:"",//编辑凭证的流水Id
+                fromHospital:'',
+            }
+        },
+        computed: {
+            /* 导出报表参数 tHeader,filterVal,tableData2*/
+            // tHeader(){
+            //     return ['账户','积分','金币',  '返现', '余额', '充值日期']
+            // },
+            // filterVal(){
+            //     return ['branchName', 'remainSystemPoints', 'remainGoldCoin', 'remainReturnPoints', 'remainAmount','createOn']
+            // },
+            // reportData(){
+            //     return this.tableData
+            // },
+            // reportName(){
+            //     return '积分转赠'
+            // },
+            /*导出报表参数 tHeader,filterVal,reportData*/
+        },
+        filters: {
+            filterFun(val){
+                let name
+                _this.payWayList.forEach(row=>{
+                    if(val == row.DataCode){
+                        name = row.DataName
+                    }
+                })
+                return name
+            }
+        },
+        watch:{
+            "moveData.fromBranchCode":{
+                handler(curVal,oldVal){
+                    if(curVal.length>0){
+                         this.GetUserAccountByCode({
+                            branchcode:curVal
+                        },"form")
+                    }else{
+                        this.fromJF = 0
+                        this.fromYF = 0
+                        this.fromWXJF = 0
+                    }
+                },
+                deep:true
+            },
+        },
+        mounted(){
+            _this = this
+            this.GetDropDownPermission()
+        },
+        methods: {
+            async editImg(){//编辑凭证
+                let res = await ModifyUserAccountImgUrl({
+                    id:this.imgId,
+                    imgUrl:this.getUrl(this.fileList)
+                })
+                 if(res.status){
+                    this.$message({message: '编辑成功', type: 'success'});
+                    this.detailSearch()
+                    this.imgView = false
+                }else{
+                    this.$message.error('编辑失败');
+                }
+            },
+            viewList(data){
+                this.imgId = data.id
+                this.fileList = []
+                let list = data.imgUrl?data.imgUrl.split("#"):[]
+                list.forEach(ele=>{
+                    this.fileList.push({
+                        url:baseImgPath+ele,
+                        response:ele
+                    })
+                })
+                // this.imgList = img.split("#")
+                this.imgView = true
+            },
+            async DelImg(filepath){
+                let res = await DelImg({filepath:filepath})
+                if(!res.status){
+                    
+                    this.$message({message: '原图片删除失败！'+res.errorMessage,type: 'warning'});
+                }
+            },
+            onSuccess(response, file, fileList){
+                
+                this.fileList = fileList
+            },
+            handleRemove(file, fileList) {
+                if(file.response){
+                    this.DelImg(file.response)
+                }
+                this.fileList = fileList
+            },
+            handlePictureCardPreview(file) {
+                this.dialogImageUrl = file.url;
+                this.dialogVisible = true;
+            },
+            dateSelect(val){
+                if(val.length!=0){
+                    this.form.date1 = val.substring(0,10)
+                    this.form.date2 = val.substring(13)
+                }else{
+                    this.form.date1 = ""
+                    this.form.date2 = ""
+                }
+            },
+            async getMember(str) {
+                let res = await GetUserAllByKeywords({ 'keywords': str.removeSP() })
+                if (res instanceof Array && res.length > 0) {
+                    for (let item of res) {
+                        this.customerList.push({
+                            value: '(' + item["Code"] + ')' + item["MemberName"],
+                            phone: item["PhoneNumber"],
+                            code: item["Code"],
+                            name: item["MemberName"],
+                            referrerCode: item['ReferrerCode'],
+                            referrerName: item['ReferrerName'],
+                            Type:item.Type == 1?"black":"red",
+                            CardNO:item["CardNO"]?item["CardNO"]:"",
+                            HospitalName:item.HospitalName
+                        })
+                    }
+                }
+            },
+
+            //查找会员 下拉补全
+            queryCusFrom(queryString, cb) {
+                this.moveData.fromBranchName = ''
+                this.moveData.fromBranchCode = ''
+                this.customerList = []
+                if (queryString !== '' && queryString != undefined) {
+                    this.getMember(queryString)
+                }
+                let _this = this
+                clearTimeout(this.timeout);
+                this.timeout = setTimeout(() => {
+                    cb(_this.customerList);
+                }, 1000);
+            },
+            //查找会员 下拉补全
+            queryCusTo(queryString, cb) {
+                this.moveData.toBranchName = ''
+                this.moveData.toBranchCode = ''
+                this.customerList = []
+                if (queryString !== '' && queryString != undefined) {
+                    this.getMember(queryString)
+                }
+                let _this = this
+                clearTimeout(this.timeout);
+                this.timeout = setTimeout(() => {
+                    cb(_this.customerList);
+                }, 1000);
+            },
+
+            //点击获取 会员信息  Oject
+            selectCusIn(item) {
+                this.moveData.fromBranchCode = item.code
+                this.moveData.fromBranchName = item.name
+                this.fromHospital = item.HospitalName
+            },
+
+            selectCusTo(item) {
+                this.moveData.toBranchCode = item.code
+                this.moveData.toBranchName = item.name
+            },
+
+            async GetDropDownPermission(params){
+                let [payWayList,res] = await Promise.all([getBaseDataByCode("0006"),GetDropDownPermission({typeId: 1})])
+                this.payWayList = payWayList
+                this.hospitalList = res.data
+                this.onSubmit()
+            },
+            dateChange(val){
+                if(val){
+                    this.startDate = val.substring(0,10),
+                    this.endDate = val.substring(13)
+                }else{
+                    this.startDate = val.substring(0,10),
+                    this.endDate = val.substring(13)
+                }
+                this.onSubmit()
+            },
+            // 转赠
+             async AddAccount(params){
+                try {
+                    this.saveLoading = true
+                    let res = await AddAccount(params)
+                    if(res.success){
+                        this.$message({message: '转赠成功', type: 'success'});
+                        this.dialogFormVisible = false
+                        this.dialogMove = false
+                        this.search()
+                    }else{
+                        this.$message.error('转赠失败!'+res.error);
+                    }
+                    this.saveLoading = false
+                } catch (err) {
+                    console.log(err)
+                    this.$message.error('转赠失败');
+                }
+            },
+//            积分查询
+            async GetUserAccountByCode(params,branch){
+                try {
+                    let res = await GetUserAccountByCode(params)
+                    this.fromJF = res.RemainSystemPoints
+                    this.fromYF = res.RemainAmount
+                    this.fromWXJF = res.RemainGoldCoin
+                    this.fromPFKJF = res.SkinRemainAmount
+                    this.fromVIPJF = res.VIPRemainPoints
+                } catch (err) {
+                    console.log(err)
+                }
+            },
+            async GetAccountDetail(params){
+                try {
+                    let hos = await GetHospitalChargePay({BranchCode:params.branchCode})
+                    let com = await GetBranchChargePay({BranchCode:params.branchCode})
+                    this.hosTable = hos.data
+                    this.branchTable = com.data
+                    let res = await GetAccountDetail(params)
+                    this.logTotal = res.count
+                    this.tableData1 = res.data
+                } catch (err) {
+                    console.log(err)
+                }
+            },
+            async GetUserAccountTransfer(params){
+                try {
+                    this.loading = true
+                    let res = await GetUserAccountTransfer(params)
+                    this.loading = false
+                    this.total = res.count
+                    this.tableData = res.data
+                } catch (err) {
+                    console.log(err)
+                }
+            },
+            onSubmit(){
+                this.currentPage = 1
+                this.search()
+            },
+            search(){
+                this.GetUserAccountTransfer({
+                    keyWords:this.form.keyWords.removeSP(),
+                    pageIndex: this.currentPage,
+                    pageSize: this.size,
+                    // hospitalCode:this.form.hospital,
+                    startDate:this.form.date1,
+                    endDate:this.form.date2,
+                    payType:this.form.payType
+                })
+            },
+            save(formName){
+                    this.$refs[formName].validate((valid) => {
+                        if (valid) {
+                             let obj = {
+                                fromBranchName:this.moveData.fromBranchName,
+                                fromBranchCode:this.moveData.fromBranchCode,
+                                intoBranchCode:this.moveData.toBranchCode,
+                                intoBranchName:this.moveData.toBranchName,
+                                memo:this.moveData.memo,
+                                payType:this.moveData.type,
+                                ImgUrl:this.getUrl(this.fileList),
+                                createBy: getCookie("userName"),
+                                createUserId: getCookie("userId"),
+                            }
+                            if(this.moveData.type == 1){
+                                obj.amount = this.moveData.jfAmount
+                            }else{
+                                obj.systemPoints = this.moveData.jfAmount
+                            }
+
+                            if((this.moveData.type == 2&&this.moveData.jfAmount>this.fromJF)||(this.moveData.type == 1&&this.moveData.jfAmount>this.fromYF)||
+                            (this.moveData.type == 3&&this.moveData.jfAmount>this.fromWXJF)||(this.moveData.type == 4&&this.moveData.jfAmount>this.fromPFKJF)||
+                            (this.moveData.type == 5&&this.moveData.jfAmount>this.fromVIPJF)){
+                                this.$message.error('转赠数额不能超过账户余额');
+                            }else{
+                                this.AddAccount(obj)
+                            }
+                        } else {
+                            console.log('error submit!!');
+                            return false;
+                        }
+                    });
+            },
+            getUrl(data){
+                let arr = []
+                data.forEach(ele=>{
+                    arr.push(ele.response)
+                })
+                return arr.join("#")
+            },
+            cancel(formName){
+                this.$refs[formName].resetFields();
+                this.dialogMove = false
+                this.fileList = []
+            },
+            //            搜索代理
+            async GetUserAllByKeywords(params, index){
+                try {
+                    let res = await GetUserAllByKeywords(params)
+                    this.referList = res
+                } catch (err) {
+                    console.log(err)
+                }
+            },
+            // 分页页面展示数据条数改变触发事件
+            handleSizeChange(val) {
+                console.log(`每页 ${val} 条`);
+                this.size = val
+                this.search()
+            },
+            // 分页当前页码改变触发事件
+            handleCurrentChange(val) {
+                console.log(`当前页: ${val}`);
+                this.currentPage = val
+                this.search()
+            },
+            view(index,data){
+                this.tableData1 = []
+                 if(this.branchCode != data[index].branchCode){
+                    this.value1 = ""
+                    this.endDate = ""
+                    this.startDate = ""
+                    this.name = data[index].branchName
+                    this.branchCode = data[index].intoBranchCode
+                }
+                this.detailSearch()
+                this.dialogFormVisible1 = true
+            },
+             detailSearch(){
+                this.GetAccountDetail({
+                    branchCode:this.branchCode,
+                    startDate:this.startDate,
+                    endDate:this.endDate,
+                })
+            },
+            reset(){
+                for (var p in this.moveData){
+                    this.moveData[p] = ""
+                }
+                this.fromJF = 10
+            },
+            move(formName){
+                this.dialogMove = true
+                this.fromJF = 10
+                this.fromYF = 10
+                for(var p in this.moveData){
+                    this.moveData[p] = ""
+                }
+                this.$nextTick(() => {
+                    this.$refs["moveData"].resetFields()
+                });
+            }
+        },
+        components: {
+        }
+    }
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+
+</style>

@@ -1,0 +1,451 @@
+<template>
+    <div class="goodsList selCommon">
+        <!-- 查询信息 -->
+        <el-form :inline="true" :model="formInline" class="demo-form-inline form_search" label-width="80px" >
+            <el-form-item label="栏目：" class="form_item_mt10">
+                <el-select v-model="formInline.column" placeholder="请选择" style='width:200px;' @change="columnChange">
+                    <el-option label="全部" value=""></el-option>
+                    <el-option v-for="item in column" :label="item.Name" :value="item.CloumnCode" :key="item.Code"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="大类：" class="form_item_mt10">
+                <el-select v-model="formInline.class1" placeholder="请选择" style='width:200px;' @change="classChange">
+                    <el-option label="全部" value=""></el-option>
+                    <el-option v-for="item in class1" :label="item.name" :value="item.code" :key="item.code"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="中类：" class="form_item_mt10">
+                <el-select v-model="formInline.class2" placeholder="请选择" style='width:200px;' @change="class2Change">
+                    <el-option label="全部" value=""></el-option>
+                    <el-option v-for="item in class2" :label="item.name" :value="item.code" :key="item.code"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="小类：" class="form_item_mt10">
+                <el-select v-model="formInline.class3" placeholder="请选择" style='width:200px;'>
+                    <el-option label="全部" value=""></el-option>
+                    <el-option v-for="item in class3" :label="item.name" :value="item.code" :key="item.code"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="价格区间：" class="form_item_mt10">
+                <el-input v-model="formInline.startPrice" placeholder="" style="width: 92px;"></el-input>
+                <span style="display:inline-block;float:left;margin:0 5px;">-</span>
+                <el-input v-model="formInline.endPrice" placeholder="" style="width: 92px;"></el-input>
+            </el-form-item>
+            <el-form-item label="医院：" class="form_item_mt10">
+                <el-select v-model="formInline.supplier" placeholder="请选择" filterable style='width:200px;'>
+                    <el-option v-for="item in supplierList" :label="item.supplierName" :value="item.code" :key="item.code"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="医生：" class="form_item_mt10">
+                <el-select v-model="formInline.doctor" placeholder="请选择" style='width:200px;'>
+                    <el-option label="全部" value=""></el-option>
+                    <el-option v-for="item in doctorList" :label="item.ServiceName" :value="item.Code" :key="item.Code"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="商户：" class="form_item_mt10">
+                <el-select style="width: 200px"
+                    v-model="formInline.shop" filterable remote placeholder="请输入关键词" :remote-method="remoteMethod" :loading="loading">
+                    <el-option v-for="item in shopList" :key="item.value" :label="item.ShopName" :value="item.ShopCode"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="商品名称：" class="form_item_mt10">
+                <el-input v-model="formInline.name" style="width: 200px"  v-on:keyup.enter.native="search"></el-input>
+            </el-form-item>
+            <el-form-item label="是否有效：" class="form_item_mt10">
+                <el-select v-model="formInline.isEnable" placeholder="请选择" style='width:200px;'>
+                    <el-option label="全部" value=""></el-option>
+                    <el-option label='有效' value="1"></el-option>
+                    <el-option label='无效' value="0"></el-option>
+                </el-select>
+            </el-form-item>
+            <br/>
+            <el-form-item label=" " class="form_item_mt10">
+                <el-button type="primary" @click="onSubmit" class="searchBtn">查询</el-button>
+                <el-button type="primary" @click="expt" class="searchBtn" :disabled="tableData.length == 0"  :loading='btnLoading'>导出报表</el-button>
+                <Export ref="export" :tHeader="tHeader" :filterVal=' filterVal' :tableData1='tableData1' :name="name" v-show="false"></Export>
+            </el-form-item>
+        </el-form>
+        <!-- 查询信息 -->
+
+        <!-- 信息表 -->
+        <el-table :data="tableData" border style="width: 100%;margin-top:10px;margin-bottom:10px;"  v-loading="tabloading" class="min_table smt" max-height="560">
+            <el-table-column prop="id" label="ID" min-width="70"></el-table-column>
+            <el-table-column prop="ImgMainUrl" label="图片" min-width="70">
+                <template slot-scope='scope'>
+                    <img style="vertical-align: middle" width="50px" height="50px" :src="scope.row.ImgMainUrl" alt="">
+                </template>
+            </el-table-column>
+            <el-table-column prop="goodsCode" label="商品编号" min-width="120"></el-table-column>
+            <el-table-column prop="name" label="商品名称" min-width="200" show-overflow-tooltip></el-table-column>
+            <el-table-column prop="keyWords" label="搜索关键字" min-width="150" show-overflow-tooltip></el-table-column>
+            <el-table-column prop="isEnable" label="是否有效" min-width="70">
+                <template slot-scope="scope">
+                    <span v-text="scope.row.isEnable=='1'?'是':'否'"></span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="grade" label="分类" min-width="150" show-overflow-tooltip>
+                <template slot-scope="scope">
+                    {{scope.row.cloumnName}}/{{scope.row.catalogName}}
+                </template>
+            </el-table-column>
+            <el-table-column prop="supplierName" label="医院/供方" min-width="150"></el-table-column>
+            <el-table-column prop="serviceName" label="医生" min-width="80"></el-table-column>
+            <el-table-column prop="priceRange" label="售价" min-width="130"></el-table-column>
+            <el-table-column prop="limitAmount" label="积分抵现" min-width="80"></el-table-column>
+            <el-table-column prop="productionAddress" label="产地" min-width="120"></el-table-column>
+            <el-table-column fixed="right" prop="grade" label="操作" min-width="270">
+                <template slot-scope="scope">
+                    <el-button @click="handleClick(scope.$index, tableData,'edit')" type="primary" size="small">编辑商品</el-button>
+                    <el-button @click="handleClick(scope.$index, tableData,'copy')" :disabled="scope.row.cloumnName !='医美'" type="primary" size="small">复制商品</el-button>
+                    <!-- 复制链接功能 暂不使用 -->
+                    <!-- <el-button v-clipboard="scope.row.priceRange" type="primary"  size="small"  @success="handleSuccess"
+                               @error="handleError">复制链接</el-button> -->
+                               <!-- 产品删除 cloumnCode 103 -->
+                    <el-button type="primary" @click="DeleteGoodsById(scope.row)" :disabled="scope.row.cloumnName!='产品'" size="small">删除</el-button>
+                    <!-- <el-dropdown @command="handleCommand" trigger="click">
+                        <el-button type="primary"  size="small" :disabled="scope.row.cloumnName == '产品'">关联商品<i class="el-icon-caret-bottom el-icon--right"></i></el-button>
+                        <el-dropdown-menu slot="dropdown">
+                            <el-dropdown-item :command="composeValue(scope.row,1,'添加关联商品')" >添加关联商品</el-dropdown-item>
+                            <el-dropdown-item :command="composeValue(scope.row,2,'添加关联卡券')">添加关联卡券</el-dropdown-item>
+                        </el-dropdown-menu>
+                    </el-dropdown> -->
+                </template>
+            </el-table-column>
+        </el-table>
+        <!-- 信息表 -->
+
+        <!-- 分页 -->
+        <div class="block">
+            <el-pagination @size-change="handleSizeChange" @current-change="handleCurrentChange" :current-page="currentPage"
+                :page-sizes="[10, 20, 30, 40]" :page-size="pageSize" layout="total, sizes, prev, pager, next, jumper" :total="totalPage">
+            </el-pagination>
+        </div>
+        <!-- <el-dialog :title="title" :visible.sync="dialogVisible" size="">
+            <addRelation v-if="dialogVisible" :selectMes="selectMes" @close='addRelationClose' style="width:1000px;"></addRelation>
+        </el-dialog> -->
+        <!-- 分页 -->
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+    import Vue from 'vue'
+    // import VueClipboards from 'vue-clipboards';
+    // Vue.use(VueClipboards);
+    import {baseImgPath} from "@/config/env"
+    import '@/style/selfCommon.less';
+    import Export from '@/components/export.vue'
+    import {setStore} from '@/config/mUtils'
+    // import addRelation from "./com/addRelation"
+    import {GetGoodsByConditions,GetColumnAll,GetCatelogByColumnCode,GetServiceManByHspCode,GetShopByPage,
+    GetDropDownPermission,DeleteGoodsById}  from "@/api/myData"
+    export default {
+        data() {
+            return {
+                title:'',
+                selectMes:{},
+                ope:'',
+                btnLoading:false,
+                tabloading:false,
+                loading:false,
+                shopList:[],
+                doctorList:[],
+                baseUrl:baseImgPath,
+                column:"",
+                class1:[],
+                class2:[],
+                class3:[],
+                catLog:[],
+                hospitalList:[],
+                supplierList:[],
+                currentPage: 1,
+                dialogVisible: false,
+                // 弹窗数据绑定
+                form: {},
+                formLabelWidth: '80px',
+                pageSize:10,
+                totalPage:10,
+                // 查询条件数据绑定
+                formInline: {
+                    column: '',
+                    class1: '',
+                    class2: '',
+                    class3: '',
+                    startPrice: '',
+                    endPrice: '',
+                    hospital: '',
+                    supplier:'',
+                    doctor:'',
+                    name:'',
+                    shop:'',
+                    isEnable:'',
+                },
+                // 表格数据
+                tableData: [],
+                allData:[],
+            }
+        },
+        computed: {
+            /* 导出报表参数 tHeader,filterVal,tableData1*/
+            tHeader(){
+                return ['ID','商品编号', '商品名称', '分类', '医院/供方','医生', '售价', '积分抵现','产地']
+            },
+            filterVal(){
+                return ['id','goodsCode', 'name', 'class', 'supplierName', 'serviceName','priceRange','limitAmount','productionAddress']
+            },
+            tableData1(){
+               this.allData.forEach(row=>{
+                    row.class =  row.cloumnName+"/"+row.catalogName
+                })
+                return this.allData
+            },
+            name(){
+                return "商品列表"
+            }
+            /*导出报表参数 tHeader,filterVal,tableData1*/
+        },
+        watch:{
+            'formInline.supplier': {
+                handler(curVal,oldVal){
+                    this.formInline.doctor = ""
+                    this.GetServiceManByHspCode({hospitalCode:curVal})
+                },
+                deep: true
+            }
+        },
+        // beforeRouteLeave (to, from, next) {
+        //     // this.$destroy()
+        //     next()
+        // },
+        mounted: function () {
+            this.getColumn()
+        },
+        methods: {
+            // composeValue(item,status,title) {
+            //     return {
+            //         'data': item,
+            //         'status': status,
+            //         'title':title,
+            //     }
+            // },
+            // handleCommand(command){
+            //     command.data.typeId = command.status
+            //     this.title = command.title
+            //     this.selectMes = command.data
+            //     this.dialogVisible = true
+            // },
+            // addRelationClose(val){
+            //     this.dialogVisible = false
+            // },
+            // addRelation(data){
+            //     this.selectMes = data
+            //     this.dialogVisible = true
+            // },
+            expt(){
+                this.search('export')
+            },
+            DeleteGoodsById(data){
+                this.$confirm('确定删除该商品?', '提示', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    type: 'warning'
+                }).then(() => {
+                    this.deleteGood({id:data.id})
+                })
+            },
+            async deleteGood(params){
+                let res = await DeleteGoodsById(params)
+                if(res.status){
+                    this.$message({
+                        message: '操作成功',
+                        type: 'success'
+                    });
+                    this.search()
+                }else{
+                    this.$message.error('操作失败'+res.errorMessage)
+                }
+            },
+            // 条件查询
+            onSubmit() {
+                this.currentPage = 1
+                this.search()
+            },
+            // 分页页面展示数据条数改变触发事件
+            handleSizeChange(val) {
+                console.log(`每页 ${val} 条`);
+                this.pageSize = val
+                this.search()
+            },
+            // 分页当前页码改变触发事件
+            handleCurrentChange(val) {
+                console.log(`当前页: ${val}`);
+                this.currentPage = val
+                this.search()
+            },
+            handleClick(index, tableData,ope) {
+                setStore("editId",tableData[index].id)
+                this.$router.push({path:'/menu/productEditor',query:{
+                    id:tableData[index].id,
+                    from:ope,
+                }})
+            },
+//            复制链接
+            handleSuccess(e) {
+                alert("复制成功")
+            },
+            handleError(e) {
+            },
+            columnChange (){
+                this.formInline.class1 = ""
+                this.getCatelog({code: this.formInline.column})
+            },
+            classChange(){
+                this.formInline.class2 = ""
+                this.class2 = this.parentCode(this.formInline.class1)
+            },
+            class2Change(){
+                this.formInline.class3 = ""
+            
+                this.class3 = this.parentCode(this.formInline.class2)
+                
+            },
+            selectData(mes,data){
+                let len = data.length
+                for(let i =0;i<len;i++){
+
+                }
+            },
+
+            async GetShopByPage(params){
+                try{
+                    let res = await GetShopByPage(params)
+                    this.shopList = res.data
+                    this.loading = false;
+                }catch(err){
+                    console.log(err)
+                }
+            },
+
+            remoteMethod(query) {
+                if (query !== '') {
+                    this.loading = true;
+                    this.GetShopByPage({
+                        pageIndex: 1,
+                        pageSize: 20,
+                        keywords: query.removeSP()
+                    })
+                } else {
+                    this.options4 = [];
+                }
+            },
+//          获取大类
+            getClass(){
+                    this.class1=this.parentCode("")
+            },
+            async getGoods(data,ope){
+                try{
+                    let res = await GetGoodsByConditions(data)
+                    if(ope == 'export'){
+                        this.allData = res.data
+                        this.btnLoading = false
+                        this.$refs.export.handleDownload()
+                    }else{
+                        this.totalPage = res.count
+                        this.tableData = this.splitUrl(res.data)
+                        this.tabloading = false
+                    }
+                }catch(err){
+                    console.log(err)
+                }
+            },
+            async getColumn(){
+                try{
+                    let [res,hos] = await Promise.all([GetColumnAll(),GetDropDownPermission({typeId:1})])
+                    this.column = res
+                    this.supplierList = hos.data
+                    this.formInline.supplier = hos.data[0].code
+                    this.search()
+                }catch(err){
+                    console.log(err)
+                }
+            },
+            async getCatelog(data){
+                try{
+                    let res= await GetCatelogByColumnCode(data)
+                   this.catelog = res.data
+                    this.getClass()
+                }catch(err){
+                    console.log(err)
+                }
+            },
+            parentCode(code){
+                let arr = []
+                for(let i = 0;i<this.catelog.length;i++){
+                    if(this.catelog[i].parentCode == code){
+                        arr.push(this.catelog[i])
+                    }
+                }
+                return arr
+            },
+            search(ope){
+                if(ope == 'export'){
+                    this.btnLoading = false
+                }else{
+                    this.tabloading = true
+                }
+                let catelog=""
+                if(this.formInline.class3.length !=0){
+                    catelog = this.formInline.class3
+                }else{
+                    if(this.formInline.class2.length!=0){
+                        catelog = this.formInline.class2
+                    }else{
+                        catelog = this.formInline.class1
+                    }
+                }
+
+                this.getGoods({
+                    columnCode:this.formInline.column,
+                    catalogCode:catelog,
+                    startPrice:this.formInline.startPrice,
+                    endPrice:this.formInline.endPrice,
+                    supplierCode:this.formInline.supplier,
+                    keyWords:this.formInline.name.removeSP(),
+                    serviceMan:this.formInline.doctor,
+                    pageSize:ope =='export'?this.totalPage:this.pageSize,
+                    pageIndex:this.currentPage,
+                    isEnable:this.formInline.isEnable,
+                },ope)
+            },
+            splitUrl(data){
+                data.forEach(row=>{
+                    row.ImgMainUrl = baseImgPath+ row.imgMainUrl
+                })
+                return data
+            },
+//            获取医生
+            async GetServiceManByHspCode(data){
+                try {
+                    let res = await GetServiceManByHspCode(data);
+                    this.doctorList = res
+                } catch (err) {
+                    console.log('获取数据失败', err);
+                }
+            },
+        },
+        components: {
+            Export,
+            // addRelation
+        }
+    }
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+    .goodsList {
+        font-size: 12px;
+    }
+
+    .block {
+        float: right;
+    }
+</style>

@@ -1,0 +1,1017 @@
+<template>
+    <div>
+        <div class="mes">
+            <div class="mes_left">
+                <div class="column">
+                    <span class="wt150">姓名：{{customer.MemberName}}</span>
+                    <span class="wt150">卡号：{{customer.CardNO}}</span>
+                    <span class="wt150">年龄：{{customer.Age}}</span>
+                    <span class="wt150">编号：{{customer.Code}}</span>
+                </div>
+                <div class="column">
+                    <span class="wt150">性别：{{customer.Sex}}</span>
+                    <span class="wt150">生日：{{customer.Birthday}}</span>
+                    <span class="wt200">联系方式：{{customer.PhoneNumber}}</span>
+                    <span class="wt300">推荐人：{{customer.ReferrerName}}[{{customer.ReferrerCode}}]</span>
+                </div>
+                
+                <div class="column">
+                    <span class="wt150">标签：{{customer.MemberTags}}</span>
+                    <span style="line-height:36px">医院积分：{{jifen}}，纹绣积分：{{wxjf}}，皮肤科积分：{{pfkjf}}，app积分：{{jifenOnline}}，至尊积分：{{vipJF}}，预付款：{{RemainAmount}}</span>
+                </div>
+                <div class="column">
+                    <span>地址：{{customer.Address}}</span>
+                    <el-button size="small" type="primary" @click="editAddr" style="margin-left:20px;">修改地址</el-button>
+                </div>
+            </div>
+            <div style="clear: both;"></div>
+        </div>
+        <ul style="margin-top:20px;display:inline-block">
+            <li class="tabs"  v-for="(item,index) in list" v-show="!((serTypeCode=='001'||serTypeCode=='003')&&4 == item.state)" :class="{'active':currentIndex == item.state}" :key="index" @click="select(index,item.state)">{{item.name}}</li>
+        </ul>
+        <el-button type="primary" size="small" @click="newReport('','add')" v-if="mes.reportAdd">开单</el-button>
+        <div v-loading="loading">
+            <el-table :data="tableDataList[0]" border style="width: 100%;margin-top:20px" v-show="currentIndex == 0" class="min_table smt" max-height="500"
+            :row-class-name="tableRowClassName">
+                <!-- 回访记录 -->
+                <el-table-column prop="serviceName" label="联系人" min-width="120"></el-table-column>
+                <el-table-column prop="visitContent" label="回访内容" min-width="200" show-overflow-tooltip></el-table-column>
+                <el-table-column prop="visitRecord" label="回访结果"  min-width="250" show-overflow-tooltip> </el-table-column>
+                <!-- <el-table-column prop="date" label="下次回访时间" min-width="120"></el-table-column> -->
+                <el-table-column prop="createOn" label="回访时间" min-width="120">
+                    <template scope="scope">
+                        <span v-if="scope.row.recordDate">{{scope.row.recordDate.substring(0,10)}}</span>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="visitDate" label="回访设置时间" min-width="120">
+                    <template scope="scope">
+                        <span v-if="scope.row.visitDate">{{scope.row.visitDate.substring(0,10)}}</span>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="visitStatus" label="回访状态" min-width="120">
+                    <template scope="scope">
+                        <span v-if="scope.row.visitStatus == 1">待回访</span>
+                        <span v-if="scope.row.visitStatus == 2">已回访</span>
+                    </template>
+                </el-table-column>
+            </el-table>
+    <!-- 咨询内容 -->
+            <el-table :data="tableDataList[1]" border style="width: 100%;margin-top:20px"  v-show="currentIndex == 1" class="min_table smt" max-height="500"
+            :row-class-name="tableRowClassName">
+                <el-table-column prop="consultingDate" label="咨询日期" min-min-width="120">
+                    <template scope="scope">
+                        <span v-if="scope.row.consultingDate">{{scope.row.consultingDate.substring(0,10)}}</span>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="projectName" label="项目" min-width="150"> </el-table-column>
+                <el-table-column  prop="doctor" label="医生" min-width="120"></el-table-column>
+                <el-table-column  prop="designerName" label="设计师" min-width="120"></el-table-column>
+                <el-table-column  prop="designerAssistName" label="设计师助理" min-width="120"></el-table-column>
+                <el-table-column  prop="consultingName" label="咨询分类" min-width="110"> </el-table-column>
+                <el-table-column  prop="consultingContent" label="内容" min-width="180" show-overflow-tooltip></el-table-column>
+            </el-table>
+            <!-- 订单情况 -->
+            <el-table :data="tableDataList[7]" border style="width: 100%;margin-top:20px" v-show="currentIndex == 7"
+                class="min_table smt" max-height="500" :row-class-name="tableRowClassName" @selection-change="handleSelectionChange">
+                <el-table-column type="selection" align="center" width="55"></el-table-column>
+                <el-table-column prop="fxCode" label="订单编号" min-width="90">
+                   <template scope="scope">
+                        <el-button type="text" @click="newReport(scope.row)" v-if="mes.reportAdd&&serTypeCode!='001'&&serTypeCode!='003'">{{scope.row.fxCode}}</el-button>
+                        <span v-else>{{scope.row.fxCode}}</span>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="orderDate" label="订单日期" min-width="90">
+                    <template scope="scope">
+                        <span v-if="scope.row.orderDate">{{scope.row.orderDate.substring(0,10)}}</span>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="orderType" label="订单类型" min-width="100">
+                    <template scope="scope">
+                        <el-tag type="success" v-text="scope.row.orderType==1?'app订单':'线下订单'"></el-tag>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="projectName" label="执行项目" min-width="120" show-overflow-tooltip> </el-table-column>
+                <el-table-column prop="goodsUnitName" label="规格" min-width="80" show-overflow-tooltip></el-table-column>
+                <el-table-column prop="commandState" label="执行状态" min-width="90">
+                    <template scope="scope">
+                        <el-tag type="gray" v-if="scope.row.commandState == 0">未执行</el-tag>
+                        <el-tag type="warning" v-if="scope.row.commandState == 1">执行中</el-tag>
+                        <el-tag type="success" v-if="scope.row.commandState == 2">执行完毕</el-tag>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="course" label="疗程" min-width="70">
+                    <template scope="scope">
+                        <span v-if="scope.row.currentCourse">{{scope.row.currentCourse}} /</span>
+                        <span v-if="!scope.row.currentCourse">0 /</span>
+                        <span v-if="scope.row.course">{{scope.row.course}}</span>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="isPayOff" label="付款状态" min-width="80">
+                    <template scope="scope">
+                        <el-tag type="success" v-if="scope.row.isPayOff == true">已付清</el-tag>
+                    <el-tag type="danger" v-if="scope.row.isPayOff == false">未付清</el-tag>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="approveState" label="订单状态" min-width="90">
+                    <template scope="scope">
+                        <el-tag type="warning" v-if="scope.row.approveState==0||scope.row.approveState==null">未审核</el-tag>
+                        <el-tag v-if="scope.row.approveState==1">部分审核</el-tag>
+                        <el-tag type="success" v-if="scope.row.approveState==2">审核完毕</el-tag>
+                        <el-tag type="danger" v-if="scope.row.approveState==6">已退款</el-tag>
+                        <el-tag type="danger" v-if="scope.row.approveState == 10">已关闭</el-tag>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="createBy" label="登记人" min-width="80"> </el-table-column>
+                <el-table-column prop="goodsUnitName" label="操作" min-width="90">
+                    <template scope="scope">
+                        <el-button type="primary" size="small" @click="viewPhoto(scope.row)">查看照片</el-button>
+                    </template>
+                </el-table-column>
+            </el-table>
+            <el-button @click="print" type="primary" v-show="currentIndex == 7">打印</el-button>
+            <!-- 执行情况 -->
+            <el-table :data="tableDataList[2]" border style="width: 100%;margin-top:20px" v-show="currentIndex == 2"  @row-dblclick="dbChange"
+                class="min_table smt" max-height="500" :row-class-name="tableRowClassName">
+                <el-table-column prop="orderDate" label="订单时间" min-width="120">
+                    <template scope="scope">
+                        <span v-if="scope.row.orderDate">{{scope.row.orderDate.substring(0,10)}}</span>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="projectName" label="执行项目" min-width="160" show-overflow-tooltip> </el-table-column>
+                <el-table-column prop="goodsUnitName" label="规格" min-width="140" show-overflow-tooltip></el-table-column>
+                <el-table-column prop="commandState" label="执行状态" min-width="120">
+                    <template scope="scope">
+                        <el-tag type="gray" v-if="scope.row.commandState == 0">未执行</el-tag>
+                        <el-tag type="warning" v-if="scope.row.commandState == 1">执行中</el-tag>
+                        <el-tag type="success" v-if="scope.row.commandState == 2">执行完毕</el-tag>
+                        <el-tag type="success" v-if="scope.row.commandState == 3">新系统已执行</el-tag>
+                    </template>
+                </el-table-column>
+                <!-- <el-table-column prop="address" label="数量" min-width="80"> </el-table-column> -->
+                <el-table-column prop="date" label="执行日期" min-width="110">
+                    <template scope="scope">
+                        <span v-if="scope.row.execDate">
+                            {{scope.row.execDate.substring(0,10)}}
+                        </span>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="doctorName" label="治疗医生" min-width="100"></el-table-column>
+                <el-table-column prop="createBy" label="登记人" min-width="100"> </el-table-column>
+                <el-table-column prop="memo" label="备注" min-width="160" show-overflow-tooltip> </el-table-column>
+            </el-table>
+    <!-- 预约 -->
+            <el-table :data="tableDataList[3]" border style="width: 100%;margin-top:20px" v-show="currentIndex == 3" class="min_table smt" max-height="500"
+            :row-class-name="tableRowClassName">
+                <el-table-column prop="reservationDate" width="120" label="预约日期" >
+                    <template scope="scope">
+                        <span v-if="scope.row.reservationDate">
+                            {{scope.row.reservationDate.substring(0,10)}}
+                        </span>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="MemberName" label="时间段" min-width="120">
+                    <template scope="scope">
+                        <span v-if="scope.row.startTime">
+                            {{scope.row.startTime}}-{{scope.row.endTime}}
+                        </span>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="deptName" label="科室" min-width="120"></el-table-column>
+                <el-table-column prop="doctorName" label="预约医生" min-width="120"></el-table-column>
+                <el-table-column prop="projectName" label="项目" min-width="120" show-overflow-tooltip></el-table-column>
+                <el-table-column prop="reservationStatus" label="状态" min-width="120">
+                    <template scope="scope">
+                        <span v-if="scope.row.reservationStatus == 1">未来院</span>
+                        <span v-if="scope.row.reservationStatus == 2">手术中</span>
+                        <span v-if="scope.row.reservationStatus == 3">已完成</span>
+                    </template>
+                </el-table-column>
+            </el-table>
+    <!-- 支付情况 -->
+            <el-table :data="tableDataList[4]" border style="width: 100%;margin-top:20px" v-show="currentIndex == 4" class="min_table smt" max-height="500"
+            :row-class-name="tableRowClassName">
+                <el-table-column prop="payType" width="120" label="支付方式" >
+                    <template scope="scope">
+                        {{scope.row.payType|filterFun}}
+                    </template>
+                </el-table-column>
+                <el-table-column prop="realAmount" label="支付金额" min-width="120">
+
+                </el-table-column>
+                <el-table-column prop="receiveAccount" label="收款账户" min-width="120"></el-table-column>
+                <el-table-column prop="payDate" label="支付日期" min-width="120">
+                    <template scope="scope">
+                        <span v-if="scope.row.payDate">
+                            {{scope.row.payDate.substring(0,10)}}
+                        </span>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="projectName" label="项目" min-width="120" show-overflow-tooltip></el-table-column>
+                <!-- <el-table-column prop="projectName" label="尾款" min-width="120"></el-table-column> -->
+                <el-table-column prop="memo" label="备注" min-width="120"></el-table-column>
+            </el-table>
+            <!-- 券使用情况 -->
+            <el-table :data="tableDataList[5]" border style="width: 100%;margin-top:20px" v-show="currentIndex == 5" class="min_table smt" max-height="500"
+            :row-class-name="tableRowClassName">
+                <el-table-column prop="payType" width="120" label="支付方式" >
+                    <template scope="scope">
+                        {{scope.row.payType|filterFun}}
+                    </template>
+                </el-table-column>
+                <el-table-column prop="ticketsCode" label="券号" min-width="120"></el-table-column>
+                <el-table-column prop="realAmount" label="支付金额" min-width="120"></el-table-column>
+                <el-table-column prop="payDate" label="支付日期" min-width="120">
+                    <template scope="scope">
+                        <span v-if="scope.row.payDate">
+                            {{scope.row.payDate.substring(0,10)}}
+                        </span>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="memo" label="备注" min-width="200" show-overflow-tooltip></el-table-column>
+            </el-table>
+            <!-- 处方单 -->
+            <el-table :data="tableDataList[6]" border style="width: 100%;margin-top:20px" v-show="currentIndex == 6" class="min_table smt" max-height="500"
+            :row-class-name="tableRowClassName">
+                <el-table-column prop="orderProductCode" min-width="110" label="订单编号" ></el-table-column>
+                <el-table-column prop="orderDate" label="订单日期" min-width="110">
+                    <template scope="scope">
+                        <span v-if="scope.row.orderDate">{{scope.row.orderDate.substring(0,10)}}</span>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="diagnosis" label="临床诊断" min-width="110"></el-table-column>
+                <el-table-column prop="unitName" label="规格" min-width="100" show-overflow-tooltip></el-table-column>
+                <el-table-column prop="productName" label="药品名称" min-width="110" show-overflow-tooltip></el-table-column>
+                <el-table-column prop="quantity" label="数量" min-width="80"></el-table-column>
+                <el-table-column prop="price" label="价格" min-width="80">
+                    <template scope="scope">
+                        <span v-if="scope.row.price">{{scope.row.price.toQFW()}}</span>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="dwName" label="单位" min-width="80"></el-table-column>
+                <el-table-column prop="realAmount" label="实收金额" min-width="90">
+                    <template scope="scope">
+                        <span v-if="scope.row.realAmount">{{scope.row.realAmount.toQFW()}}</span>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="nurseName" label="服务者" min-width="100"></el-table-column>
+            </el-table>
+            <!-- 套餐情况 -->
+            <el-table :data="tableDataList[8]" border style="width: 100%;margin-top:20px" v-show="currentIndex == 8" class="min_table smt" max-height="500"
+            :row-class-name="tableRowClassName">
+                <el-table-column prop="ConPacName" label="套餐名称" min-width="100" show-overflow-tooltip></el-table-column>
+                <el-table-column prop="TickName" label="券名称" min-width="120" show-overflow-tooltip></el-table-column>
+                <el-table-column prop="TicNum" label="数量" min-width="80"></el-table-column>
+                <el-table-column prop="UseCount" label="单张使用次数" min-width="80"></el-table-column>
+                <el-table-column prop="UsedTimes" label="已用次数" width="150">
+                    <template scope="scope">
+                        <span v-if="scope.row.UsedTimes">{{scope.row.UsedTimes}}</span>
+                        <span v-else>0</span>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="IsUserLimit" label="有效期" min-width="120">
+                    <template scope="scope">
+                        <span v-if="scope.row.PrdOfVal!='' && scope.row.PrdOfVal!=null "> {{ '售后'+ scope.row.PrdOfVal +'天'}}</span>
+                        <div v-else>
+                            <p>开始：{{ scope.row.StartDate&&scope.row.StartDate.substr(0,10) }} </p>
+                            <p>结束：{{ scope.row.EndDate&&scope.row.EndDate.substr(0,10) }} </p>
+                        </div>
+                    </template>
+                </el-table-column>
+            </el-table>
+            <!-- 客诉 -->
+            <el-table :data="tableDataList[9]" border style="width: 100%;margin-top:20px" v-show="currentIndex == 9" class="min_table smt" max-height="500">
+                <el-table-column prop="deptName" label="事由科室" min-width="100"></el-table-column>
+                <el-table-column prop="projectName" label="项目" min-width="120"></el-table-column>
+                <el-table-column prop="doctorName" label="医生" min-width="80"></el-table-column>
+                <el-table-column prop="firstDate" min-width="90" label="初诊日期" align="center">
+                    <template scope="scope">
+                        <span v-if="scope.row.firstDate">
+                            {{scope.row.firstDate.substring(0,10)}}
+                        </span>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="complaintType" label="投诉方式" min-width="80" align="center">
+                    <template scope="scope">
+                        <span v-if="scope.row.complaintType == 0">来电</span>
+                        <span v-if="scope.row.complaintType == 1">来访</span>
+                        <span v-if="scope.row.complaintType == 2">来信</span>
+                        <span v-if="scope.row.complaintType == 3">其他</span>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="complaintState" label="处理进度" min-width="80" align="center">
+                    <template scope="scope">
+                        <el-tag type="gray" v-if="scope.row.complaintState == 0">待解决</el-tag>
+                        <el-tag type="success" v-if="scope.row.complaintState == 1">已解决</el-tag>
+                        <el-tag type="warning" v-if="scope.row.complaintState == 2">未解决</el-tag>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="anasDesc" label="原因分析" min-width="150" show-overflow-tooltip></el-table-column>
+                <el-table-column prop="verifReasons" label="核实情况" min-width="150" show-overflow-tooltip></el-table-column>
+                <el-table-column prop="procResult" label="处理结果" min-width="150" show-overflow-tooltip></el-table-column>
+                <el-table-column prop="feedResult" label="反馈结果" min-width="150" show-overflow-tooltip></el-table-column>
+                
+                <el-table-column prop="memo" label="备注" min-width="150" show-overflow-tooltip></el-table-column>
+            </el-table>
+
+        </div>
+        <span style="font-size:14px;font-weight:bold">红色为原系统数据 </span>
+        <el-dialog title="手术照片" :visible.sync="dialogFormVisible" :modal="false" size="">
+            <el-form label-width="100px" style="width:640px;max-height:480px;overflow-y: auto;">
+                <el-form-item label="术前：" class="form_item_mt0">
+                    <span class="imgContainer" v-for="(item,index) in fileList1" :key="index">
+                        <img width="100px" :src="item.url" alt="">
+                    </span>
+                </el-form-item>
+                <el-form-item label="术中：" class="form_item_mt0">
+                    <span class="imgContainer" v-for="(item,index) in fileList2" :key="index">
+                        <img width="100px" :src="item.url" alt="">
+                    </span>
+                </el-form-item>
+                <el-form-item label="术后：" class="form_item_mt0">
+                    <span class="imgContainer" v-for="(item,index) in fileList3" :key="index">
+                        <img width="100px" :src="item.url" alt="">
+                    </span>
+                </el-form-item>
+            </el-form>
+        </el-dialog>
+        <el-dialog title="修改地址" :visible.sync="dialogAddr" :modal="false" size="">
+          <div style="width:462px;height:90px;">
+            <el-select v-model="customerAddr.province" placeholder="请选择省份" class="form_select" filterable>
+              <el-option v-for="item in detAddr" :label="item.name" :value="item.name" :key="item.name"></el-option>
+            </el-select>
+            <el-select v-model="customerAddr.city" placeholder="请选择城市" class="form_select" filterable>
+              <el-option v-for="item in cityList" :label="item.name" :value="item.name" :key="item.name"></el-option>
+            </el-select>
+            <el-select v-model="customerAddr.area" placeholder="请选择区域" class="form_select" filterable>
+                <el-option v-for="item in areaList" :label="item.name" :value="item.name" :key="item.name"></el-option>
+            </el-select>
+            <el-input v-model="customerAddr.address" placeholder="详细地址" style="width:450px;margin-top:10px;"></el-input>
+          </div>
+          <div style="text-align:center">
+            <el-button type="primary" @click="addrEditSure">确定</el-button>
+            <el-button @click="dialogAddr = false">取消</el-button>
+          </div>
+        </el-dialog>
+    </div>
+</template>
+
+<script>
+import addr from "../../../../../static/addresss.json";
+import { xmxUrl, baseImgPath } from "@/config/env";
+import {getUserById,GetOrderCommandByCus,GetUserAllByKeywords,HuiFangList,YuYueList,zhixing,GetOrderCommandByCus2,GetComplaint,ModifyBranchAddress,
+  GetOrderProductByCus,GetBranchByCode,GetConsultingHistory,GetPayAllByCustomeId,getBaseDataByCode,GetChuFangList,GetZhiFuList,GetZiXunList,GetUserAccountByCode,
+  GetConsultingByCustomerCode,GetReservationByCustomerCode,GetVisitByCus,updateExec,GetPhotoByFxCode} from "@/api/myData";
+import { getCookie } from "@/config/mUtils";
+var _this;
+export default {
+  props: {
+    mes: {
+      type: Object
+    }
+  },
+  data() {
+    return {
+      dialogAddr:false,
+      detAddr:[],
+      cityList:[],
+      areaList:[],
+      customerAddr:{
+        province:'',
+        city:'',
+        area:'',
+        address:'',
+      },
+      loading: false,
+      multipleSelection: [],
+      dialogFormVisible: false,
+      fileList1: [],
+      fileList2: [],
+      fileList3: [],
+      newRecord: "",
+      visitForm: {
+        dateInit: "",
+        date: "",
+        content: "",
+        kf: ""
+      },
+      kfList: [],
+      customer: {},
+      currentIndex: 0,
+      tableDataList:[[],[],[],[],[],[],[],[],[],[]],
+      list: [{ name: "回访记录", state: 0 },{ name: "咨询内容", state: 1 },{ name: "执行情况", state: 2 },{ name: "预约情况", state: 3 },{ name: "支付情况", state: 4 },
+        { name: "券使用情况", state: 5 },{ name: "处方单", state: 6 },{ name: "订单情况", state: 7 },{ name: "套餐情况", state: 8 },{name:'客户投诉',state:9 }],
+      tableData: [],
+      total: 0,
+      payWays: [],
+      customerCode: "",
+      serTypeCode:getCookie("serTypeCode"),
+      jifen:0,
+      wxjf:0,
+      pfkjf:0,
+      isFrozen:'',
+      jifenOnline:0,
+      vipJF:0,
+      RemainAmount:0,
+    };
+  },
+  watch: {
+    mes: {},
+    "customerAddr.province": {
+                handler(curVal, oldVal) {
+                    this.cityList = [];
+                    this.customerAddr.city = "";
+                    let len = this.detAddr.length;
+                    this.detAddr.forEach(data => {
+                        if (data.name == curVal) {
+                            this.cityList = data.sub;
+                        }
+                    });
+                },
+                deep: true
+            },
+            "customerAddr.city": {
+                handler(curVal, oldVal) {
+                    this.customerAddr.area = "";
+                    this.areaList = [];
+                    let len = this.cityList.length;
+                    this.cityList.forEach(data => {
+                        if (data.name == curVal) {
+                            this.areaList = data.sub;
+                        }
+                    });
+                },
+                deep: true
+            },
+  },
+  filters: {
+    filterFun(val) {
+      let name;
+      if (val) {
+        if (val.length > 5) {
+          name = val;
+        } else {
+          _this.payWays.forEach(row => {
+            if (row.DataCode == val) {
+              name = row.DataName;
+              return;
+            }
+          });
+        }
+        return name;
+      }
+      return name;
+    }
+  },
+  mounted() {
+    debugger
+    this.serTypeCode
+    this.detAddr = addr.area;
+    _this = this;
+    if (this.mes.CustomerId) {
+      this.customerCode = this.mes.CustomerId;
+    } else if(this.mes.customerId) {
+      this.customerCode = this.mes.customerId;
+    }else if(this.mes.customerCode){
+      this.customerCode = this.mes.customerCode;
+    }
+    this.GetUserAllByKeywords();
+  },
+  methods: {
+    addrEditSure(){
+      this.ModifyBranchAddress(this.customerAddr)
+    },
+    editAddr(){
+      this.customerAddr.province = this.customer["Province"]
+      setTimeout(()=>{
+        this.customerAddr.city = this.customer["City"]
+      },20)
+      setTimeout(()=>{
+        this.customerAddr.area = this.customer["Area"]
+      },30)
+      this.customerAddr.area = this.customer["Address"]
+      this.dialogAddr = true
+    },
+    async ModifyBranchAddress(params){
+      params.code = this.customerCode
+      let res = await ModifyBranchAddress(params)
+      if (res.status) {
+        this.$message({ message: "成功",type: "success"});
+        this.GetUserAllByKeywords(true)
+      } else {
+        this.$message.error("失败");
+      }
+      this.dialogAddr = false
+    },
+    searchOrder(){
+        if(this.currentIndex == 7){
+            this.loading = true
+            this.GetOrderCommandByCus2(this.customerCode,7);
+        }
+    },
+    newReport(data,ope) {
+      let mes = this.customer
+      if(!ope){
+        mes = {fxCode:data.fxCode}
+      }
+      this.$emit("openReport",mes,ope);
+    },
+
+    handleSelectionChange(val) {
+      this.multipleSelection = val;
+    },
+    print() {
+      let ids = [],type=[],flg = true
+      this.multipleSelection.forEach(ele => {//同一订单类型的订单才能打印
+        if(type.length==0){
+          type.push(ele.orderType)
+        }
+        if(type.indexOf(ele.orderType)>=0){
+          ids.push(ele.fxCode);
+        }else{
+           this.$message({message: '请勾同一订单类型的订单进行打印',type: 'warning'});
+          flg = false
+          return false
+        }
+      });
+      if(flg){
+        let url =  document.location.protocol +"//" + document.location.hostname +(80 == document.location.port || "" == document.location.port ? "": ":" + document.location.port) +"/";
+        if (baseImgPath.indexOf("192") >= 0) {
+          let newWin = window.open(url + "print/printOrder.html?id=" + ids.join("#") + "&customerId=" + this.customerCode);
+        } else {
+          let newWin = window.open(url + "print/printOrder.html?id=" + ids.join("#") + "&customerId=" + this.customerCode);
+        }
+      }
+    },
+    async GetPhotoByFxCode(params) {
+      let res = await GetPhotoByFxCode(params);
+      this.picturesSplit(res.data);
+    },
+    // 图片分离
+    picturesSplit(data) {
+      if (data) {
+        this.fileList1 = [];
+        this.fileList2 = [];
+        this.fileList3 = [];
+        data.forEach(ele => {
+          if (ele.photoType == 1) { // 术前
+            this.fileList1.push({
+              name: ele.photoUrl,
+              url: baseImgPath + ele.photoUrl
+            });
+          }
+          if (ele.photoType == 2) {// 术中
+            this.fileList2.push({
+              name: ele.photoUrl,
+              url: baseImgPath + ele.photoUrl
+            });
+          }
+          if (ele.photoType == 3) {  // 术后
+            this.fileList3.push({
+              name: ele.photoUrl,
+              url: baseImgPath + ele.photoUrl
+            });
+          }
+        });
+      }
+    },
+    async GetPoints(mobile){
+      let res = await GetPoints({mobile:mobile})
+       this.jifenOnline = res.status?res.data:0
+    },
+    async GetUserAllByKeywords(isEditAddr) {
+      debugger
+      let [payWays,res,account,app] = await Promise.all([getBaseDataByCode("0006"),GetUserAllByKeywords({ keywords: this.customerCode }),
+      GetUserAccountByCode({branchcode:this.customerCode})]);
+      this.jifen = account.RemainSystemPoints,
+      this.wxjf = account.RemainGoldCoin
+      this.pfkjf = account.SkinRemainAmount
+      this.vipJF = account.VIPRemainPoints
+      this.RemainAmount = account.RemainAmount
+      this.payWays =payWays
+      
+      if (res.length > 0) {
+        if(res.PhoneNumber){
+          this.GetPoints(res.PhoneNumber)
+        }
+        let customer = res[0];
+        for (var p in customer) {
+          if (customer[p] == null || customer[p] == undefined) {
+            customer[p] = "";
+          }
+        }
+        customer["Address"] = customer["Province"] + customer["City"] + customer["Area"] + customer["Address"].split(",").join("");
+        if (customer["Sex"] == "0") {
+          customer["Sex"] = "女";
+        }
+        if (customer["Sex"] == "1") {
+          customer["Sex"] = "男";
+        }
+        customer["Age"] =
+          customer.Birthday.length > 0
+            ? Number(customer.Birthday.substring(0, 4)).red(
+                new Date().getFullYear()
+              )
+            : "";
+        this.customer = customer;
+      }
+      if(!isEditAddr){
+        this.select(0, 0);
+      }
+      
+    },
+    select(index, state) {
+      this.currentIndex = state;
+      if(this.tableDataList[state].length>0){
+        return false
+      }
+      this.$nextTick(() => {
+        this.loading = true;
+      });
+      this.tableData = [];
+      if (state == 0) {
+        this.GetVisitByCus({ CustomerCode: this.customerCode },state);
+      }
+      if (state == 1) {
+        this.GetConsulting({
+          CustomerCode: this.customerCode
+        },state);
+      }
+      if (state == 2) {
+        this.GetOrderCommandByCus(this.customerCode, state);
+      }
+      if (state == 3) {
+        this.GetReservation({
+          CustomerCode: this.customerCode
+        },state);
+      }
+      if (state == 4) {
+        this.GetPayAllByCustomeId({
+          CustomerCode: this.customerCode
+        },false,state);
+      }
+      if (state == 5) {
+        this.GetPayAllByCustomeId({CustomerCode: this.customerCode}, index,state);
+      }
+      if (state == 6) {
+        
+        this.GetChuFangList({outWhere: this.customer.CardNO},index,state);
+      }
+      if (state == 7) {
+        this.GetOrderCommandByCus2(this.customerCode,state);
+      }
+      if (state == 8) {
+        this.GetBranchByCode({
+          branchcode: this.customerCode
+        },state);
+      }
+      
+      if (state == 9) {
+        this.GetComplaint({
+          complaintState:"",complaintType:"",enddate:"",keyWords:this.customerCode,pageIndex:1,pageSize:100, startDate:""
+        },state);
+      }
+    },
+    // 客户投诉
+    async GetComplaint(params,index){
+      let res = await GetComplaint(params)
+      this.tableData = res.data
+      this.tableDataList[index] = res.data
+      this.loading = false;
+    },
+    // 预约
+    async GetReservation(params,state) {
+      let res1 = await YuYueList({
+        pageIndex: 1,
+        pageSize: 1000,
+        outwhere: this.customerCode
+      });
+      res1.data.forEach(row => {
+        row.doctorName = row["预约医生"];
+        row.deptName = row["预约科室"];
+        row.reservationStatus = this.getStatus(row["来院状态"]);
+        row.reservationDate = row["预约日期"];
+        row.startTime = row["预约时间"];
+        row.projectName = row["预约内容"];
+        row.isNew = 1;
+      });
+      let res = await GetReservationByCustomerCode(params);
+      if (res.status) {
+        this.total = res.count;
+        this.tableData = res.data.concat(res1.data);
+        this.tableDataList[state] = res.data.concat(res1.data);
+      }
+      this.loading = false;
+    },
+    getStatus(status) {
+      switch (status) {
+        case "未来院":
+          return 1;
+        case "手术中":
+          return 2;
+        case "已完成":
+          return 3;
+      }
+    },
+    // 咨询
+    async GetConsulting(params,state) {
+      let res1 = await GetZiXunList({
+        pageIndex: 1,
+        pageSize: 1000,
+        outwhere: this.customer.CardNO
+      });
+      res1.data.forEach(row => {
+        // row.consultingDate = row["预约医生"]
+        // row.projectName = row["预约科室"]
+        // row.designerName = this.getS
+        row.consultingDate = row["ddt"];
+        row.consultingName = row["szxType"];
+        row.doctor = row.sys;
+        row.consultingContent = row["scon"];
+        row.isNew = 1; //1老数据 0 新数据
+      });
+      let old = await GetConsultingHistory({
+        CustomerName: this.customer.MemberName,
+        Phone: this.customer.PhoneNumber
+      });
+      old.data.forEach(ele => {
+        for (var key in ele) {
+          if (ele[key] == null) {
+            ele[key] = "";
+          }
+        }
+        ;
+        ele.doctor = ele.doctorName;
+        ele.consultingDate = ele.orderDate
+          ? ele.orderDate.substring(0, 10)
+          : "";
+        ele.projectName = ele.projectName;
+        ele.consultingContent =
+          ele.payTypeName + " " + ele.colorName + " " + ele.memo;
+        ele.isNew = 1;
+      });
+      let res = await GetConsultingByCustomerCode(params);
+      if (res.status) {
+        this.total = res.count;
+        this.tableData = res.data.concat(res1.data).concat(old.data);
+        this.tableDataList[state] = res.data.concat(res1.data).concat(old.data);
+        ;
+      } 
+      this.loading = false;
+    },
+    //回访记录
+    async GetVisitByCus(params,state) {
+      let res1 = await HuiFangList({
+        pageIndex: 1,
+        pageSize: 1000,
+        outwhere: this.customerCode
+      });
+      res1.data.forEach(row => {
+        (row.date = row["下次回访时间"]), (row.serviceName = row["客服专员"]);
+        row.createOn = row["回访时间"];
+        row.visitContent = row["联系内容"];
+        row.visitRecord = row["联系结果"];
+        row.isNew = 1;
+      });
+      let res = await GetVisitByCus(params);
+      if (res.status) {
+        this.total = res.count;
+        this.tableData = res.data.concat(res1.data);
+        this.tableDataList[state] = res.data.concat(res1.data);
+      }
+      this.loading = false;
+    },
+    //订单情况
+    async GetOrderCommandByCus2(code, state) {
+      let res = await GetOrderCommandByCus2({ customerCode: code });
+      if (res.status) {
+        this.total = res.count;
+        // 已关闭、退款筛选
+        let arr = [];
+        res.data.forEach(row => {
+          if ( row.approveState != 10) {
+            arr.push(row);
+          }
+        });
+        this.tableData = arr;
+        this.tableDataList[state] = arr
+      }
+      this.loading = false;
+    },
+    //执行情况
+    async GetOrderCommandByCus(code,state) {
+      let res1 = await zhixing({
+        pageIndex: 1,
+        pageSize: 1000,
+        outwhere: this.customerCode
+      });
+      res1.data.forEach(row => {
+        (row.fxCode = row["流水号"]), (row.projectName = row["治疗项目"]);
+        row.goodsUnitName = row["规格"];
+        row.createBy = row["登记人"];
+        row.doctorName = row["主治医生"];
+        row.commandState = this.getCommand(row["执行状态"]);
+        row.execDate = row["完成日期"];
+        row.isNew = 1;
+      });
+      let res = await GetOrderCommandByCus({ customerCode: code });
+      if (res.status) {
+        this.total = res.count;
+        res.data.forEach(row => {
+          row.commandState = 2;
+        });
+        this.tableData = res.data.concat(res1.data);
+        this.tableDataList[state] = res.data.concat(res1.data);
+      }
+      this.loading = false;
+    },
+    // 支付情况
+    async GetPayAllByCustomeId(code, index,state) {
+      
+      let res = await GetPayAllByCustomeId(code);
+      if (res.status) {
+        this.total = res.count;
+        if (index) {
+          this.tableData = [];
+          res.data.forEach(row => {
+            if (row.payType == "008" || row.payType == "010") {
+              this.tableData.push(row);
+              
+              this.tableDataList[state].push(row)
+            }
+          });
+        } else {
+          this.tableData = res.data;
+          this.tableDataList[state] = res.data
+        }
+      }
+      this.loading = false;
+    },
+    // 处方单
+    async GetChuFangList(params,index,state) {
+      let res1 = await GetOrderProductByCus({
+        CustomerCode: this.customerCode
+      });
+      let res = await GetChuFangList({
+        pageIndex: 1,
+        pageSize: 1000,
+        outwhere: this.customer.CardNO
+      });
+      res.data.forEach(row => {
+        (row.orderProductCode = row["yaoFang"]["fid"]),
+          (row.createOn = row["yaoFang"]["ddt"]);
+        row.productName = row["yaoPing"]["sName"];
+        row.realAmount = Number(row["yaoPing"]["mMoney"]);
+        row.quantity = row["yaoPing"]["fFactNum"];
+        row.nurseName = row["联系结果"];
+        row.diagnosis = row["yaoFang"]["szd"];
+        row.unitName = row["yaoPing"]["sSpec"];
+        row.price = Number(row["yaoPing"]["mPrice"]);
+        row.dwName = row["yaoPing"]["sUnit"];
+        row.isNew = 1;
+      });
+      
+      this.tableData = res1.data.concat(res.data);
+      this.tableDataList[state] = res1.data.concat(res.data);
+      this.tableDataList.push()
+      this.loading = false;
+    },
+    async GetBranchByCode(params,state) {
+      let res = await GetBranchByCode(params);
+      if (res.Branch) {
+        this.tableData = res.CPOList;
+        this.tableDataList[state] = res.CPOList;
+      } else {
+        this.tableData = [];
+        this.tableDataList[state] = []
+      }
+      this.loading = false;
+    },
+    getCommand(status) {
+      switch (status) {
+        case "未执行":
+          return 0;
+        case "执行中":
+          return 1;
+        case "已执行":
+          return 2;
+        case "新系统已执行":
+          return 3;
+      }
+    },
+    tableRowClassName(row, index) {
+      if (row.isNew) {
+        return "warning-row";
+      } else {
+        return "positive-row";
+      }
+      return "";
+    },
+    dbChange(row, event) {
+      ;
+      this.$confirm("此操作将修改执行状态, 是否继续?", "提示", {
+        confirmButtonText: "确定",
+        cancelButtonText: "取消",
+        type: "warning"
+      })
+        .then(() => {
+          this.updateExec(row.id);
+        })
+        .catch(() => {});
+    },
+    async updateExec(id) {
+      let res = await updateExec({ id: id });
+      if (res.status) {
+        this.$message({
+          message: "成功",
+          type: "success"
+        });
+        this.GetOrderCommandByCus(this.customerCode);
+      } else {
+        this.$message.error("失败");
+      }
+    },
+    viewPhoto(data) {
+      this.dialogFormVisible = true;
+      this.GetPhotoByFxCode({
+        FxCode: data.fxCode
+      });
+    }
+  },
+  components: {}
+};
+</script>
+
+<style lang="less" scoped>
+.mes {
+  background: rgba(238, 241, 246, 1);
+  padding: 10px 15px;
+  .mes_left {
+    // width: 60%;
+    float: left;
+    .column {
+      line-height: 26px;
+      span {
+        display: inline-block;
+      }
+      .wt100 {
+        width: 100px;
+      }
+      .wt200 {
+        width: 200px;
+      }
+      .wt150 {
+        width: 150px;
+      }
+      .wt300 {
+        width: 303px;
+      }
+    }
+  }
+  .mes_right {
+    // width: 39%;
+    float: left;
+    .column {
+      line-height: 26px;
+      .ipt_lab {
+        display: block;
+        float: left;
+      }
+    }
+  }
+}
+.tabs {
+  display: inline-block;
+  width: 80px;
+  height: 30px;
+  line-height: 30px;
+  text-align: center;
+  border: 1px solid #6a6d78;
+  border-right: none;
+  cursor: pointer;
+}
+.tabs:last-child {
+  border: 1px solid #6a6d78;
+  border-radius: 0 3px 3px 0;
+}
+.tabs:first-child {
+  border-radius: 3px 0 0 3px;
+}
+.tabs.active {
+  background: #6a6d78;
+  color: #fff;
+}
+.form_footer {
+  text-align: center;
+}
+.imgContainer {
+  display: inline-block;
+  width: 100px;
+  height: 100px;
+  overflow: hidden;
+}
+.form_select{
+  width: 150px;
+}
+</style>
+
+

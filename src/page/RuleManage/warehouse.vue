@@ -1,0 +1,385 @@
+<template>
+    <div class="tag selCommon">
+        <el-form :inline="true" :model="formInline" class="form_search" label-width="80px">
+            <el-form-item label="关键字：" class="form_item_mt10">
+                <el-input v-model="formInline.keywords" placeholder="仓库名称/仓库编号" style="width: 200px;" v-on:keyup.enter.native="onSubmit"></el-input>
+            </el-form-item>
+            <el-form-item label="医院：" class="form_item_mt10">
+                <el-select v-model="formInline.hospitalCode"  style='width:200px;' @change="onSubmit" >
+                    <el-option v-for="(item,index) in hospitalList" :key="index" :label="item.supplierName" :value="item.code"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="仓库类型：" class="form_item_mt10">
+                <el-select v-model="formInline.typeId"  style='width:200px;' @change="onSubmit" >
+                    <el-option label="全部" value=""></el-option>
+                    <el-option label="药房" value="1"></el-option>
+                    <el-option label="卡券" value="2"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label=" " class="form_item_mt10">
+                <el-button type="primary" @click="onSubmit" class="searchBtn">查询</el-button>
+                <el-button type="primary" class="searchBtn" @click="addTag('添加')">添加仓库</el-button>
+            </el-form-item>
+        </el-form>
+        <!-- 信息表 -->
+        <el-table :data="tableData" border style="width: 100%;margin-top:15px;margin-bottom:10px;" max-height="560" class="smt min_table" v-loading="loading">
+            <el-table-column prop="warehouseCode" label="仓库编号" min-width="150"></el-table-column>
+            <el-table-column prop="warehouseName" label="仓库名称" min-width="120"></el-table-column>
+            <el-table-column prop="typeId" label="仓库类型" min-width="100">
+                <template slot-scope="scope">
+                    <span v-text="scope.row.typeId ==1?'药房':'卡券'"></span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="hospitalName" label="医院" min-width="150"></el-table-column>
+            <el-table-column prop="contactPerson" label="联系人" min-width="150"></el-table-column>
+            <el-table-column prop="mobilePhone" label="联系电话" min-width="150"></el-table-column>
+            <el-table-column prop="fax" label="传真" min-width="150"></el-table-column>
+            <el-table-column prop="warehouseAddress" label="地址" min-width="150">
+                <template slot-scope="scope">
+                    <span v-if="scope.row.warehouseAddress">{{scope.row.warehouseAddress.split(",").join("")}}</span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="memo" label="备注" min-width="150"></el-table-column>
+            <el-table-column prop="status" label="操作" width="150">
+                <template slot-scope="scope">
+                    <el-button @click="addTag('编辑',scope.$index,tableData)" type="primary" size="small">编辑</el-button>
+                    <el-button @click="deleteRow(scope.$index,tableData)" type="primary" size="small">删除</el-button>
+                </template>
+            </el-table-column>
+        </el-table>
+        <!-- 信息表 -->
+
+        <!-- 分页 -->
+        <div class="block">
+            <el-pagination
+                @size-change="handleSizeChange"
+                @current-change="handleCurrentChange"
+                :current-page="currentPage"
+                :page-sizes="[10, 20, 30, 40]"
+                :page-size="size"
+                layout="total, sizes, prev, pager, next, jumper"
+                :total="total">
+            </el-pagination>
+        </div>
+        <!-- 分页 -->
+
+        <!--添加-->
+        <el-dialog :title="title" :visible.sync="tag" size="">
+            <el-form :model="form" ref="form" style="width: 700px" label-width="80px" :inline="true">
+                <el-form-item label="仓库名称：" style='' class="form_item_mt10">
+                    <el-input v-model="form.warehouseName" style="width: 250px"></el-input>
+                </el-form-item>
+                <el-form-item label="医院：" style='' class="form_item_mt10">
+                    <el-select v-model="form.hospital"  style='width:250px;'>
+                        <el-option v-for="(item,index) in hospitalList" v-if="item.code!=''" :key="index" :label="item.supplierName" :value="item.supplierName+'|'+item.code"></el-option>
+                    </el-select>
+                </el-form-item>
+                <el-form-item label="联系人：" style='' class="form_item_mt10">
+                    <el-input v-model="form.contactPerson" style="width: 250px"></el-input>
+                </el-form-item>
+                <el-form-item label="联系电话：" style='' class="form_item_mt10">
+                    <el-input v-model="form.mobilePhone" style="width: 250px"></el-input>
+                </el-form-item>
+                <el-form-item label="传真：" style='' class="form_item_mt10">
+                    <el-input v-model="form.fax" style="width: 250px"></el-input>
+                </el-form-item>
+                 <el-form-item label="仓库类型：" style='' class="form_item_mt10">
+                    <el-select v-model="form.typeId" style="width: 250px">
+                        <el-option label="药房" value="1"></el-option>
+                        <el-option label="卡券" value="2"></el-option>
+                        <!-- <el-option label="纹绣" value="3"></el-option> -->
+                    </el-select>
+                </el-form-item>
+                <el-form-item label="地址：" style=''>
+                    <el-select v-model="form.province" placeholder="请选择省" style="width: 120px;margin-bottom:5px">
+                        <el-option v-for="(item,index) in province" :label="item.name" :value="item.name" :key="index"></el-option>
+                    </el-select>
+                    <el-select v-model="form.city" placeholder="请选择市" style="width: 120px">
+                        <el-option v-for="(item,index) in city" :label="item.name" :value="item.name" :key="index"></el-option>
+                    </el-select>
+                    <el-select v-model="form.area" placeholder="请选择区域" style="width: 120px">
+                        <el-option v-for="(item,index) in area" :label="item.name" :value="item.name" :key="index"></el-option>
+                    </el-select>
+                    <el-input v-model="form.address" placeholder="详细地址" style="width: 100%;margin-bottom:5px"></el-input>
+                </el-form-item>
+                <el-form-item label="备注：" style=''>
+                    <el-input type="textarea" v-model="form.memo" style="width: 500px" :rows="4"></el-input>
+                </el-form-item>
+            </el-form>
+            <div class="footer_ope">
+                <el-button @click="sure" type="primary" :loading="saveLoading">确定</el-button>
+                <el-button @click="cancel">取消</el-button>
+            </div>
+        </el-dialog>
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+    import addr from "../../../static/addresss.json"
+    import {baseImgPath} from "@/config/env"
+    import  "@/style/selfCommon.less"
+    import { getCookie, delCookie } from '@/config/mUtils'
+    import {AddStock,UpdateStock,DeleteWarehouse,GetDropDownPermission,GetWarehouse} from "@/api/myData"
+    export default {
+        data () {
+            return {
+                saveLoading:false,
+                loading:false,
+                title:"",
+                tag:false,
+                total:0,
+                size:10,
+                currentPage:1,
+                formInline: {
+                    keywords: '',
+                    typeCode:'',
+                    hospitalCode:"",
+                    typeId:'',
+                },
+                form:{
+                    "warehouseName": "",
+                    "contactPerson": "",
+                    "mobilePhone": "",
+                    "fax": "",
+                    "memo": "sample string 9",
+                    province:"",
+                    city:"",
+                    area:"",
+                    address:"",
+                    memo:"",
+                    hospital:"",
+                    typeId:"",
+                },
+                province:[],
+                city:[],
+                area:[],
+                tableData:[],
+                hospitalList:[],
+            }
+        },
+        mounted(){
+            this.province = addr.area
+            this.GetDropDownPermission()
+        },
+        watch:{
+            "form.province":{
+                handler(curVal,oldVal){
+                    this.province.forEach(row=>{
+                        if(row.name == this.form.province){
+                            this.city = row.sub
+                        }
+                    })
+                    this.form.city = ""
+                },
+                deep:true
+            },
+            "form.city":{
+                handler(curVal,oldVal){
+                    this.city.forEach(row=>{
+                        if(row.name == this.form.city){
+                            this.area = row.sub
+                        }
+                    })
+                    this.form.area = ""
+                },
+                deep:true
+            },
+        },
+        methods:{
+            
+            async GetDropDownPermission(){
+                let res1 = await GetDropDownPermission({typeId: 1});
+                this.hospitalList = res1.data
+                this.formInline.hospitalCode = res1.data[0].code
+            },
+            // 添加
+            async AddStock(params){
+                try{
+                    this.saveLoading = true
+                    let res = await AddStock(params)
+                    if(res.status){
+                        this.$message({message: '添加成功', type: 'success'});
+                        this.search()
+                        this.tag = false
+                    }else{
+                        this.$message.error('添加失败'+res.errorMessage);
+                    }
+                    this.saveLoading = false
+                }catch(err){
+                    this.$message.error('添加失败');
+                }
+            },
+            // 删除
+            async DeleteWarehouse(params){
+                try{
+                    let res = await DeleteWarehouse(params)
+                    if(res.status){
+                        this.$message({message: '删除成功', type: 'success'});
+                        this.search()
+                    }else{
+                        this.$message.error('删除失败');
+                    }
+                }catch(err){
+                    console.log(err)
+                    this.$message.error('删除失败');
+                }
+            },
+            async GetWarehouse(params){
+                try{
+                    this.loading = true
+                    let res = await GetWarehouse(params)
+                    this.tableData = res.data
+                    this.total = res.count
+                    this.loading = false
+                }catch(err){
+                    console.log(err)
+                }
+            },
+            // 编辑
+            async UpdateStock(params){
+                try{
+                    this.saveLoading = true
+                    let res = await UpdateStock(params)
+                    if(res.status){
+                        this.$message({message: '编辑成功', type: 'success'});
+                        this.search()
+                        this.tag = false
+                    }else{
+                        this.$message.error('编辑失败');
+                    }
+                    this.saveLoading = false
+                }catch(err){
+                    console.log(err)
+                    this.$message.error('编辑失败');
+                }
+            },
+            onSubmit(){
+                this.currentPage = 1
+                this.search()
+            },
+            search(){
+                this.GetWarehouse({
+                   "hospitalCode": this.formInline.hospitalCode,
+                    pageIndex:this.currentPage,
+                    pageSize:this.size,
+                    keywords:this.formInline.keywords.removeSP(),
+                    typeId:this.formInline.typeId,
+                })
+            },
+            handleSizeChange(val) {
+                this.size = val
+                this.search()
+            },
+            handleCurrentChange(val) {
+                this.currentPage = val
+                this.search()
+            },
+
+            sure(){
+                 let obj = {
+                    "warehouseName":this.form.warehouseName,
+                    "hospitalCode":this.form.hospital.length>0?this.form.hospital.split("|")[1]:"",
+                    "hospitalName": this.form.hospital.length>0?this.form.hospital.split("|")[0]:"",
+                    "contactPerson": this.form.contactPerson,
+                    "mobilePhone": this.form.mobilePhone,
+                    "fax": this.form.fax,
+                    "warehouseAddress": this.form.province+','+this.form.city+','+this.form.area+','+this.form.address,
+                    "memo": this.form.memo,
+                    typeId:this.form.typeId
+                }
+                // 编辑
+                if (this.title == "编辑") {
+                    obj.id = this.form.id
+                    obj.warehouseCode = this.form.warehouseCode
+                    obj.modifiedUserId = getCookie("userId")
+                    obj.modifiedBy = getCookie("userName")
+                    this.UpdateStock(obj)
+                } else {
+                    // 添加
+                    obj.createUserId = getCookie("userId")
+                    obj.createBy = getCookie("userName")
+                    this.AddStock(obj)
+                }
+            },
+            cancel(){
+                this.tag = false
+            },
+
+            addTag(ope,index,data){//打开窗口
+                this.reset()
+                this.tag = true
+                this.title = ope
+                if(this.hospitalList[0].code){
+                    this.form.hospital = this.hospitalList[0].supplierName+'|'+this.hospitalList[0].code
+                }
+                if(data){
+                    this.copyData(JSON.parse(JSON.stringify(data[index])))
+                }
+            },
+
+            deleteRow(index,data){//删除
+                this.$confirm('此操作将删除该数据, 是否继续?', '提示', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    type: 'warning'
+                }).then(() => {
+                    this.DeleteWarehouse({id:data[index].id})
+                }).catch(() => {
+
+                });
+            },
+
+            reset(){
+                for(var key in this.form){
+                    this.form[key] = ""
+                }
+            },
+            copyData(data){
+                for(var key in data){
+                    if(data[key] == null){
+                        data[key] = ""
+                    }
+                }
+                this.form = {
+                    "id": data.id,
+                    "warehouseCode": data.warehouseCode,
+                    "warehouseName": data.warehouseName,
+                    "contactPerson": data.contactPerson,
+                    "mobilePhone": data.mobilePhone,
+                    "fax": data.fax,
+                    "memo":data.memo,
+                    province:"",
+                    city:"",
+                    area:"",
+                    address:this.getAddress(3,data.warehouseAddress),
+                    memo:data.memo,
+                    typeId:data.typeId+'',
+                    hospital:data.hospitalCode?data.hospitalName+'|'+data.hospitalCode:"",
+                    "createUserId": data.createUserId,
+                    "createBy": data.createBy,
+                },
+                this.form.province = this.getAddress(0,data.warehouseAddress)
+                setTimeout(()=>{
+                    this.form.city = this.getAddress(1,data.warehouseAddress)
+                },100)
+                setTimeout(()=>{
+                    this.form.area = this.getAddress(2,data.warehouseAddress)
+                },200)
+            },
+            getAddress(index,data){
+                if(data.length>0){
+                    return data.split(",")[index]
+                }else{
+                    return ""
+                }
+            }
+        },
+        components: {
+        }
+    }
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+
+</style>

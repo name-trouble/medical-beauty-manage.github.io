@@ -1,0 +1,174 @@
+<template>
+    <div class="selCommon">
+        <el-form :inline="true" :model="form" class="demo-form-inline form_search" >
+            <el-form-item label="日期：" class="form_item_mt10" label-width="80px">
+                 <el-date-picker v-model="date" type="daterange" @change="dateSelect" class="form_item_ipt220" placeholder="选择日期范围"></el-date-picker>
+            </el-form-item>
+           
+             <!-- <el-form-item label="推荐医院：" class="form_item_mt10" label-width="80px">
+                <el-select v-model="form.hospitalCode" style="width: 200px;" @change="onSubmit">
+                     <el-option v-for="(item,index) in hospitalList" :key="index" :label="item.supplierName" :value="item.code"></el-option>
+                </el-select>
+            </el-form-item> -->
+            <el-form-item label="关键字：" class="form_item_mt10" label-width="80px">
+                <el-input v-model="form.keyWords" placeholder="券种编号/券名" style="width: 200px;" v-on:keyup.enter.native="onSubmit"></el-input>
+            </el-form-item>
+            <el-form-item label="" class="form_item_mt10">
+                <el-button type="primary" @click="onSubmit" class="searchBtn">查询</el-button>
+            </el-form-item>
+        </el-form>
+        <el-table :data="tableData" border style="width: 100%;margin-top:15px;margin-bottom:10px;" max-height="500"  class="min_table">
+            <el-table-column prop="BranchName" label="消费商" min-width="100"></el-table-column>
+            <el-table-column prop="TickInfoCode" label="券种编号" min-width="100"></el-table-column>
+            <el-table-column prop="TicCode" label="券号" min-width="100"></el-table-column>
+            <el-table-column prop="ProjectName" label="项目" min-width="200" show-overflow-tooltip>
+                <!-- <template scope="scope">
+                    <el-tooltip class="overflow_ell" effect="dark" :enterable='false' :content="scope.row.ProjectName" placement="top-start">
+                        <div class="overflow_ell">
+                            {{scope.row.UsedProjCodesName}}
+                        </div>
+                    </el-tooltip>
+                </template> -->
+            </el-table-column>
+            <el-table-column prop="TicCode" label="医院" min-width="200">
+                 <template scope="scope">
+                    <el-tooltip class="overflow_ell" effect="dark" :enterable='false' :content="scope.row.HospitalCode" placement="top-start">
+                        <div class="overflow_ell">
+                            {{scope.row.HospitalName}}
+                        </div>
+                    </el-tooltip>
+                </template>
+            </el-table-column>
+            <el-table-column prop="UsedProjCodesName" label="已做项目" min-width="200"></el-table-column>
+            <el-table-column prop="CreateOn" label="日期" min-width="100">
+                <template scope="scope">
+                    {{scope.row.CreateOn.substring(0,10)}}
+                </template>
+            </el-table-column>
+        </el-table>
+        <!-- 信息表 -->
+
+        <!-- 分页 -->
+        <div class="block">
+            <el-pagination
+                @size-change="handleSizeChange"
+                @current-change="handleCurrentChange"
+                :current-page="currentPage"
+                :page-sizes="[10, 20, 30, 40]"
+                :page-size="size"
+                layout="total, sizes, prev, pager, next, jumper"
+                :total="total">
+            </el-pagination>
+        </div>
+        <!-- 分页 -->
+
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+    import "@/style/selfCommon.less"
+    import {GetTicketDetail,GetDropDownPermission} from "@/api/myData"
+    export default {
+        // name:"couponDetail",
+        data () {
+            return {
+                date:"",
+                total: 0,
+                size: 10,
+                currentPage: 1,
+                form: {
+                    startDate:"",
+                    endDate:"",
+                    keyWords: "",
+                    hospitalCode:""
+                },
+                tableData:[],
+                hospitalList:[]
+            }
+        },
+        computed: {
+            /* 导出报表参数 tHeader,filterVal,tableData1*/
+            tHeader(){
+                return ['编号', '客户', '券种编号', '券号', '项目', '已做项目', '时间']
+            },
+            filterVal(){
+                return ['Code', 'RegistDate', 'BranchName', 'PhoneNumber', 'IDCard','SourcWayeCode','BranchGradeName','PayAmount']
+            },
+            tableData1(){
+                return this.tableData
+            },
+            name(){
+                return '消费券报单明细'
+            },
+            /*导出报表参数 tHeader,filterVal,tableData1*/
+        },
+        mounted(){
+            this.GetDropDownPermission()
+        },
+        methods: {
+            dateSelect(val){
+                if(val.length){
+                    this.form.startDate = val.substring(0,10)
+                    this.form.endDate = val.substring(13)
+                }else{
+                    this.form.startDate = ""
+                    this.form.endDate = ""
+                }
+                this.onSubmit()
+            },
+            async GetTicketDetail(params){
+                try{
+                    let res = await GetTicketDetail(params)
+                    if(res.length>0){
+                        this.total = res[0].RecordCount
+                    }
+                    this.tableData = res
+                }catch(err){
+                    console.log(res)
+                }
+            },
+            async GetDropDownPermission(){
+                let res1 = await GetDropDownPermission({typeId: 1});
+                this.hospitalList = res1.data
+                // this.onSubmit()
+
+            },
+
+            onSubmit(){
+                this.currentPage = 1
+                this.search()
+                
+            },
+            search(){
+                this.GetTicketDetail({
+                    keyWords:this.form.keyWords.removeSP(),
+                    hospitalCode:this.form.hospitalCode,
+                    pageIndex: this.currentPage,
+                    pageSize: this.size,
+                    startDate:this.form.startDate,
+                    enddate:this.form.endDate
+                })
+            },
+            // 分页页面展示数据条数改变触发事件
+            handleSizeChange(val) {
+                console.log(`每页 ${val} 条`);
+                this.size = val
+                this.search()
+            },
+
+            // 分页当前页码改变触发事件
+            handleCurrentChange(val) {
+                console.log(`当前页: ${val}`);
+                this.currentPage = val
+                this.search()
+            },
+        },
+        components: {
+
+        }
+    }
+</script>
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+
+</style>

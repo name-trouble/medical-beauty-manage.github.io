@@ -1,0 +1,538 @@
+<template>
+    <div class="selCommon register">
+        <el-form :model="ruleForm" :rules="rules" ref="ruleForm" label-width="85px" class="demo-ruleForm">
+            <el-form-item label="姓名：" prop="name" class="form_item_mt0">
+                <el-input v-model="ruleForm.name"></el-input>
+            </el-form-item>
+            <el-form-item label="联系电话：" prop="phone" class="form_item_mt0" required>
+               <el-input v-model="ruleForm.phone" @blur="checkPhone" @change="phoneCha"></el-input>
+            </el-form-item>
+            <el-form-item label="邮箱："  class="form_item_mt0">
+                <el-input v-model="ruleForm.email"></el-input>
+            </el-form-item>
+            <el-form-item label="会员类型：" class="form_item_mt0">
+                <el-select v-model="ruleForm.tag">
+                    <el-option v-for="(item,index) in tagsList" :label="item.tagName" :value="item.tagName" :key="index"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="会员卡号：" class="form_item_mt0" prop="cardNO">
+                <el-input v-model="ruleForm.cardNO" @blur="NoChange" placeholder="提示：身份证后六位"></el-input>
+            </el-form-item>
+            <el-form-item label="住址：" class="form_item_mt0">
+                <el-select v-model="ruleForm.province" placeholder="请选择省" style="width: 120px;margin-bottom:5px">
+                    <el-option v-for="(item,index) in province" :label="item.name" :value="item.name" :key="index"></el-option>
+                </el-select>
+                <el-select v-model="ruleForm.city" placeholder="请选择市" style="width: 120px">
+                    <el-option v-for="(item,index) in city" :label="item.name" :value="item.name" :key="index"></el-option>
+                </el-select>
+                <el-select v-model="ruleForm.area" placeholder="请选择区域" style="width: 120px">
+                    <el-option v-for="(item,index) in area" :label="item.name" :value="item.name" :key="index"></el-option>
+                </el-select>
+                 <el-form-item label="" prop="address" class="form_item_mt0">
+                    <el-input v-model="ruleForm.address" placeholder="详细地址" style="width:300px;margin-bottom:5px;float:none"></el-input>
+                 </el-form-item>
+            </el-form-item>
+            <el-form-item label="身份证号：" prop="" class="form_item_mt0" >
+                <el-input v-model="ruleForm.IdCard"></el-input>
+            </el-form-item>
+            <el-form-item label="生日："  class="form_item_mt0">
+                <!-- <el-date-picker type="date" placeholder="选择日期" v-model="ruleForm.date1" style="width: 100%;"></el-date-picker> -->
+                <el-select v-model="ruleForm.year" style="width:120px" @change="yearChange">
+                    <el-option v-for="(item,index) in yearList" :key="index" :label="item" :value="item"></el-option>
+                </el-select>
+                <el-select v-model="ruleForm.mounth" style="width:120px" @change="mouChange">
+                    <el-option v-for="(item,index) in mounthList" :key="index" :label="item" :value="item"></el-option>
+                </el-select>
+                <el-select v-model="ruleForm.day" style="width:120px">
+                    <el-option v-for="(item,index) in dayList" :key="index" :label="item" :value="item"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="年龄：" prop="" class="form_item_mt0" >
+                <!-- <el-input v-model="ruleForm.age" @change="ageChange"></el-input> -->
+                 <el-input-number v-model="ruleForm.age" :min="0" :controls="false" @change="ageChange" :debounce="1"></el-input-number>
+                 <span style="color:red" v-if="ruleForm.age>100">填写的年龄不符合规范</span>
+            </el-form-item>
+            <el-form-item label="性别：" class="form_item_mt0">
+                <el-radio-group v-model="ruleForm.sex">
+                    <el-radio :label="0">女</el-radio>
+                    <el-radio :label="1">男</el-radio>
+                </el-radio-group>
+            </el-form-item>
+            <el-form-item label="推荐人：" prop="referrerCode" required class="form_item_mt0">
+                <!-- 平台不限制 其他权限在有推荐人的情况下不可修改 塑美除外-->
+                <el-autocomplete v-model="ruleForm.recCode" :fetch-suggestions="queryCus" placeholder="请输入内容" :trigger-on-focus="false" @select="selectCus" style="width:183px;" :disabled="referCheck&&typeCode!='01'">
+                    <template v-slot="{item}">
+                        <my-item-memberItem :item="item"></my-item-memberItem>
+                    </template>
+                </el-autocomplete>
+            </el-form-item>
+            <el-form-item label="线上团队：" class="form_item_mt0" >
+                <span>{{ruleForm.onlineBranchName}}</span>
+            </el-form-item>
+            <el-form-item label="学历：" class="form_item_mt0">
+                <el-select v-model="ruleForm.education" placeholder="请选择学历">
+                    <el-option v-for="(item,index) in eduList" :label="item.DataName" :value="item.DataName" :key="index"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="行业：" class="form_item_mt0">
+                <el-select v-model="ruleForm.industry" placeholder="请选择行业">
+                    <el-option v-for="(item,index) in industryList" :label="item.DataName" :value="item.DataName" :key="index"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="家庭年收入：" class="form_item_mt0">
+                <el-input type="text" v-model="ruleForm.income"></el-input>
+            </el-form-item>
+             <el-form-item label="备注：">
+                <el-input type="textarea" v-model="ruleForm.memo" :row="5"></el-input>
+            </el-form-item>
+        </el-form>
+        <div style="text-align: center">
+            <el-button type="primary" @click="submitForm('ruleForm')" :loading="saveLoading">保存</el-button>
+            <el-button @click="resetForm('ruleForm')">取消</el-button>
+        </div>
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+    import addr from "../../../../static/addresss.json"
+    import { getCookie, delCookie,getStore } from '@/config/mUtils'
+    import {GetBaseDataAll,AddMembers,GetBranchByKeywords,GetTagByPage,CheckPhoneNumber,GetLeastBranchCode} from "@/api/myData"
+    import Vue from "vue"
+     Vue.component('my-item-memberItem', {
+        functional: true,
+        render: function(h, ctx) {
+            var item = ctx.props.item;
+            return h('div', ctx.data, [
+                h('p', { attrs: { class: 'select_name'+item.Type, title: item.name } }, ['名字：' + item.name]),
+                h('p', { attrs: { class: 'select_name'+item.Type, title: item.name} }, ['编号：' + item.code]),
+                h('p', { attrs: { class: 'select_name'+item.Type, title: item.name} }, ['手机号：' + item.phone]),
+            ]);
+        },
+        props: {
+            item: { type: Object, required: true }
+        }
+    });
+    export default {
+        data () {
+            var email = (rule,value,callback) =>{
+                let reg = /^([a-zA-Z0-9]+[_|\_|\.]?)*[a-zA-Z0-9]+@([a-zA-Z0-9]+[_|\_|\.]?)*[a-zA-Z0-9]+\.[a-zA-Z]{2,3}$/;
+                if(value.length!=0&&reg.test(value) == false){
+                    callback(new Error('请检查邮箱'))
+                }else{
+                    callback()
+                }
+            };
+            var idCard = (rule, value, callback) => {
+                let reg = /(^\d{15}$)|(^\d{18}$)|(^\d{17}(\d|X|x)$)/
+                if(!value){
+                    return callback(new Error('请填写身份证号码'));
+                }
+                if(reg.test(value) == false){
+                    callback(new Error('请检查身份证号码'))
+                }else{
+                    callback()
+                }
+            };
+            var phone = (rule, value, callback) => {
+                // let reg = /^1[3456789]\d{9}$/
+                if(!value){
+                    return callback(new Error('请填写联系电话'));
+                }
+                // if(reg.test(value) == false){
+                //     callback(new Error('请检查电话号码'))
+                // }else{
+                //
+                    if(this.checkPhone()){
+                         callback()
+                    }else{
+                        callback(new Error('该手机号已存在，请更换其它手机号！'));
+                    }
+                // }
+            };
+            var rec = (rule, value, callback) => {
+                if(value.Code){
+                    callback()
+                }else{
+                    callback(new Error('请选择推荐人'))
+                }
+            };
+            return {
+                typeCode:getStore("typeCode"),
+                referCheck:false,
+                saveLoading:false,
+                tagsList:[],
+                loading1:false,
+                options:[],
+                province:[],
+                city:[],
+                area:[],
+                eduList:[],//001
+                industryList:[],//002
+                tagList:[],
+                ruleForm: {
+                    tag:"",
+                    num:"",
+                    phone:"",
+                    province:"",
+                    city:"",
+                    area:"",
+                    address:"",
+                    email:"",
+                    IdCard:"",
+                    name: '',
+                    date1: '',
+                    recCode:"",
+                    industry:"",
+                    income:"",
+                    sex:0,
+                    education:"",
+                    hospitalCode:"",
+                    hospitalName:"",
+                    cardNO:"",
+                    referrerCode:"",
+                    referrerName:"",
+                    memo:"",
+                    year:new Date().getFullYear()+"",
+                    mounth:"01",
+                    day:"01",
+                    age:"",
+                    BranchTags:'',
+                    sourcWayeCode:'',
+                    onlineBranchName:'',
+                    onlineBranchCode:'',
+                },
+                yearList:[],
+                mounthList:[],
+                dayList:[],
+                customerList:[],
+                rules: {
+                    name: [
+                        { required: true, message: '请输入推荐人姓名', trigger: 'blur' },
+                        { min: 1, max: 50, message: '长度在 1 到 50 个字符', trigger: 'blur' }
+                    ],
+                    date1: [
+                        { type: 'date', required: true, message: '请选择日期', trigger: 'change' }
+                    ],
+                    resource: [
+                        { required: true, message: '请选择活动资源', trigger: 'change' }
+                    ],
+                    num: [
+                        { required: true, message: '请填写会员编号', trigger: 'blur' }
+                    ],
+                    phone: [
+                        { validator: phone, trigger: 'blur' }
+                    ],
+                    referrerCode: [
+                        // { validator: rec, trigger: 'blur' }
+                        { required: true, message: '请填写推荐人', trigger: 'change' }
+                    ],
+                    email:[
+                        { validator: email, trigger: 'blur'}
+                    ],
+                    IdCard: [
+                        {   validator: idCard, trigger: 'blur' }
+                    ],
+                    cardNO:[
+                        { required: true, message: '请填写会员卡号',  trigger: 'blur'}
+                    ],
+                    address:[
+                        { required: true, message: '请填写会员地址',  trigger: 'blur'}
+                    ]
+                }
+            }
+        },
+        watch:{
+            "ruleForm.province":{
+                handler(curVal,oldVal){
+                    this.province.forEach(row=>{
+                        if(row.name == this.ruleForm.province){
+                            this.city = row.sub
+                        }
+                    })
+                },
+                deep:true
+            },
+            "ruleForm.city":{
+                handler(curVal,oldVal){
+                    this.city.forEach(row=>{
+                        if(row.name == this.ruleForm.city){
+                            this.area = row.sub
+                        }
+                    })
+                },
+                deep:true
+            }
+        },
+        mounted(){
+            this.getBirthMes()
+            this.province = addr.area
+            this.GetBaseDataAll()
+        },
+        methods: {
+            // 根据手机号码锁定推荐人禁止修改 没有推荐人可填写推荐人
+            phoneCha(val){
+                if(val.length>=11){
+                    this.checkRefer(val)
+                }else{
+                    this.referCheck = false
+                }
+            },
+            async checkRefer(val){
+                let res = await GetLeastBranchCode({mobile:val})
+                if(res.status){
+
+                    if(res.data.length>0){
+                        this.ruleForm.referrerName = res.data[0].branchName
+                        this.ruleForm.referrerCode = res.data[0].branchCode
+                        this.ruleForm.hospitalCode = res.data[0].hospitalCode
+                        this.ruleForm.recCode = res.data[0].branchName
+                        if(res.data[0].branchTags == '线上团队'){
+                            this.ruleForm.onlineBranchName = res.data[0].branchName
+                            this.ruleForm.onlineBranchCode = res.data[0].branchCode
+                        }
+                        if(this.ruleForm.referrerCode == 'HZ180600123'){//推荐人为塑美可修改
+                            this.referCheck = false
+                        }else{
+                            this.referCheck = true
+                        }
+                    }
+                }else{
+                    this.$message.error('提示：'+res.errorMessage);
+                }
+            },
+            NoChange(){
+                if(this.ruleForm.cardNO.length>=4){
+                     this.ruleForm.mounth = this.ruleForm.cardNO.substring(0,2)
+                    this.ruleForm.day = this.ruleForm.cardNO.substring(2,4)
+                }
+            },
+            yearChange(){
+                this.mouChange()
+            },
+            ageChange(){
+                setTimeout(()=>{
+                    if(Number(this.ruleForm.age)<100){
+                        let year = (new Date()).getFullYear()
+                        this.ruleForm.year =Number(this.ruleForm.age).red(year)+""
+                    }
+                },10)
+            },
+
+            mouChange(){
+
+                let arr=['01','03','05','07','08','10','12'],arr2 = ['04','06','09','11']
+                let day = []
+                for(let i = 1;i<32;i++){
+                    if(i<10){
+                        day.push("0"+i)
+                    }else{
+                        day.push(i+"")
+                    }
+                }
+                this.dayList = []
+                if(this.ruleForm.mounth == '02'){
+                    if(this.isLeapYear(this.ruleForm.year)){
+                        this.dayList = day.slice(0,day.length-3)
+                    }else{
+                        this.dayList = day.slice(0,day.length-2)
+                    }
+                }
+                if(arr.indexOf(this.ruleForm.mounth)>=0){
+                    this.dayList = day
+                }
+                if(arr2.indexOf(this.ruleForm.mounth)>=0){
+                    this.dayList = day.slice(0,day.length-1)
+                }
+                if(this.dayList.indexOf(this.ruleForm.day)<0){
+                    this.ruleForm.day = this.dayList[this.dayList.length-1]
+                }
+            },
+            // 闰年判断
+            isLeapYear(year) {
+                  return (year % 4 == 0) && (year % 100 != 0 || year % 400 == 0);
+            },
+            getBirthMes(){
+                let year = (new Date()).getFullYear()
+                let arr = [],arr1 = []
+                for(let i = 0;i<80;i++){
+                    arr.push(year-i)
+                }
+                this.yearList = arr
+                for(let j = 1;j<13;j++){
+                    if(j<10){
+                        arr1.push("0"+j)
+                    }else{
+                        arr1.push(j+"")
+                    }
+                }
+                this.mounthList = arr1
+                this.ruleForm.mounth = "01"
+                this.ruleForm.day = "01"
+                this.mouChange()
+            },
+             //查找会员 下拉补全
+            async queryCus(queryString, cb) {
+                this.customerList = []
+                if (queryString !== '' && queryString != undefined) {
+                    let res = await GetBranchByKeywords({ 'keywords': queryString.removeSP() })
+                    this.getBranchByKeywords(res)
+                }
+                this.ruleForm.referrerCode = ''
+                let _this = this
+                clearTimeout(this.timeout);
+                this.timeout = setTimeout(() => {
+                    cb(_this.customerList);
+                }, 100);
+            },
+            selectCus(item) {
+                this.ruleForm.BranchTags = item.BranchTags
+                this.ruleForm.hospitalCode = item.hospitalCode
+                this.ruleForm.hospitalName = item.hospitalName
+                this.ruleForm.referrerCode = item.code? item.code:""
+                this.ruleForm.referrerName = item.Name? item.Name:""
+            },
+            //  搜索代理
+            getBranchByKeywords(res){
+                // let res = await GetBranchByKeywords(params)
+                if (res instanceof Array && res.length > 0) {
+                    for (let item of res) {
+                         let tagName = ""
+                        if(item["BranchTags"] != ''&&item["BranchTags"] != null&&item["BranchTags"] != undefined){
+                            tagName = '('+item["BranchTags"]+')'
+                        }
+                        this.customerList.push({
+                            BranchTags:item["BranchTags"]?item["BranchTags"]:"",
+                            value: item["BranchName"]+tagName,
+                            phone: item["PhoneNumber"],
+                            code: item["Code"],
+                            name: item["BranchName"]+tagName,
+                            Name:item["BranchName"],
+                            hospitalCode: item['HospitalCode'],
+                            hospitalName: item['HospitalName'],
+                        })
+                    }
+                }
+                this.loading1 = false
+            },
+//            添加会员 3普通会员 2认证会员
+            async AddMembers(params){
+                try{
+                    let res = await AddMembers(params)
+                    if(res.success){
+                        this.$message({message: '添加成功', type: 'success'});
+                        this.$emit("close",true)
+                        this.$refs.ruleForm.resetFields();
+                    }else{
+                        this.$message.error('添加失败'+res.error);
+                    }
+                    this.saveLoading = false
+                }catch(err){
+                    console.log(err)
+                    this.$message.error('添加失败');
+                }
+            },
+//            获取基础信息
+            async GetBaseDataAll(){
+                try{
+                    let [res1,res] = await Promise.all([GetTagByPage({TypeCode:"6", pageIndex:1, pageSize:100, keywords:""}),GetBaseDataAll()])
+                    this.tagsList = res1.data
+                    this.baseMesSplit(res)
+                }catch(err){
+                    console.log(err)
+                }
+            },
+            submitForm(formName) {
+                this.$refs[formName].validate((valid) => {
+                    if (valid) {
+                        let obj ={
+                            isAuth:false,
+                            memberName: this.ruleForm.name.removeSP(),
+                            referrerCode: this.ruleForm.referrerCode,
+                            ReferrerName: this.ruleForm.referrerName,
+                            hospitalCode:this.ruleForm.hospitalCode,
+                            idCard: this.ruleForm.IdCard.removeSP(),
+                            registDate: new Date().formatDate("yyyy-MM-dd"),
+                            sex: this.ruleForm.sex,
+                            birthday: this.ruleForm.year+'-'+this.ruleForm.mounth+'-'+this.ruleForm.day,
+                            phoneNumber: this.ruleForm.phone,
+                            email: this.ruleForm.email,
+                            income: this.ruleForm.income,
+                            professionCode: this.ruleForm.industry,
+                            education: this.ruleForm.education,
+                            address: this.ruleForm.address,
+                            province:this.ruleForm.province,
+                            city:this.ruleForm.city,
+                            area:this.ruleForm.area,
+                            cardNO:this.ruleForm.cardNO.removeSP(),
+                            memberTags:this.ruleForm.tag,
+                            memo:this.ruleForm.memo,
+                            createUserId: getCookie("userId"),
+                            createBy: getCookie("userName"),
+                            BranchTags:this.ruleForm.BranchTags,
+                            sourcWayeCode:this.referCheck?'来自app':'',//app注册而来的会员不能能修改推荐人 注明来源
+                            onlineBranchName:this.ruleForm.onlineBranchName,
+                            onlineBranchCode:this.ruleForm.onlineBranchCode,
+                        }
+                        if(this.checkBir()){
+                            this.saveLoading = true
+                            this.AddMembers(obj)
+                        }else{
+                            this.$confirm('生日不符合规范, 请重新选择', '提示', {
+                                confirmButtonText: '确定',
+                                showCancelButton: false,
+                                type: 'warning'
+                            })
+                        }
+                    } else {
+                        console.log('error submit!!');
+                        return false;
+                    }
+                });
+            },
+            checkBir(){
+                if(this.mounthList.indexOf(this.ruleForm.mounth)>=0){
+                }else return false
+                if(this.dayList.indexOf(this.ruleForm.day)>=0){
+
+                }else return false
+                return true
+            },
+            resetForm(formName) {
+                this.$refs[formName].resetFields();
+                this.$emit("close",false)
+            },
+            //            基础信息
+            baseMesSplit(data){
+                data.forEach(row=>{
+                    if(row.BusinessCode == "0001"){
+                        this.eduList.push(row)
+                    }
+                    if(row.BusinessCode == "0002"){
+                        this.industryList.push(row)
+                    }
+                })
+            },
+
+            async checkPhone(){
+                if(this.ruleForm.phone.length>=11){
+                    let res = await CheckPhoneNumber({
+                        PhoneNumber:this.ruleForm.phone
+                    })
+                    let status = res.status
+                    if(!res.status){
+                        this.$message.error('提示：'+res.errorMessage);
+                    }
+                    return status
+                }
+            },
+        },
+        components: {
+
+        }
+    }
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+
+</style>

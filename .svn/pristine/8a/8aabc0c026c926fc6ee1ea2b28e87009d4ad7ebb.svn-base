@@ -1,0 +1,359 @@
+<template>
+    <div class="tag selCommon">
+        <el-form :inline="true"  class="demo-form-inline form_search" label-width="80px"
+>
+            <el-form-item label="截止日期：" class="form_item_mt10">
+                    <el-date-picker
+                        v-model="date"
+                        style='width:200px;'
+                        type="date"
+                        placeholder="选择日期">
+                    </el-date-picker>
+            </el-form-item>
+            <el-form-item label="医院：" class="form_item_mt10">
+                <el-select v-model="hospitalCode"  style='width:200px;' @change="onSubmit" >
+                    <el-option v-for="(item,index) in hospitalList" :key="index" :label="item.supplierName" :value="item.code"></el-option>
+                </el-select>
+            </el-form-item>
+         
+            <!-- <el-form-item label="是否结算：" class="form_item_mt10">
+                <el-select v-model="formInline.IsFinished"  style='width:200px;' @change="onSubmit" >
+                    <el-option label="未结算" value="0"></el-option>
+                    <el-option label="已结算" value="1"></el-option>
+                </el-select>
+            </el-form-item> -->
+            <el-form-item label="关键字：" class="form_item_mt10">
+                <el-input v-model="keywords" placeholder="服务商" style='width:200px;'></el-input>
+            </el-form-item>
+            <el-form-item label="显示当月："  class="form_item_mt10 form_item_wh280">
+                <el-checkbox v-model="formInline.isCurrentMonth" ></el-checkbox>
+            </el-form-item>
+            <el-form-item label=" " class="form_item_mt10">
+                <el-button type="primary" @click="onSubmit" class="searchBtn">查询</el-button>
+                <el-button @click="generate" type="danger" :loading="makeLoading" :disabled="computedDate">生成数据</el-button>
+            </el-form-item>
+        </el-form>
+         <el-table  :data="tableData" border style="width: 100%;margin-top:20px" max-height="560" class="min_table" show-summary v-loading="loading"  :summary-method="getSummaries">
+            
+            <el-table-column prop="referrerName" label="服务商" min-width="80">
+                <template scope="scope">
+                    <span v-if="scope.row.referrerName">{{scope.row.referrerName}}</span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="refBranchName" label="消费商推荐" min-width="80"></el-table-column>
+            <el-table-column prop="openBankName" label="银行" min-width="80"></el-table-column>
+            
+            <el-table-column prop="bankCardId" label="银行卡号" min-width="80"></el-table-column>
+        
+            <el-table-column prop="commissionAmount" label="提成金额" min-width="80" align="right">
+                <template scope="scope">
+                    <span v-if="scope.row.commissionAmount == 0">0</span> 
+                    <el-button v-else type="text" @click="view(scope.row)">{{scope.row.commissionAmount.toQFW()}}</el-button>
+                </template>
+            </el-table-column>
+          
+            <!-- <el-table-column prop="hospitalName" label="状态" min-width="90" >
+                <template scope="scope">
+                    <el-tag type="success" v-if="scope.row.isFinished == 1">已结算</el-tag>
+                    <el-tag type="danger" v-else>未结算</el-tag>
+                </template>
+            </el-table-column> -->
+            <!-- <el-table-column prop="customerName" label="操作" min-width="80" align="center">
+                <template scope="scope">
+                     <el-button type="primary" size="small" :disabled="scope.row.isFinished==1" @click="settle(scope.row)">结算</el-button>
+                </template>
+            </el-table-column> -->
+        </el-table>
+        
+        <el-dialog title="详情" :visible.sync="dialogView"  top="5%"  size="" :close-on-click-modal="false">
+            <span>总金额：{{totalAmount}}</span>  <span>结算金额：{{settleAmount}}</span>
+             <!-- <el-button type="primary" style="margin-left:20px" @click="Dsettle">结算</el-button> -->
+             <!-- <el-button type="primary" style="margin-left:20px" @click="Dsettle">结算</el-button> -->
+            <el-table  :data="detData" border style="margin-top:20px;width:600px" max-height="460" class="min_table"
+                    @selection-change="handleSelectionChange">
+            <el-table-column type="selection"   align="center" width="55"></el-table-column>
+            <el-table-column prop="referrerName" label="推荐人" min-width="80"></el-table-column>
+            <el-table-column prop="serviceName" label="服务商" min-width="80"></el-table-column>
+            <el-table-column prop="refBranchName" label="消费商" min-width="80"></el-table-column>
+                <el-table-column prop="commissionAmount" label="提成金额" min-width="80" align="right">
+                    <template scope="scope">
+                        <span v-if="scope.row.commissionAmount||scope.row.commissionAmount==0">{{scope.row.commissionAmount.toQFW()}}</span>
+                    </template>
+                </el-table-column>
+            </el-table>
+        </el-dialog>
+        <!-- <el-dialog title="订单详情" :visible.sync="ispopRead"  top="5%"  size="" :close-on-click-modal="false">
+            <det v-if="ispopRead" :data="selectData" style="width:950px"></det>
+        </el-dialog> -->
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+    import  "@/style/selfCommon.less"
+    import det from "@/page/FinanceManage/ReportManage/com/reportRead"
+    import { getCookie, delCookie } from '@/config/mUtils'
+    import {GetDropDownPermission,GetSupplierBySupTypeCode,
+    GetSerCommissionList,  GeneratorSerCommission, GetSerCommissionDetail, SetSerCommission, SetSerCommissionDetail} from "@/api/myData"
+    export default {
+        data () {
+            return {
+                allLoading:false,
+                ispopRead:false,
+                selectData:{},
+                totalAmount:"",
+                loading:false,
+                makeLoading:false,
+                hospitalCode:"",
+                commandhosCode:'',
+                date:new Date(),
+                dialogView:false,
+                currentPage:1,
+                total:0,
+                pageSize:10,
+                keywords:"",
+                formInline:{
+                    isCurrentMonth:false,
+                    hospital:"",
+                    hospitalCode:"",
+                    hospitalName:"",
+                    date:"",
+                    startDate:"",
+                    endDate:"",
+                    IsFinished:"0",
+                },
+                tableData:[],
+                detData:[],
+                hospitalList:[],
+                multipleSelection:[],
+            }
+        },
+        computed:{
+            computedDate(){
+                let f = String(this.date).length>0?false:true
+                return f
+            },
+            settleAmount(){
+                let amount = 0
+                this.multipleSelection.forEach(row=>{
+                    amount = amount.add(row.commissionAmount)
+                })
+                return amount
+            }
+        },
+
+        mounted(){
+            this.GetDropDownPermission()
+        },
+        methods:{
+            // Dsettle(){
+            //     if(this.multipleSelection.length>0 ){
+            //         this.$confirm('是否进行结算?', '提示', {
+            //         confirmButtonText: '确定',
+            //         cancelButtonText: '取消',
+            //         type: 'warning'
+            //         }).then(() => {
+            //             let  arr = []
+            //             this.multipleSelection.forEach(row=>{
+            //                 arr.push(row.id)
+            //             })
+            //             this.SetSerCommissionDetail({
+            //                 ids:arr.join(","),
+            //                 TypeId:1
+            //             })
+            //         }).catch(() => {
+            //     });
+            //     }else{
+            //         this.$message({ type: 'error', message: '请选择要结算的单号' })
+            //     }
+            // },
+            // async SetSerCommissionDetail(params){
+            //     let res = await SetSerCommissionDetail(params)
+            //     if(res.status){
+            //         this.$message({ type: 'success', message: '结算成功' })
+            //         this.search()
+            //         this.dialogView = false
+            //     }else{
+            //         this.$message({ type: 'warning', message: '结算失败!'+res.errorMessage })
+            //     }
+            // },
+            handleSelectionChange(val) {
+                this.multipleSelection = val;
+            },
+            // 结算
+            // settle(data){
+            //     const h = this.$createElement;
+            //     this.$msgbox({
+            //         title: '提示',
+            //         message: h('p', null, [
+            //             h('span', null, '是否进行结算? '),
+            //         ]),
+            //         showCancelButton: true,
+            //         confirmButtonText: '确定',
+            //         cancelButtonText: '取消',
+            //         type: 'warning',
+            //         beforeClose: (action, instance, done) => {
+            //             if (action === 'confirm') {
+            //                 instance.confirmButtonLoading = true;
+            //                 instance.confirmButtonText = '执行中...';
+            //                 this.SetSerCommission({
+            //                     CommissionDate:this.saveEnd,
+            //                     HospitalCode:this.saveHos,
+            //                     IsCurrentMonth:this.formInline.isCurrentMonth?1:0,
+            //                     TypeId:1,//1.服务商推荐奖励 2.服务商消费奖励
+            //                     Code:data.referrerCode?data.referrerCode:data.refBranchCode,
+            //                 })
+            //                 instance.confirmButtonLoading = false;
+            //                 done();
+            //             } else {
+            //                 done();
+            //             }
+            //         }
+            //     }).then(action => {});
+            // },
+
+            // async SetSerCommission(params){
+            //     let res = await SetSerCommission(params)
+            //     if(res.status){
+            //         this.$message({ type: 'success', message: '结算成功' })
+            //         this.search()
+            //     }else{
+            //         this.$message({ type: 'warning', message: '结算失败!'+res.errorMessage })
+            //     }
+            // },
+
+            getSummaries(param) {
+                const { columns, data } = param;
+                const sums = [];
+                columns.forEach((column, index) => {
+                    if (index === 0) {
+                        sums[index] = '合计';
+                        return;
+                    }
+                    const values = data.map(item => Number(item[column.property]));
+                    if (!values.every(value => isNaN(value))) {
+                        sums[index] = values.reduce((prev, curr) => {
+                        const value = Number(curr);
+                        if (!isNaN(value)) {
+                           return prev.add(curr) ;
+                        } else {
+                            return prev;
+                        }
+                        }, 0);
+                        sums[index] =sums[index].toQFW();
+                    } else {
+                        sums[index] = '';
+                    }
+                });
+                sums[1] = ""
+                sums[2] = ""
+                sums[3] = ""
+                sums[5] = ""
+                sums[6] = ""
+                return sums;
+            },
+
+            async GetDropDownPermission(){
+                let res1 = await GetDropDownPermission({typeId: 1});
+                this.hospitalList = res1.data
+                this.hospitalCode = res1.data[0].code
+            },
+
+            onSubmit(){
+                this.currentPage = 1
+                this.search()
+            },
+            async GetSerCommissionDetail(params){
+                let res = await GetSerCommissionDetail(params)
+                this.loading = false
+                // res.data.forEach(row=>{
+                //     row.mon = row.expertRate.mul(row.realAmount)
+                //     row.expertRate = row.expertRate.mul(100)
+                // })
+                 this.detData = JSON.parse(JSON.stringify(res.data))
+            },
+            async GetSerCommissionList(params,index){
+                let res = await GetSerCommissionList(params)
+                this.loading = false
+                // res.data.forEach(row=>{
+                //     row.mon = row.expertRate.mul(row.realAmount)
+                //     row.expertRate = row.expertRate.mul(100)
+                // })
+                this.tableData = JSON.parse(JSON.stringify(res.data))
+            },
+
+            search(){
+                this.saveHos = this.hospitalCode
+                this.saveEnd = String(this.date).length>0?this.date.formatDate("yyyy-MM-dd"):""
+                this.finish = this.formInline.IsFinished
+                this.loading = true
+                this.GetSerCommissionList({
+                    CommissionDate:String(this.date).length>0?this.date.formatDate("yyyy-MM-dd"):"",
+                    TypeId:1,//1.服务商推荐奖励 2.服务商消费奖励
+                    HospitalCode:this.hospitalCode,
+                    Keywords:this.keywords,
+                    IsFinished:this.formInline.IsFinished,
+                    isCurrentMonth:this.formInline.isCurrentMonth?1:0
+                })
+            },
+            view(data){
+                this.multipleSelection = []
+                this.dialogView = true
+                this.totalAmount = data.commissionAmount
+                this.GetSerCommissionDetail({
+                    CommissionDate:this.saveEnd,
+                    HospitalCode:this.saveHos,
+                    IsFinished:this.formInline.IsFinished,
+                    isCurrentMonth:this.formInline.isCurrentMonth?1:0,
+                    TypeId:1,//1.服务商推荐奖励 2.服务商消费奖励
+                    RefCode:data.referrerCode?data.referrerCode:data.refBranchCode,
+                })
+            },
+            generate(){
+                if(this.hospitalCode ==""){
+                    this.$message({
+                        message: '请先选择医院！',
+                        type: 'warning'
+                    });
+                }else{
+                    let data = this.date.formatDate("yyyy-MM-dd")
+                    this.$confirm('是否生成截止时间到'+data+'的数据？', '提示', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    type: 'warning'
+                    }).then(() => {
+                        this.makeLoading = true
+                        this.GeneratorSerCommission()
+                    }).catch(() => {
+                            
+                    });
+                }
+            },
+            async GeneratorSerCommission(){
+                let res = await GeneratorSerCommission({
+                    CommissionDate:String(this.date).length>0?this.date.formatDate("yyyy-MM-dd"):"",
+                    hospitalCode:this.hospitalCode,
+                    TypeId:1
+                })
+                this.makeLoading = false
+                 if(res.status){
+                    this.$message({ type: 'success', message: '生成成功' })
+                    // this.search()
+                }else{
+                    this.$message({ type: 'warning', message: '生成失败!'+res.errorMessage })
+                }
+            },
+            getPD(data){
+                this.selectData = data
+                this.ispopRead = true
+            },
+        },
+        components: {
+            det
+        }
+    }
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+
+</style>

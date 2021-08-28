@@ -1,0 +1,216 @@
+<template>
+    <div class="tag selCommon">
+        <el-form :inline="true" :model="formInline" class="demo-form-inline form_search" label-width="80px">
+            <el-form-item label="关键字：" class="form_item_mt10">
+                <el-input v-model="formInline.keywords" placeholder="前缀/券号" style="width: 200px;" v-on:keyup.enter.native="onSubmit"></el-input>
+            </el-form-item>
+            <el-form-item label="" class="form_item_mt10">
+                <el-button type="primary" @click="onSubmit" class="searchBtn">查询</el-button>
+                <el-button class="searchBtn" @click="add">添加作废单</el-button>
+                <!-- <el-button type="primary" class="searchBtn" @click="exportTbale">导出报表</el-button>
+                <Export :tHeader="tHeader" ref="exportTable" :filterVal=' filterVal' :tableData1='tableData1' :name='name' style="display:none"></Export> -->
+            </el-form-item>
+        </el-form>
+        <!-- 信息表 -->
+        <el-table :data="tableData" border style="width: 600px;margin-top:15px;margin-bottom:10px;" max-height="560" class="smt min_table" v-loading="loading">
+            <el-table-column prop="ticketCode" label="卡券编号" min-width="90" align="center"></el-table-column>
+            <el-table-column prop="customerName" label="操作" min-width="90" align="center">
+                <template scope="scope">
+                    <!-- <el-button type="primary" size="small" :disabled="!scope.row.ticketOutId" @click="viewDet(scope.row.ticketOutId)">查看出库信息</el-button> -->
+                    <el-button type="primary" size="small" @click="withdraw(scope.row.id)">撤回</el-button>
+                 </template>
+            </el-table-column>
+        </el-table>
+        <!-- 信息表 -->
+
+        <!-- 分页 -->
+        <div class="">
+            <el-pagination
+                @size-change="handleSizeChange"
+                @current-change="handleCurrentChange"
+                :current-page="currentPage"
+                :page-sizes="[10, 20, 30, 40]"
+                :page-size="size"
+                layout="total, sizes, prev, pager, next, jumper"
+                :total="total">
+            </el-pagination>
+        </div>
+        <!-- 分页 -->
+        <el-dialog title="添加" :visible.sync="addDialog" :modal="true" top="12%" size="">
+            <el-form :model="form" ref="form" class="demo-form-inline" label-width="90px" style="width:400px;">
+                <el-form-item label="前缀：" prop="preCode" :rules="[{ required: true, message: '不能为空'}]" class="form_item_mt10">
+                    <el-input v-model="form.preCode" placeholder="前缀" style="width: 300px;"></el-input>
+                </el-form-item>
+                <el-form-item label="流水位数：" prop="num" :rules="[{type: 'number', required: true, message: '不能为空'}]" class="form_item_mt10">
+                    <el-input :controls="false" v-model.number="form.num" placeholder="流水位数" style="width: 300px;"></el-input>
+                </el-form-item>
+                <el-form-item label="区间：" class="form_item_mt10">
+                    <el-input-number :controls="false" v-model="form.startNum" placeholder="初始值" style="width: 140px;float:left"></el-input-number>
+                    <span style="float:left;margin:0 10px">-</span>
+                    <el-input-number :controls="false" v-model="form.endNum" placeholder="结束值" style="width: 140px;float:left"></el-input-number>
+                </el-form-item>
+                <el-form-item label='' label-width="0px" style='margin-bottom:10px;text-align:center'>
+                    <el-button @click="addSure('form')" type="primary" :loading="saveLoading">确定</el-button>
+                    <el-button @click="addDialog = false">取消</el-button>
+                </el-form-item>
+            </el-form>
+        </el-dialog>
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+    import  "@/style/selfCommon.less"
+    import { getCookie, delCookie } from '@/config/mUtils'
+    import {GetBlackTicketInfo,AddBlackTicketInfo,DeleteBlackTicketInfo} from "@/api/myData"
+    // import Export from '@/components/export'
+    export default {
+        data () {
+            return {
+                addDialog:false,
+                ticket:"",
+                loading:false,
+                total:0,
+                size:10,
+                currentPage:1,
+                formInline: {
+                    keywords: '',
+                },
+                tableData:[],
+                allData:[],
+              
+                form:{
+                    preCode:'',
+                    num:'',
+                    startNum:0,
+                    endNum:0,
+                },
+                saveLoading:false,
+            }
+        },
+        computed: {
+            /* 导出报表参数 tHeader,filterVal,tableData1*/
+            // tHeader(){
+            //     return [ '卡券编号', '使用次数', '已用次数', '库存状态', '使用状态', '使用客户']
+            // },
+            // filterVal(){
+            //     return ['ticketCode', 'totalTimes', 'usedTimes', 'state','isUsed','customerName']
+            // },
+            // tableData1(){
+            //     let data = JSON.parse(JSON.stringify(this.allData))
+            //     data.forEach(ele=>{
+            //         ele.state = ele.state==1?'已出库':'未出库'
+            //         ele.isUsed = ele.isUsed ==1?'已使用':'未使用'
+            //     })
+            //     return data
+            // },
+            // name(){
+            //     return '卡券详情'
+            // },
+            /*导出报表参数 tHeader,filterVal,tableData1*/
+        },
+        mounted(){
+
+        },
+        methods:{
+            addSure(formName){
+                this.$refs[formName].validate((valid) => {
+                    if (valid) {
+                        this.AddBlackTicketInfo()
+                    } else {
+                        console.log('error submit!!');
+                        return false;
+                    }
+                });
+            },
+            async AddBlackTicketInfo(){
+                let arr = [],num = Number(this.form.num),startNum = this.form.startNum,endNum = this.form.endNum,len = endNum-startNum
+                for(let i = startNum;i<=endNum;i++){
+                    let preCode = this.form.preCode,extrZero = num-String(i).length
+                    for(let j =0;j<extrZero;j++){
+                        preCode+='0'
+                    }
+                    arr.push(preCode+i)
+                }
+                
+                this.saveLoading = true
+                let res = await AddBlackTicketInfo({
+                    jsonStr:arr.join(',')
+                })
+                this.showMessage(res,'操作')
+                this.saveLoading = false
+            },
+            withdraw(id){
+                this.$confirm('确定撤回?', '提示', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    type: 'warning'
+                }).then(() => {
+                    this.DeleteBlackTicketInfo(id)
+                })       
+            },
+            async DeleteBlackTicketInfo(id){
+                let res = await DeleteBlackTicketInfo({id:id})
+                this.showMessage(res,'撤回')
+            },
+            showMessage(res,mes){
+                if(res.status){
+                        this.$message({message: mes+'成功', type: 'success'});
+                        this.addDialog = false
+                        this.search()
+                    }else{
+                        this.$message.error(mes+'失败!'+res.errorMessage);
+                }
+            },
+            add(){
+                this.addDialog = true
+            },
+
+            async GetBlackTicketInfo(params,ope){
+                try{
+                    let res = await GetBlackTicketInfo(params)
+                    if(ope){
+                        this.allData = res.data
+                        this.$refs.exportTable.handleDownload()
+                    }else{
+                        this.tableData = res.data
+                        this.total = res.count
+                    }
+                    this.loading = false
+                }catch(err){
+                    console.log(err)
+                }
+            },
+            
+            onSubmit(){
+                this.currentPage = 1
+                this.search()
+            },
+            search(){
+                this.loading = true
+                this.GetBlackTicketInfo({
+                    pageIndex:this.currentPage,
+                    pageSize:this.size,
+                    code:this.formInline.keywords.removeSP(),
+                })
+            },
+            handleSizeChange(val) {
+                this.size = val
+                this.search()
+            },
+            handleCurrentChange(val) {
+                this.currentPage = val
+                this.search()
+            },
+
+           
+        },
+        components: {
+            // Export,
+        }
+    }
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+
+</style>

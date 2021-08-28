@@ -1,0 +1,278 @@
+<template>
+    <div class="Notice selCommon newNotice">
+        <el-form :inline="true" :model="formInline" class="demo-form-inline form_search" label-width="90px" >
+            <el-form-item label="时间单位：" class="form_item_mt10 ">
+                <el-select v-model="formInline.timeUnit" placeholder="" style="width: 200px;">
+                    <el-option label="天" value="2"></el-option>
+                    <el-option label="月" value="3"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="起始时间：" class="form_item_mt10 form_item_wh280">
+                <el-date-picker @change="dateChange" v-if="formInline.timeUnit==2" v-model="startDate"  type="date" placeholder="选择日期"></el-date-picker>
+                <el-date-picker @change="dateChange" v-if="formInline.timeUnit==3" v-model="startDate" type="month" placeholder="选择月"></el-date-picker>
+            </el-form-item>
+            <el-form-item label="持续时长：" class="form_item_mt10 form_item_wh280">
+                <el-input-number v-model.number="formInline.duration " placeholder="" :controls="false" style="width: 200px;float: left;"></el-input-number>
+                <el-tooltip placement="top">
+                    <div slot="content">
+                        1、如果单位是天，则是持续的天数。以此类推。<br/>
+                        2、只支持查询 60 天以内的用户信息。
+                    </div>
+                    <el-button type="text" icon="warning" style="margin-left:5px;"></el-button>
+                </el-tooltip>
+            </el-form-item><br/>
+            <el-form-item label=" " class="form_item_mt10 form_item_wh280">
+                <el-button type="primary" @click="onSubmit" class="searchBtn">查询</el-button>
+                <el-button type="primary" @click="publish" class="searchBtn">新建通知</el-button>
+            </el-form-item>
+        </el-form>
+        <!--信息表-->
+        <el-table :data="tableData" border style="width: 100%;margin-top:15px;margin-bottom:10px" class="min_table smt" max-height="460">
+            <el-table-column prop="code" label="预定发送时间" min-width="80">
+                <template scope="scope">
+                    <span v-if="scope.row.trigger.single.time">
+                       定时推送
+                    </span>
+                    <span v-else>
+                       重复推送
+                    </span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="sendDate" label="目标平台" min-width="80">
+                <template scope="scope">
+                    <span v-for="(item,index) in scope.row.push.platform" :key="index">
+                        {{item}}
+                    </span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="sendDate" label="目标人群" min-width="80">
+                <template scope="scope">
+                    <span v-for="(item,index) in scope.row.push.platform" :key="index">
+                        {{item}}
+                    </span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="sendDate" label="内容" min-width="150" show-overflow-tooltip>
+                <template scope="scope">
+                    <span>
+                        {{scope.row.push.message.msg_content}}
+                    </span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="receiveFirstType" label="时间单位" min-width="80">
+                <template scope="scope">
+                    {{scope.row.trigger.periodical.time_unit}}
+                </template>
+            </el-table-column>
+            <el-table-column prop="abstract" label="时间段" min-width="80">
+                <template scope="scope">
+                    {{scope.row.trigger.periodical.start}}
+                    {{scope.row.trigger.periodical.end}}
+                </template>
+            </el-table-column>
+            <el-table-column prop="reachCount" label="发送间隔" min-width="80">
+                 <template scope="scope">
+                    {{scope.row.trigger.periodical.frequency}}
+                </template>
+            </el-table-column>
+            <el-table-column prop="reachCount" label="发送具体时间" min-width="80">
+                 <template scope="scope">
+                    {{scope.row.trigger.periodical.time}}
+                    {{scope.row.trigger.single.time}}
+                </template>
+            </el-table-column>
+            <el-table-column prop="grade" label="操作" min-width="100">
+                <template scope="scope">
+                    <el-button @click="view(scope.row)" type="primary" size="small">编辑</el-button>
+                    <el-button @click="deleteRow(scope.row)" type="primary" size="small">删除</el-button>
+                </template>
+            </el-table-column>
+        </el-table>
+        <!-- 分页 -->
+        <div class="block">
+            <el-pagination 
+            @size-change="handleSizeChange" 
+            @current-change="handleCurrentChange" 
+            :current-page="currentPage" 
+            :page-sizes="[50]" 
+            :page-size="size" 
+            layout="total, sizes, prev, pager, next, jumper" 
+            :total="total">
+            </el-pagination>
+        </div>
+        <!-- 分页 -->
+        <el-dialog :visible.sync="dialogVisible" :title="title" size="">
+                <newNotice @close="close" style="width: 800px" :editMes="editMes" v-if="dialogVisible"></newNotice>
+        </el-dialog>
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+import "@/style/selfCommon.less"
+import { GetNotice,GetValidScheduleTasks,DeleteScheduleTask,GetUserReport } from "@/api/myData"
+import newNotice from "./components/newPush.vue"
+import userSel from './components/userSel'
+import axios from 'axios'
+export default {
+    // name: "Notice",
+    data() {
+        return {
+            title:'',
+            date:"",
+            userDialog:false,
+            dialogVisible: false,
+            dialogVisible1: false,
+            currentPage: 1,
+            size: 50,
+            total: 10,
+            form: {},
+            tableData: [],
+            startDate:'',
+            formInline: {
+                timeUnit:'2',
+                startDate:'',
+                userName: "",
+                duration : 1,
+            },
+            currentId:'',
+            editMes:{},
+            allData:[],
+        }
+    },
+    computed: {
+        /* 导出报表参数 tHeader,filterVal,tableData1*/
+        // tHeader() {
+        //     return ['通知编号', '发送时间', '接收人', '摘要', '接收', '浏览', '状态']
+        // },
+        // filterVal() {
+        //     return ['code', 'sendDate', 'receiveFirstType', 'abstract', 'reachCount', 'sawCount', 'status']
+        // },
+        // tableData1() {
+        //     let arr = JSON.parse(JSON.stringify(this.tableData))
+        //     arr.forEach(row=>{
+        //         row.receiveFirstType = row.receiveFirstType+"/" +row.receiveSecondType
+        //         row.status = this.getStatus(row.status)
+        //     })
+        //     return arr
+        // },
+        // name() {
+        //     return '案例管理'
+        // },
+        /*导出报表参数 tHeader,filterVal,tableData1*/
+    },
+    mounted() {
+        // this.getNotice({
+        //     pageIndex: 1,
+        //     pageSize: 10
+        // })
+        this.startDate = new Date()
+    },
+    methods: {
+        dateChange(val){
+            if(val){
+                this.formInline.startDate = val
+            }else{
+                this.startDate = new Date()
+            }
+        },
+        
+        getStatus(status){
+            switch(status){
+                case 1: return "发送中";
+                case 2: return "待发送";
+                case 3: return "已发送"
+            }
+        },
+        async deleteNotice(params) {
+            try {
+                let res = await DeleteScheduleTask(params)
+                if (res.statusCode == 200) {
+                    this.$message({ message: '删除成功', type: 'success' });
+                    this.search()
+                } else {
+                    this.$message.error('删除失败');
+                }
+            } catch (err) {
+                console.log(err)
+            }
+        },
+        async getNotice(params) {
+            try {
+                let res = await GetValidScheduleTasks(params)
+                let data = JSON.parse(res.content)
+                console.log(data)
+                this.total = data.total_count
+                this.tableData = data.schedules
+            } catch (err) {
+                console.log(err)
+            }
+        },
+        dateSelect(val){
+            if(val.length!=0){
+                this.formInline.date1 = val.substring(0,10)
+                this.formInline.date2 = val.substring(13)
+            }else{
+                this.formInline.date1 = ""
+                this.formInline.date2 = ""
+            }
+        },
+        onSubmit() {
+            this.currentPage = 1
+            this.search()
+        },
+        search(){
+            this.getNotice({
+                page:this.currentPage
+            })
+        },
+        publish() {
+            this.title = '添加'
+            this.dialogVisible = true
+            this.currentId = ''
+            this.editMes = {}
+        },
+        close() {
+            this.dialogVisible = false
+            this.search()
+        },
+        view(data) {
+            this.title = '编辑'
+            this.editMes = data
+            this.dialogVisible = true
+        },
+        handleSizeChange(val) {
+            console.log(`每页 ${val} 条`);
+            this.size[this.currentIndex] = val
+            this.search()
+        },
+        handleCurrentChange(val) {
+            console.log(`当前页: ${val}`);
+            this.currentPage[this.currentIndex] = val
+            this.search()
+        },
+        deleteRow(data) {
+            this.$confirm('此操作将永久删除该数据, 是否继续?', '提示', {
+                confirmButtonText: '确定',
+                cancelButtonText: '取消',
+                type: 'warning'
+            }).then(() => {
+                this.deleteNotice({
+                    scheduleId: data.schedule_id
+                })
+            }).catch(() => {
+
+            });
+        },
+       
+    },
+    components: {
+        userSel,
+        newNotice,
+    }
+}
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+
+</style>

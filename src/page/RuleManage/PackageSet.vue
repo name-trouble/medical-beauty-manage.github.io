@@ -1,0 +1,308 @@
+<template>
+    <div class="PackageSet selCommon">
+        <!-- 查询信息 -->
+        <el-table :data="tableData" border style="width: 100%">
+            <el-table-column prop="ConPacCode" label="套餐编号" min-width="150"></el-table-column>
+            <el-table-column prop="ConPacName" label="套餐名称" min-width="120"></el-table-column>
+            <el-table-column prop="GradeNo" label="代理级别" min-width="150">
+                <template slot-scope="scope">
+                    {{scope.row.GradeNo|gradeFilter(gradeList)}}
+                </template>
+            </el-table-column>
+            <el-table-column prop="Memo" label="套餐备注" min-width="220"></el-table-column>
+            <el-table-column prop="JifenRecharge" label="积分" min-width="100"></el-table-column>
+            <el-table-column label="操作" min-width="200" align="center">
+                <template slot-scope="scope">
+                    <el-button @click="editPac(scope.$index,tableData)" type="primary" size="small">编辑</el-button>
+                    <el-button @click="edit(scope.$index,tableData)" type="primary" size="small">选择套餐券</el-button>
+                    <el-button @click="deleteRow(scope.$index,tableData,0)" type="danger" size="small">删除</el-button>
+                </template>
+            </el-table-column>
+        </el-table>
+        <el-table :data="tableAdd" border style="width: 100%;" :show-header="header" v-show="show">
+            <el-table-column prop="num" label="套餐编号" min-width="150">
+                <template slot-scope="scope">
+                    <span style="color: #999">{{scope.row.num}}</span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="name" label="套餐名称" min-width="120">
+                <template slot-scope="scope">
+                    <el-input v-model="scope.row.conPacName" placeholder="套餐名称"></el-input>
+                </template>
+            </el-table-column>
+            <el-table-column prop="grade" label="代理级别" min-width="150">
+                <template slot-scope="scope">
+                    <el-select v-model="scope.row.gradeNo">
+                        <el-option v-for="item in gradeList" :label="item.BranchGradeName" :value="item.Code" :key="item.Id"></el-option>
+                    </el-select>
+                </template>
+            </el-table-column>
+            <el-table-column prop="note" label="套餐备注" min-width="220">
+                <template slot-scope="scope">
+                    <el-input v-model="scope.row.memo" placeholder="备注"></el-input>
+                </template>
+            </el-table-column>
+            <el-table-column prop="JifenRecharge" label="积分" min-width="100">
+                <template slot-scope="scope">
+                    <el-input v-model="scope.row.jifenRecharge"></el-input>
+                </template>
+            </el-table-column>
+            <el-table-column label="操作" min-width="200" align="center">
+                <template slot-scope="scope">
+                    <el-button @click="save(scope.$index,tableAdd)" type="text" size="small">保存</el-button>
+                    <el-button @click="deleteRow(scope.$index,tableAdd,1)" type="text" >取消</el-button>
+                </template>
+            </el-table-column>
+        </el-table>
+        <el-button @click="addPackage()" type="primary" icon="plus" style="margin-top: 20px">添加套餐</el-button>
+        <!--编辑弹窗-->
+        <el-dialog :title="tittle" :visible.sync="dialogFormVisible1" size="">
+            <el-form label-position="right" label-width="80px" :model="formLabelAlign" style="width: 300px">
+                <el-form-item label="套餐名称：" class="form_item_mt0">
+                    <el-input v-model="formLabelAlign.ConPacName" style="width: 200px"></el-input>
+                </el-form-item>
+                <el-form-item label="代理级别：" class="form_item_mt0">
+                    <el-select v-model="formLabelAlign.GradeNo" style="width: 200px">
+                        <el-option v-for="item in gradeList" :label="item.BranchGradeName" :value="item.Code" :key="item.Id"></el-option>
+                    </el-select>
+                </el-form-item>
+                <el-form-item label="套餐备注：" class="form_item_mt0">
+                    <el-input v-model="formLabelAlign.Memo" style="width: 200px"></el-input>
+                </el-form-item>
+                <el-form-item label="积分：" class="form_item_mt0">
+                    <el-input v-model="formLabelAlign.JifenRecharge" style="width: 200px"></el-input>
+                </el-form-item>
+            </el-form>
+            <div slot="footer" class="dialog-footer">
+                <el-button type="primary" @click="editSure" :loading="saveLoading">确 定</el-button>
+                <el-button @click="cancel">取 消</el-button>
+            </div>
+        </el-dialog>
+
+        <!--编辑套餐弹窗-->
+        <el-dialog :title="tittle" :visible.sync="dialogFormVisible" size="">
+            <packageSet style="width: 800px" :packSub="packSub" @close="close" :ConPac="ConPac"></packageSet>
+        </el-dialog>
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+    import "../../style/selfCommon.less"
+    import { getCookie, delCookie } from '../../config/mUtils'
+    import {DeleteConsumerPackage,GetConsumerPackageAll,GetBranchGradeAll,AddConsumerPackage,GetPackageSubByConPacCode,UpdateConsumerPackage} from "../../api/myData"
+    import packageSet from  "./components/packageSet.vue"
+    export default {
+        // name:"PackageSet",
+        data () {
+            return {
+                saveLoading:false,
+                ConPac:"",
+                packSub:[],
+                gradeList:[],
+                header:false,
+                show:false,
+                tableAdd:[],
+                tittle:"",
+                dialogFormVisible:false,
+                dialogFormVisible1:false,
+                tableData:[],
+                formLabelAlign: {}
+            }
+        },
+        watch: {
+            tableAdd:{
+                handler(curVal,oldVal){
+                    if(curVal.length == 0){
+                        this.show = false
+                    }
+                },
+                deep:true
+            }
+        },
+        beforeRouteLeave (to, from, next) {
+            this.$destroy()
+            next()
+        },
+        filters:{
+            gradeFilter(value,list){
+                let BranchGradeName=""
+                list.forEach(data=>{
+                    if(value == data.Code){
+                        BranchGradeName = data.BranchGradeName
+                    }
+                })
+                return BranchGradeName
+            }
+        },
+        computed:{
+            createUserId(){
+                return getCookie("userId")
+            },
+            createBy(){
+                return getCookie("userName")
+            }
+        },
+        mounted(){
+            this.getGradeAll()
+        },
+        methods:{
+//            获取所有代理等级
+            async getGradeAll(){
+                try{
+                    let res = await GetBranchGradeAll()
+                    this.gradeList = res
+                    this.getPackageAll()
+                }catch(err){
+                    console.log(err)
+                }
+            },
+//            获取所有套餐
+            async getPackageAll(){
+                try{
+                    let res = await GetConsumerPackageAll()
+                    this.tableData = res
+                }catch(err){
+                    console.log(err)
+                }
+            },
+//            添加套餐
+            async AddPackage(params,data,index){
+                try{
+                    this.saveLoading = true
+                    let res = await AddConsumerPackage(params)
+                    if(res.success){
+                        this.$message({message: '添加成功', type: 'success'});
+                        this.getPackageAll()
+                       data.splice(index,1)
+                    }else{
+                        this.$message.error('添加失败');
+                    }
+                    this.saveLoading = false
+                }catch(err){
+                    console.log(err)
+                    this.$message.error('添加失败');
+                }
+            },
+//            更新套餐
+            async updatePackage(params){
+                try{
+                    this.saveLoading = true
+                    let res = await UpdateConsumerPackage(params)
+                    if(res.success){
+                        this.$message({message: '更新成功', type: 'success'})
+                        this.getPackageAll()
+                        this.dialogFormVisible1 = false
+                    }
+                    this.saveLoading = false
+                }catch(err){
+                    console.log(err)
+                    this.$message.error('更新失败');
+                }
+            },
+//            删除套餐
+            async deletePackage(data){
+                try {
+                    let res = await DeleteConsumerPackage(data)
+                    if(res.success){
+                        this.$message({
+                            message: '删除成功',
+                            type: 'success'
+                        });
+                        this.getPackageAll()
+                    }else{
+                        this.$message.error('操作失败');
+                    }
+                }catch(err){
+                    console.log(err)
+                    this.$message.error('操作失败')
+                }
+            },
+//            获取套餐详情
+            async getPackageSub(params){
+                try{
+                    let res = await GetPackageSubByConPacCode(params)
+                    this.packSub = res
+                }catch(err){
+                    console.log(err)
+                }
+            },
+//            编辑
+            editPac(index,data){
+                this.formLabelAlign = JSON.parse(JSON.stringify(data[index]))
+                this.tittle = data[index].ConPacName
+                this.dialogFormVisible1 = true
+            },
+//            编辑套餐弹窗
+            edit (index,data){
+
+                this.dialogFormVisible = true
+                this.tittle = data[index].ConPacName
+                this.ConPac = data[index]
+
+                this.getPackageSub({
+                    ConPacCode:data[index].ConPacCode
+                })
+//                this.package = JSON.parse(JSON.stringify(data[index]))
+            },
+//            删除操作
+            deleteRow(index,data,num){
+                if(num == 0){
+                    this.$confirm('操作将删除该套餐, 是否继续?', '提示', {
+                        confirmButtonText: '确定',
+                        cancelButtonText: '取消',
+                        type: 'warning'
+                    }).then(() => {
+                        this.deletePackage({id:data[index].Id})
+                    }).catch(() => {
+
+
+                    });
+                }else{
+                    data.splice(index,1)
+                }
+            },
+            save(index,data){
+                this.AddPackage({
+                    ConPacName:data[index].conPacName,
+                    gradeNo:data[index].gradeNo,
+                    memo:data[index].memo,
+                    createUserId:this.createUserId,
+                    createBy:this.createBy,
+                    jifenRecharge:data[index].jifenRecharge
+                },data,index)
+            },
+//            添加属性
+            addPackage(){
+                this.show = true
+                this.tableAdd.push({num:"保存后编号由系统生成",conPacName:"",gradeNo:"请选择",memo:"",jifenRecharge:"0"})
+            },
+            close(val){
+                this.dialogFormVisible = false
+            },
+            editSure(){
+                this.updatePackage({
+                    id:this.formLabelAlign.Id,
+                    conPacCode:this.formLabelAlign.ConPacCode,
+                    ConPacName:this.formLabelAlign.ConPacName,
+                    gradeNo:this.formLabelAlign.GradeNo,
+                    memo:this.formLabelAlign.Memo,
+                    createUserId:this.createUserId,
+                    createBy:this.createBy,
+                    jifenRecharge:this.formLabelAlign.JifenRecharge
+                })
+            },
+            cancel(){
+                this.dialogFormVisible1 = false
+            }
+
+        },
+        components: {
+            packageSet
+        }
+    }
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+
+</style>

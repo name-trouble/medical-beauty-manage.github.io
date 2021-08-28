@@ -1,0 +1,358 @@
+4<template>
+    <div class="selCommon AgentManage">
+        <!-- 查询信息 -->
+        <el-form :inline="true" :model="formInline" class="demo-form-inline form_search" label-width="90px">
+            <el-form-item label="关键字：" class="form_item_mt10">
+                <el-input v-model="formInline.keywords" placeholder="消费商" style="width: 200px;" v-on:keyup.enter.native="onSubmit"></el-input>
+            </el-form-item>
+            <el-form-item label="审核状态：" class="form_item_mt10">
+                <el-select v-model="formInline.isEnable"  style='width:200px;' @change="onSubmit">
+                    <el-option label="全部" value=""></el-option>
+                    <el-option label="未审核" value="0"></el-option>
+                    <el-option label="已审核" value="2"></el-option>
+                </el-select>
+            </el-form-item>
+            <!-- <el-form-item label="销售公司："  class="form_item_mt10" >
+                <el-select style="width:200px" v-model="formInline.topBranch"  filterable placeholder="请选择">
+                    <el-option v-for="(item,index) in topBranchList" :label="item.branchName" :value="item.code" :key="index"></el-option>
+                </el-select>
+            </el-form-item> -->
+            <el-form-item label=" " class="form_item_mt10">
+                <el-button type="primary" @click="onSubmit" style='background:#cda382;
+                border-radius:2px;color:#fff;border-color:#d6d4d4'>查询</el-button>
+            </el-form-item>
+        </el-form>
+        <!-- 查询信息 -->
+
+        <!-- 信息表 -->
+        <el-table :data="tableData" border style="width: 100%;margin-top:15px;margin-bottom:10px;" class="min_table smt" v-loading="loading">
+            <el-table-column prop="Code" label="消费商" min-width="120">
+                <template slot-scope="scope">
+                    <span class="table_btn" @click="DetailMes(scope.$index,tableData)" type="text">{{scope.row.branchName}}<br/>{{scope.row.branchCode}}</span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="createOn" label="申请日期" width="110">
+                <template slot-scope="scope">
+                    <span v-if="scope.row.createOn">
+                         {{scope.row.createOn.substring(0,10)}}
+                    </span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="referrerName" label="推荐人" min-width="130">
+                <template slot-scope="scope">
+                    <span v-if="scope.row.referrerName">{{scope.row.referrerName}}</span><br/>
+                    <span v-if="scope.row.referrerCode">[{{scope.row.referrerCode}}]</span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="identityType" label="策略" min-width="100">
+                 <template slot-scope="scope">
+                    <span v-if="scope.row.identityType == 2">老策略</span>
+                    <span v-if="scope.row.identityType == 1">新策略</span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="hospitalName" label="医院" min-width="130"></el-table-column>
+
+            <el-table-column prop="branchGradeName" label="当前等级" min-width="130"></el-table-column>
+            <el-table-column prop="targetBranchGradeName" label="目标等级" min-width="130"></el-table-column>
+            <el-table-column prop="currentAmount" label="缴纳会费" min-width="90">
+                <template slot-scope="scope">
+                    <span v-if="scope.row.currentAmount||scope.row.currentAmount==0">￥{{scope.row.currentAmount.toQFW()}}</span>
+                </template>
+            </el-table-column>
+             <el-table-column prop="payAmount" label="已支付" min-width="90">
+                 <template slot-scope="scope">
+                   <span v-if="scope.row.payAmount||scope.row.payAmount==0">￥{{scope.row.payAmount.toQFW()}}</span>
+                </template>
+             </el-table-column>
+            <el-table-column prop="isPayOff" label="是否结清" width="90">
+                <template slot-scope="scope">
+                    <el-tag type="warning" v-if="scope.row.isPayOff == 0">未结清</el-tag>
+                    <el-tag type="success" v-if="scope.row.isPayOff == 1">已结清</el-tag>
+                </template>
+            </el-table-column>
+            <el-table-column prop="isEnable" label="状态" width="80">
+                <template slot-scope="scope">
+                    <el-tag type="warning" v-if="scope.row.isEnable==1">未审核</el-tag>
+                    <el-tag type="warning" v-if="scope.row.isEnable==0">未审核</el-tag>
+                     <el-tag type="success" v-if="scope.row.isEnable==2">已审核</el-tag>
+                </template>
+            </el-table-column>
+            <el-table-column prop="grade" label="操作" width="145">
+                <template slot-scope="scope">
+                    <el-button @click="open(scope.$index,tableData)" type="primary" size="small"
+                               :disabled="scope.row.isEnable != 1||scope.row.isEnable==0">审核</el-button>
+                </template>
+            </el-table-column>
+        </el-table>
+        <!-- 信息表 -->
+        <!-- 分页 -->
+        <div class="block">
+            <el-pagination
+                @size-change="handleSizeChange"
+                @current-change="handleCurrentChange"
+                :current-page="currentPage"
+                :page-sizes="[10, 20, 30, 40]"
+                :page-size="size"
+                layout="total, sizes, prev, pager, next, jumper"
+                :total="total">
+            </el-pagination>
+        </div>
+        <!-- 分页 -->
+
+        <el-dialog title="代理详情" :visible.sync="dialogFormVisible" size='' top="5%">
+            <div v-if="dialogFormVisible">
+                <agentDetail ref="detail" :detailCode="detailCode"  style="width: 920px"></agentDetail>
+            </div>
+        </el-dialog>
+
+        <el-dialog title="代理审核" :visible.sync="dialogCheck" size='' top="30%">
+            <el-form style="width:400px">
+                <el-form-item label="推荐人：">
+                    <span>
+                         {{opeMes.referrerName}}|{{opeMes.referrerCode}}
+                    </span>
+                </el-form-item>
+                <el-form-item label="提成日期：">
+                    <!--<el-select v-model="form.year" placeholder="选择年份" style="width:150px;float:left">-->
+                        <!--<el-option v-for="(item,index) in yearList" :key="index" :label="item" :value="item"></el-option>-->
+                    <!--</el-select>-->
+                    <!--<el-select v-model="form.month" placeholder="选择月份" style="width:150px;float:left">-->
+                        <!--<el-option v-for="(item,index) in monthList" :key="index" :label="item" :value="item"></el-option>-->
+                    <!--</el-select>-->
+                    <el-date-picker type="date" v-model="checkDate"></el-date-picker>
+                </el-form-item>
+            </el-form>
+            <div class="form_footer">
+                <el-button @click="checkSure" type="primary" :loading="saveLoading">确定</el-button>
+                 <el-button @click="cancel">取消</el-button>
+            </div>
+        </el-dialog>
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+    import "@/style/selfCommon.less"
+    import agentDetail from "./components/agentDetail.vue"
+    import {GetBranchByConditions,GetBaseDataAll,GetBranchGradeAll,GetDropDownPermission,ApproveBranchUpgradeApply,PreUpgradeRecomConsume
+    ,GetBranchUpgradeApply} from "../../../api/myData"
+    export default {
+        // name: 'AgentManage',
+        data() {
+            return {
+                saveLoading:false,
+                hospitalList:"",
+                hosForm:[],
+                opeMes:{},
+                loading:false,
+                referList:[],
+                baseData:"",
+                checkDate: new Date(),
+                bankList:[],//004
+                eduList:[],//001
+                industryList:[],//002
+                origionList:[],//003来源
+                gradeList:[],
+                currentPage: 1,
+                detailCode:"",
+                dialogFormVisible:false,
+                dialogCheck:false,
+                form: {
+                    year:new Date().getFullYear(),
+                    month:"",
+                },
+                yearList:[],
+                monthList:[],
+                total: 0,
+                size: 10,
+                formInline: {
+                    keywords:"",
+                    ApproveState:"",
+                    isEnable:""
+                },
+                tableData: [],
+                bonusData:[],
+                openCode:"",
+                loading:false,
+                targetBranchGradeCode:"",
+                identityType:"",
+                currentAmount:"",
+            }
+        },
+        computed: {
+            /* 导出报表参数 tHeader,filterVal,tableData1*/
+            // tHeader(){
+            //     return ['代理编号', '注册日期', '代理人', '联系电话', '身份证号', '来源渠道', '代理等级', '缴纳会费','已缴会费','是否结清', '缴纳押金','推荐人','状态']
+            // },
+            // filterVal(){
+            //     return ['Code', 'RegistDate', 'BranchName', 'PhoneNumber', 'IDCard','SourcWayeCode','BranchGradeName','PayAmount','RealPayAmount','IsPayOff','Pledge','ReferrerName','IsEnable']
+            // },
+            // tableData1(){
+            //     // this.tableData.forEach(row=>{
+            //     //     if(row.RegistDate){
+            //     //         row.RegistDate = row.RegistDate.substring(0,10)
+            //     //     }else{
+            //     //         row.RegistDate = ""
+            //     //     }
+            //     // })
+            //     // this.tableData.push()
+            //     return this.tableData
+            // },
+            // name(){
+            //     return '代理管理'
+            // },
+            /*导出报表参数 tHeader,filterVal,tableData1*/
+        },
+        mounted: function () {
+            this.getBranchGradeAll()
+        },
+        methods: {
+            async GetBranchUpgradeApply(params){
+                this.loading = true
+                let res  =await GetBranchUpgradeApply(params)
+                this.total = res.count
+                this.tableData = res.data
+                this.loading = false
+            },
+            async ApproveBranch(params){
+                this.saveLoading = true
+                let res = await ApproveBranchUpgradeApply(params)
+                if(res.status){
+                    this.$message({message: '审核成功', type: 'success'});
+                    this.getTableDate()
+                    this.cancel()
+                }else{
+                    this.$message.error('审核失败'+res.errorMessage);
+                }
+                this.saveLoading = false
+            },
+            getBaseDate(){
+                this.yearList = [new Date().getFullYear()+1,new Date().getFullYear(),new Date().getFullYear()-1,new Date().getFullYear()-2]
+                for(let i = 1 ;i<13;i++){
+                    if(i<10){
+                        this.monthList.push("0"+i)
+                    }else{
+                        this.monthList.push(i)
+                    }
+                }
+                let m = new Date().getMonth()
+                this.form.year = new Date().getFullYear()
+                if(m>9){
+                    this.form.month = m
+                }else{
+                    if(m==0){
+                        this.form.year = new Date().getFullYear()-1
+                        this.form.month = 12
+                    }else{
+                        this.form.month = "0"+m
+                    }
+
+                }
+            },
+//            获取所有代理等级
+            async getBranchGradeAll(){
+                try{
+                    let [res1,res] = await Promise.all([GetDropDownPermission({typeId: 1}),GetBranchGradeAll()])
+                    this.hospitalList = res1.data
+                    this.formInline.hospital = this.hospitalList[0].code
+                    this.gradeList = res
+                }catch(err){
+                    console.log(err)
+                }
+            },
+
+
+            // 条件查询
+            onSubmit() {
+                this.currentPage = 1
+                this.getTableDate(1)
+            },
+
+            // 分页页面展示数据条数改变触发事件
+            handleSizeChange(val) {
+                console.log(`每页 ${val} 条`);
+                this.size = val
+                this.getTableDate()
+            },
+
+            // 分页当前页码改变触发事件
+            handleCurrentChange(val) {
+                console.log(`当前页: ${val}`);
+                this.currentPage = val
+                this.getTableDate()
+            },
+
+            DetailMes(index,data){
+                this.detailCode = data[index].branchCode
+                this.dialogFormVisible = true
+            },
+            async Pre(params){
+                try{
+                    let res =await PreUpgradeRecomConsume(params)
+                    if(res.HosipitalRecomList){
+                        this.ApproveBranch({
+                            Id:this.opeMes.id,
+                            CommissionDate:this.checkDate.formatDate("yyyy-MM-dd")
+                        })
+                    }else{
+
+                    }
+                }catch(err){
+                    console.log(err)
+                }
+            },
+//            启用
+            open(index,data){
+                this.getBaseDate()
+                this.dialogCheck = true
+                this.opeMes = data[index]
+                this.openCode = data[index].branchCode
+                this.targetBranchGradeCode = data[index].targetBranchGradeCode
+                this.identityType = data[index].identityType
+                this.currentAmount = data[index].currentAmount
+            },
+
+            getTableDate(){
+                this.GetBranchUpgradeApply({
+                    pageIndex: this.currentPage,
+                    pageSize: this.size,
+                    keywords:this.formInline.keywords.removeSP(),
+                    isEnable:this.formInline.isEnable
+                })
+            },
+            checkSure(){
+                this.Pre({
+                        branchcode:this.openCode,
+                        branchGradeCode:this.targetBranchGradeCode,
+                        identityType:this.identityType,
+                        realAmount:this.currentAmount,
+                        applyId:this.opeMes.id
+                    })
+            },
+            cancel(){
+                this.dialogCheck = false
+                let m = new Date().getMonth()+1
+                this.form = {
+                    year:new Date().getFullYear(),
+                     month:m>9?m:"0"+m
+                }
+            },
+        },
+        components: {
+            agentDetail
+        }
+    }
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+    .AgentManage {
+        font-size: 12px;
+    }
+
+    .inventory {
+        margin-bottom: 10px;
+    }
+    .form_footer{
+        text-align: center
+    }
+</style>

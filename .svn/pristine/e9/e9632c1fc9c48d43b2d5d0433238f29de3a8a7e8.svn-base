@@ -1,0 +1,764 @@
+<template>
+    <div class="upGrade">
+        <el-col :span="24" style="line-height: 36px;font-size: 16px;font-weight: bold">升级信息</el-col>
+        <div class="clear" style="margin-top: 20px">
+            <el-form :model="ruleForm" :rules="rules" :inline="true" ref="ruleForm" label-width="110px"
+                     class="demo-ruleForm">
+                <el-col :span="24" style="background: #F2F2F2;padding-top: 10px">
+                    <el-form-item label="当前等级：" class="form_item form_item_mt10" prop="grade">
+                        <span>{{baseData.branchGradeName}}</span>
+                    </el-form-item><br/>
+                    <el-form-item label="升级等级：" class="form_item form_item_mt10" prop="grade" >
+                        <el-select v-model="ruleForm.grade" placeholder="请选择等级" class="form_select_2" disabled>
+                            <el-option v-for="item in gradeList" :label="item.BranchGradeName" disabled
+                                       :value="item.Code" :key="item.Code"></el-option>
+                        </el-select>
+                    </el-form-item>
+                    <el-form-item label="推荐提成策略：" prop="identityType" class="form_item form_item_mt10" >
+                        <el-select v-model="ruleForm.identityType" placeholder="请选择" class="form_select_2" disabled>
+                            <el-option  label="新策略" value="1"></el-option>
+                            <el-option  label="老策略" value="2"></el-option>
+                        </el-select>
+                    </el-form-item>
+                    <el-form-item label="医院：" prop="Hospital" class="form_item form_item_mt10" v-if="show" >
+                        <!-- <el-input class="form_ipt" v-model="ruleForm.Hospital" :disabled="true"></el-input>-->
+                        <el-select v-model="ruleForm.Hospital" class="form_ipt" disabled>
+                            <el-option v-for="(item,index) in supplyList" :label="item.SupplierName" :value="item.Code+'|'+item.SupplierName" :key="index"></el-option>
+                        </el-select>
+                    </el-form-item>
+                    <br/>
+                    <el-form-item label="补交：" class="form_item form_item_mt10" >
+                        <span style="color: red;line-height: 36px">￥{{ruleForm.payAmount}}</span>
+                    </el-form-item>
+                    <el-form-item label="押金：" class="form_item form_item_mt10" >
+                        <span style="color: red;line-height: 36px">￥{{ruleForm.Pledge}}</span>
+                    </el-form-item> <br/>
+                    <el-form-item label="消费订单：" class="form_item form_item_mt10" >
+                        <el-checkbox v-model="ruleForm.order"></el-checkbox>
+                    </el-form-item>
+                    <el-form-item label="订单编号：" class="form_item form_item_mt10" prop="formNum" v-if="ruleForm.order" >
+                        <el-input v-model="ruleForm.formNum" class="form_ipt"></el-input>
+                    </el-form-item>
+                </el-col>
+                <el-form-item style="width: 100%;margin: 10px 0" label="" label-width="70px">
+                    <span style="font-weight: bold;font-size: 16px">支付信息</span>
+                </el-form-item>
+                <el-col :span="24" style="background: #F2F2F2;padding-top: 10px">
+                    <el-form-item label=" " style="width: 100%;margin-bottom: 10px" label-width="30px">
+                        <el-table ref="singleTable" :data="payTable" border style="width: 870px">
+                            <el-table-column prop="payTypeName" min-width="100" label="支付方式"></el-table-column>
+                            <el-table-column prop="receiveBranchName" min-width="100" label="销售公司"></el-table-column>
+                            <el-table-column prop="receiveAccount" label="收款账户" min-width="100"></el-table-column>
+                            <el-table-column prop="procFee" label="手续费" min-width="80"></el-table-column>
+                            <el-table-column prop="memo" label="备注" min-width="100"></el-table-column>
+                            <el-table-column prop="realAmount" label="实际金额" min-width="120">
+                                <template scope="scope">
+                                    {{scope.row.realAmount.toQFW()}}
+                                </template>
+                            </el-table-column>
+                            <el-table-column prop="payDate" label="支付日期" min-width="100">
+                                <template scope="scope">
+                                    <span v-if="scope.row.payDate">
+                                        {{scope.row.payDate.substring(0,10)}}
+                                    </span>
+                                </template>
+                            </el-table-column>
+                            <el-table-column prop="" label="操作" min-width="100">
+                                <template scope="scope">
+                                    <el-button size="small" type="primary" @click="editPay(scope.$index,payTable,'编辑')">编辑</el-button>
+                                    <el-button type="danger" size="small" @click="deleteRow(scope.$index,payTable)">删除</el-button>
+                                </template>
+                            </el-table-column>
+                        </el-table>
+                        总额：￥{{total}}<br/>
+                        <el-button type="success" @click="add" style="margin-top: 10px">添加支付信息</el-button>
+                    </el-form-item>
+                </el-col>
+                <el-form-item style="width: 100%;margin: 10px 0" label="" label-width="70px">
+                    <span style="font-weight: bold;font-size: 16px">套餐信息</span>
+                </el-form-item> 
+                <el-col :span="24" style="background: #F2F2F2;padding-top: 10px" >
+                    <el-form-item label="选择套餐组合：" style="margin-bottom: 0px">
+                        <el-row>
+                            <el-col v-for="(items,index) in packageList" :key="index" style="width: 150px">
+                                <el-select v-model="packageVal[index].code" form placeholder="请选择" :disabled="disabled">
+                                    <el-option v-for="item in items" :label="item.ConPacName"
+                                               :value="item.ConPacCode" :key="item.ConPacCode"></el-option>
+                                </el-select>
+                            </el-col>
+                        </el-row>
+                    </el-form-item>
+                    <el-form-item label="卡券：" style="width: 100%;margin-bottom: 0px">
+                        <el-table ref="singleTable" :data="tableData" border
+                                  highlight-current-row style="width: 800px">
+                            <el-table-column type="index" width="60" label="序号"></el-table-column>
+                            <el-table-column prop="ConPacName" label="套餐名称" min-width="100"></el-table-column>
+                            <el-table-column prop="TickInfoCode" label="券种编号" min-width="100"></el-table-column>
+                            <el-table-column prop="TickName" label="券名称" min-width="120"></el-table-column>
+                            <el-table-column prop="Price" label="面值" min-width="80"></el-table-column>
+                            <el-table-column prop="TicNum" label="数量" min-width="80"></el-table-column>
+                            <el-table-column prop="EndDate" label="有效期" min-width="120"></el-table-column>
+                        </el-table>
+                    </el-form-item>
+                    <el-form-item label="积分：" class="form_item">
+                        <span>{{integral}}</span>
+                    </el-form-item>
+                </el-col>
+                <el-form-item style="width: 100%;text-align: center;margin-top: 20px" class="form_item_mt0">
+                    <el-button type="primary" @click="submitForm('ruleForm')" :loading="saveLoading">保存</el-button>
+                    <el-button @click="resetForm('ruleForm')">取消</el-button>
+                </el-form-item>
+            </el-form>
+        </div>
+        <el-dialog title="添加支付信息" :visible.sync="dialogTableVisible1" :modal="false" size="">
+            <payInfo @payOpe="payOpe" style="width: 380px" :editMes="editMes" :dialogTableVisible1="dialogTableVisible1"></payInfo>
+        </el-dialog>
+        <el-dialog title="推荐奖明细" :visible.sync="dialogFormVisible" size='' :modal="false" label-width="80px">
+            <el-table :data="bonusData" border style="width:800px;margin-top:15px;margin-bottom:10px;" max-height="400px">
+                <el-table-column prop="RefrenceName" label="代理人" min-width="80"></el-table-column>
+                <el-table-column prop="RefrenceGradeName" label="代理等级" min-width="90"></el-table-column>
+                <el-table-column prop="UpgradeBonus" label="会费等级金额" min-width="120">
+                    <template scope="scope">
+                        {{scope.row.UpgradeBonus.toQFW()}}
+                    </template>
+                </el-table-column>
+                <el-table-column prop="UpgradeBonus" label="策略" min-width="80">
+                    <template>
+                        <span v-if="ruleForm.identityType==1">新策略</span>
+                        <span v-if="ruleForm.identityType==2">老策略</span>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="Rate" label="分成比例%" min-width="90" v-if="ruleForm.identityType==1">
+                    <template scope="scope">
+                        {{scope.row.Rate*100}}
+                    </template>
+                </el-table-column>
+                <el-table-column prop="Bonus" label="分成金额" min-width="120">
+                    <template scope="scope">
+                        {{scope.row.Bonus.toQFW()}}
+                    </template>
+                </el-table-column>
+            </el-table>
+            总计：￥{{bonusData|filterFunB}}
+            <el-form :model="hosForm" style="width: 700px" :inline="true">
+                <el-form-item label="" prop="RealAmount" class="form_item" style="margin: 10px 0 0 0px">
+                    <span style="font-size: 16px;font-weight: bold;">医院收益</span>
+                </el-form-item><br/>
+                <el-form-item label="医院：" prop="RealAmount" style="margin-bottom: 0">
+                   <span>{{hosForm.HospitalName}}</span>
+                </el-form-item>
+                <el-form-item label="比例：" prop="RealAmount" style="margin-bottom: 0">
+                    <span>{{hosForm.Rate*100}}%</span>
+                </el-form-item>
+                <el-form-item label="金额：" prop="RealAmount" style="margin-bottom: 0">
+                    <span>{{hosForm.HosAmount}}</span>
+                </el-form-item>
+            </el-form>
+        </el-dialog>
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+    import {GetBranchGradeAll,GetPackageOrderNumAll,GetTicketsAll,getBaseDataByCode,getSupplierByPage,GetBranchByCode,
+    GetBranchUpgradeApplyById,EnableBranchUpgradeApply,UpdateBranchUpgradeApply,
+    GetBranchGradeFee} from "../../../../api/myData"
+    import { getCookie } from '../../../../config/mUtils'
+    import payInfo from "./pay.vue"
+    export default {
+        props:{
+          detailCode:"",
+          title:"",
+          branchCode:'',
+        },
+        data () {
+            return {
+                saveLoading:false,
+                editMes:{},
+                editIndex:"",
+                payWayList:[],
+                hosForm:{},
+                supplyList:[],
+                show:false,
+                accountList:[],
+                IdentityType:"",
+                bonusData:[],
+                form:{
+                    type:"",
+                    PayTypeName:"",
+                    PayType:"",
+                    RealAmount:0,
+                    Memo:"",
+                    ReceiveAccount:"",
+                    sxf:0,
+                    payDate:new Date()
+                },
+                dialogFormVisible:false,
+                dialogTableVisible1:false,
+                payTable:[],
+                ReferrerCode:"",
+                integral:0,
+                ticketsList:[],
+                packageAll:[],
+                packageVal:[],
+                gradeList:[],
+                tableData:[],
+                ruleForm:{
+                    order:false,
+                    formNum:"",
+                    Hospital:"",
+                    identityType:"",
+                    payAmount:"",
+                    grade:"",
+                    BranchName:"",
+                    Sex:"",
+                    Code:"",
+                    BranchGradeName:"",
+                    PhoneNumber:"",
+                    Pledge:0,
+                },
+                allGrade:[],
+                oldPackCode:"",
+                packageList:[],
+                rules:{
+                    Hospital:[ { required: true, message: '请选择', trigger: 'change' }],
+                    identityType:[ { required: true, message: '请选择', trigger: 'change' }],
+                    grade:[ { required: true, message: '请选择', trigger: 'change' }],
+                },
+                baseData:{},
+            }
+        },
+        computed:{
+            total(){
+                let num = 0
+                if(this.payTable&&this.payTable.length>0){
+                    this.payTable.forEach(row=>{
+                        num += Number(row.realAmount)
+                    })
+                }else{
+                    num = 0
+                }
+                return num
+            },
+            disabled(){
+                if(this.title == 'edit'){
+                    return true
+                }else{
+                    if(this.ruleForm.identityType==1){
+                        return true
+                    }else{
+                        return false
+                    }
+                }
+            }
+        },
+        watch:{
+            'ruleForm.grade':{
+                handler(curVal,oldVal){
+                    let grade = ""
+                    
+                    this.gradeList.forEach(data=>{
+                        if(data.Code == curVal){
+                            grade = data.OrderNum
+                            
+                            if(data.GradeProperty == "终结"){
+                                this.show = true
+                            }else{
+                                this.show = false
+                            }
+                        }else{}
+                    })
+                    
+                    this.packGradeSelect(grade)
+                },
+                deep:true
+            },
+            "packageVal":{
+                handler(curVal,oldVal){
+                    this.getTickSplit(curVal)
+                },
+                deep:true
+            }
+        },
+        mounted(){
+            this.GetBranchUpgradeApplyById()
+        },
+        filters:{
+            filterFunB(val){
+                let num = 0
+                if(val&&val.length>0){
+                    val.forEach(row=>{
+                        num += Number(row.Bonus)
+                    })
+                }else{
+                    num = 0
+                }
+                return num
+            }
+        },
+        methods: {
+            async GetBranchUpgradeApplyById(){
+                let [res,res1] = await Promise.all([GetBranchUpgradeApplyById({id:this.detailCode}),GetBranchByCode({branchcode:this.branchCode})])
+                this.baseData = res.data.bua
+                this.payTable = res.data.bop
+                debugger
+                // this.payTable = res.data.bop.filter(ele=>{
+                //     if(ele.ItemType == 1||ele.ItemType == 4){//1代理费 4升级费
+                //         return ele
+                //     }
+                // });
+                this.oldPackCode = res1.Branch.ConPackage?res1.Branch.ConPackage:"",
+                this.getBranchGradeAll()
+            },
+            async EnableBranchUpgradeApply(params){
+                let res = await EnableBranchUpgradeApply(params)
+                    if(res.status){
+                        this.$message({message: '启用成功', type: 'success'});
+                        this.$emit("upClose",close)
+                    }else{
+                        this.$message.error('启用失败'+res.errorMessage);
+                    }
+                    this.saveLoading = false
+            },
+            paySelect(){
+                
+                    this.form.PayTypeName = this.form.type.name
+                    this.form.PayType = this.form.type.value
+            },
+            // async Pre(params){
+            //     try{
+            //         let res =await PreUpgradeRecomConsume(params)
+            //         this.bonusData = res.PreList
+            //         if(res.HosipitalRecomList[0]){
+            //             this.hosForm = res.HosipitalRecomList[0]
+            //         }else{
+            //             this.hosForm = {}
+            //         }
+            //     }catch(err){
+            //         console.log(err)
+            //     }
+            // },
+            // 编辑
+            async UpdateBranchUpgradeApply(params){
+                try{
+                    let res =await UpdateBranchUpgradeApply(params)
+                    
+                     if(res.status){
+                        this.$message({message: '编辑成功', type: 'success'});
+                        this.$emit("upClose",close)
+                    }else{
+                        this.$message.error('编辑失败'+res.errorMessage);
+                    }
+                    this.saveLoading = false
+                }catch(err){
+                    console.log(err)
+                }
+            },
+//            获取所有被选中的券
+            async getTicketsAll(){
+                try{
+                    let res = await GetTicketsAll()
+                    this.ticketsList = res
+                   
+                }catch(err){
+                    console.log(err)
+                }
+            },
+            //            等级套餐
+            async getPackageOrderNumAll(){
+                try{
+                    let res = await GetPackageOrderNumAll()
+                    this.packageAll = res
+                    
+                    this.getTicketsAll()
+                }catch(err){
+                    console.log(err)
+                }
+            },
+            //            获取单个代理商详情
+            async GetBranchByCode(params) {
+                try {
+                    let res = await GetBranchByCode(params);
+                    this.allMes = res;
+                    //                    this.GetBaseDataAll()
+                    this.copyWorth(res);
+                } catch (err) {
+                    console.log(err);
+                }
+            },
+            //            获取所有等级
+            async getBranchGradeAll(){
+                try {
+                    let data = {startdate: "", enddate: "", suppliername: "", suptypecode: "", phonenumber: "", pageindex: 1, pagesize: 999}
+                    // 异步并行请求
+                    let [res,res1,res2,payWays,packOrder,ticketsList] = await Promise.all([getSupplierByPage(data),GetBranchGradeAll(),getBaseDataByCode("0019"),
+                    getBaseDataByCode("0006"),GetPackageOrderNumAll(),GetTicketsAll()])
+                    this.supplyList = res
+                    this.accountList = res2
+                    payWays.forEach(row=>{
+                        if(Number(row.DataCode)<7){
+                            this.payWayList.push({
+                                name:row.DataName,
+                                value:row.DataCode
+                            })
+                        }
+                    })
+                    this.gradeList = this.filter(res1)
+                    this.copyWorth(this.baseData)
+                    this.packageAll = packOrder
+                    this.ticketsList = ticketsList
+                } catch (err) {
+                    console.log(err)
+                }
+            },
+            filter(data){
+                let arr = []
+                
+                data.forEach(row=>{
+                    if(row.Code != "G100000"){
+                        arr.push(row)
+                    }
+                })
+                return arr
+            },
+            //            套餐等级筛选
+            packGradeSelect(grade){
+//                获取所有套餐筛选等级
+//                this.packSelect = []
+                let arr = []
+                this.gradeList.forEach(data=>{
+                    if(data.OrderNum>=grade){
+                        arr.push(data.OrderNum)
+//                        this.packSelect.push({})
+                    }
+                })
+                
+                // this.allgrade = this.allGrade = JSON.parse(JSON.stringify(arr))
+                arr = this.removeDup(arr)
+            },
+            //            去重
+            removeDup(data){
+                let arr = []
+                let len = data.length
+                data.sort()
+                for(let i =0;i<len;i++){
+                    if(data[i]!=data[i+1]){
+                        arr.push(data[i])
+                    }else{
+                        if(i>=len-1){
+                            arr.push(data[i+1])
+                        }
+                    }
+                }
+                
+                this.packageSelect(arr,this.packageAll)
+            },
+            //            套餐筛选组合
+            packageSelect(numList,dataList){
+                this.packageList = []
+                this.packageVal = []
+                for(let i=0;i<numList.length;i++){
+                    for(let j = 0;j<dataList.length;j++){
+                        if(numList[i] == dataList[j].OrderNum){
+                            if(!this.packageList[i]){
+                                this.packageList.push([])
+                                /*this.packageVal.push({code:""})*/
+                            }
+                            
+                            this.packageList[this.packageList.length-1].push(dataList[j])
+                        }
+                    }
+                }
+                this.packageList.forEach(data=>{
+                    this.packageVal.push({code:""})
+                })
+            },
+            getTickSplit(data){
+                
+                let arr = []
+                for(let i = 0;i<data.length;i++){
+                    for(let j = 0;j<this.ticketsList.length;j++){
+                        if(data[i].code.length!=0&&data[i].code ==this.ticketsList[j].ConPacCode ){
+                            this.ticketsList[j].TickCode=""
+                            arr.push(this.ticketsList[j])
+                        }
+                    }
+                }
+                  this.tableData = this.removeDu(arr)
+                // this.tableData = arr
+                this.integral = this.recharge()
+            },
+
+            removeDu(data){
+                let arr = []
+                // data.forEach(row=>{
+                //     row.num = 0
+                // })
+                let pack = JSON.parse(JSON.stringify(data))
+                for(var i = 0;i<data.length-1;i++){
+                    for(var j = i+1;j<data.length;j++){
+                        if(data[i].TickInfoCode == data[j].TickInfoCode){
+                            pack[j].TicNum+=pack[i].TicNum
+                            pack[i].dul = true
+                            break;
+                        }
+                    }
+                }
+                pack.forEach(row=>{
+                    if(!row.dul){
+                        arr.push(row)
+                    }
+                })
+               
+               return arr
+            },
+            recharge(){
+                let arr = []
+                let num = 0
+                this.packageVal.forEach(row=>{
+                    for(let i =0;i<this.packageAll.length;i++){
+                        if(row.code ==this.packageAll[i].ConPacCode ){
+                            num+=Number(this.packageAll[i].JifenRecharge)
+                            break
+                        }
+                    }
+                })
+                return num
+            },
+//            提交
+            submitForm(formName) {
+                this.$refs[formName].validate((valid) => {
+                    if (valid) {
+                        this.payTable.forEach(row=>{
+                            row.BranchCode = this.baseData.branchCode
+                            row.BranchName = this.baseData.branchName
+                            row.createUserId = getCookie("userId")
+                            row.createBy = getCookie("userName")
+                        })
+                        // if(this.total>=this.ruleForm.payAmount){
+                            let obj = {
+                                id:this.detailCode,
+                                "branchCode": this.baseData.branchCode,
+                                "branchName": this.baseData.branchName,
+                                identityType:this.ruleForm.identityType,
+                                branchOrderPayList: JSON.stringify(this.payTable),
+                                modifiedBy:getCookie("userName"),
+                                modifiedUserId:getCookie("userId"),
+                                "branchGradeCode": this.baseData.branchGradeCode,
+                                branchGradeName:this.baseData.branchGradeName,
+                                "targetBranchGradeCode": this.baseData.targetBranchGradeCode,
+                                targetBranchGradeName: this.baseData.targetBranchGradeName,
+                                "referrerCode": this.baseData.referrerCode,
+                                "referrerName": this.baseData.referrerName,
+                                "currentAmount": this.ruleForm.payAmount,
+                                "payAmount": this.total,
+                                BranchPoints : this.integral,
+                                ConPackage:this.conPackSplit(this.packageVal),
+                            }
+                            // if(this.baseData.from == 1){
+                            //     obj.ConPackage = this.conPackSplit(this.packageVal)
+                            //     obj.comPakageOrderList = JSON.stringify(this.packageTurn(this.tableData))
+                            //     obj.BranchPoints = this.integral
+                            // }
+                            if (this.show) {
+                                obj.hospitalCode = this.ruleForm.Hospital.split("|")[1]
+                                obj.hospitalName = this.ruleForm.Hospital.split("|")[0]
+                            }
+                            // 判断由编辑还是启用进入
+                            this.saveLoading = true
+                            if(this.title =='edit'){
+                                this.UpdateBranchUpgradeApply(obj)
+                            }else{
+                                // if(this.total>=this.ruleForm.payAmount){
+                                    obj.comPakageOrderList = JSON.stringify(this.packageTurn(this.tableData))
+                                    this.EnableBranchUpgradeApply(obj)
+                                // }else{
+                                //     this.$message({message: '缴款不足，请核对信息', type: 'warning'});
+                                // }
+                            }
+                        // }else{
+                        //     this.$message({message: '缴款不足，请核对信息', type: 'warning'});
+                        // }
+                    } else {
+                        console.log('error submit!!');
+                        return false;
+                    }
+                });
+            },
+
+            packageTurn(data){
+                let arr = []
+                data.forEach(row=> {
+                    arr.push({
+                        ConPacCode: row.ConPacCode,
+                        createUserId: getCookie("userId"),
+                        createBy: getCookie("userName"),
+                        TickInfoCode: row.TickInfoCode,
+                        TicketCode: row.TicketCode,
+                        TicketsType:row.TicketsType,
+                        ProjCodes:row.ProjCodes,
+                        UseCount:row.UseCount,
+                        TicNum:row.TicNum,
+                        ProjCodesNames:row.ProjCodesNames,
+                        branchCode:this.baseData.branchCode
+                    })
+                })
+                return arr
+            },
+//            取消
+            resetForm(){
+                this.$emit("upClose",close)
+                this.ruleForm.grade = ""
+            },
+            copyWorth(data){
+                this.getGradeName(data.branchGradeCode)
+                this.ruleForm.Hospital = data.hospitalName+"|"+data.hospitalCode
+                this.ruleForm.payAmount = data.currentAmount
+                this.ruleForm.identityType = data.identityType
+                setTimeout(()=>{
+                    this.ruleForm.grade = data.targetBranchGradeCode
+                },100)
+            },
+            getGradeName(data){
+                
+                let name = ""
+                let arr = []
+                let OrderNum = ""
+                this.gradeList.forEach(row=>{
+                    if(row.Code == data){
+                        name = row.BranchGradeName
+                        OrderNum = row.OrderNum
+                    }
+                })
+                this.gradeList.forEach(row=>{
+                    if(row.OrderNum < OrderNum){
+                        arr.push(row)
+                    }
+                })
+                this.allGrade = this.gradeList.length-arr.length-1
+                this.gradeList = arr
+                return name
+            },
+            conPackSplit(data){
+                let arr = []/*data.concat(this.baseData.ConPackage)*/
+                if(data.length!=0){
+                    data.forEach(row=>{
+                        arr.push(row.code)
+                    })
+                    // 套餐名称与老数据拼接
+                    
+                    let packCode = ""
+                    if(this.oldPackCode.length==0){
+                        let len = this.allGrade
+                        for(var i = 0;i<len-1;i++){
+                            packCode += ","
+                        }
+                    }else{
+                        packCode = this.oldPackCode
+                    }
+                    let list = arr.join(",")+","+packCode
+                    return list
+                }else{
+                    return ""
+                }
+            },
+            add(){
+                this.dialogTableVisible1 = true
+                this.form = {
+                    type:"",
+                    PayTypeName:"",
+                    PayType:"",
+                    RealAmount:0,
+                    Memo:"",
+                    ReceiveAccount:"",
+                    sxf:0,
+                    payDate:new Date()
+                }
+            },
+            paySure(formName){
+                this.$refs[formName].validate((valid) => {
+                    if (valid) {
+                        this.payTable.push({
+                            // ItemType: 4,//4升级
+                            PayType: this.form.PayType,
+                            PayTypeName:this.form.PayTypeName,
+                            Memo:this.form.Memo,
+                            RealAmount:this.form.RealAmount,
+                            ReceiveAccount:this.form.ReceiveAccount,
+                            ProcFee:this.form.sxf,
+                            payDate:this.form.payDate?this.form.payDate.formatDate("yyyy-MM-dd"):""
+                        })
+                        this.dialogTableVisible1 = false
+                        this.$refs['form'].resetFields();
+                    } else {
+                        console.log('error submit!!');
+                        return false;
+                    }
+                });
+            },
+            payCancel(){
+                this.dialogTableVisible1 = false
+                this.$refs['form'].resetFields();
+            },
+            deleteRow(index,data){
+                data.splice(index,1)
+            },
+            editPay(index, data,ope) {
+                let obj = JSON.parse(JSON.stringify(data[index]))
+                for(var key in obj){
+                     obj[key.substring(0,1).toUpperCase()+key.substring(1)] = obj[key];  
+                }
+                this.editIndex = index
+                obj.random = Math.random()
+                this.editMes = obj
+                this.dialogTableVisible1 = true;
+            },
+            payOpe(val,ope){
+                let obj = {
+                    memo:val.Memo,
+                    payDate:val.PayDate,
+                    payType:val.PayType,
+                    payTypeName:val.PayTypeName,
+                    procFee:Number(val.ProcFee),
+                    realAmount:Number(val.RealAmount),
+                    receiveBranchCode:val.ReceiveBranchCode,
+                    receiveBranchName:val.ReceiveBranchName,
+                    receiveAccount:val.ReceiveAccount,
+                    topBranch:val.topBranch,
+                    type:val.type,
+                }
+                          
+               if(ope){
+                    this.payTable[this.editIndex] = JSON.parse(JSON.stringify(obj))
+                    this.payTable.push()
+                }else{
+                    if (val.PayType) {
+                        this.payTable.push(JSON.parse(JSON.stringify(obj)))
+                    }
+                }
+                this.dialogTableVisible1 = false
+            },
+        },
+        components: {
+            payInfo
+        }
+    }
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+    .clear{
+        clear: both;
+    }
+    .pic{
+        width: 60px;height: 60px;
+        border-radius: 60px;
+        background: url("../../../../assets/img/person.jpg") no-repeat center;
+        background-size:100% ;
+        overflow: hidden;
+        margin-right: 10px;
+    }
+    .mes{
+        margin-left: 20px;
+        line-height: 26px;
+    }
+</style>

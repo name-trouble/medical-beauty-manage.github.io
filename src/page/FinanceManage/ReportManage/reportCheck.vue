@@ -1,0 +1,464 @@
+<template>
+    <div class="selCommon">
+        <el-form :inline="true" :model="formInline" class="demo-form-inline form_search" label-width="80px">
+             <el-form-item label="执行日期：" class="form_item_mt10 ">
+                <el-date-picker v-model="date1" @change="dateSelect" type="daterange" placeholder="选择日期范围" class="wt200">
+                </el-date-picker>
+            </el-form-item>
+            <!-- <el-form-item label="项目："  class="form_item_mt10 form_item_wh280">
+                <el-input v-model="formInline.projectName" placeholder="" style="width: 200px;" v-on:keyup.enter.native="onSubmit"></el-input>
+            </el-form-item> -->
+            <el-form-item label="医院:" class="form_item_mt10">
+                <el-select v-model="formInline.hospitalId"  style='width:200px;'>
+                    <el-option v-for="(item,index) in hospitalList" :key="index" :label="item.supplierName" :value="item.code"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="关键字：" class="form_item_mt10 ">
+                <el-input v-model="formInline.customer" placeholder="客户/消费商/医护人员" class="form_sear_ipt wt200" v-on:keyup.enter.native="onSubmit"></el-input>
+            </el-form-item>
+             <el-form-item label="审核状态:" class="form_item_mt10">
+                <el-select v-model="formInline.type"  style='width:200px;'>
+                    <el-option label="待审核" value="0"></el-option>
+                    <el-option label="已审核" value="1"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="" class="form_item_mt10 form_item_wh280">
+                <el-button type="primary" @click="onSubmit" class="searchBtn">查询</el-button>
+            </el-form-item>
+        </el-form>
+        <el-table :data="tableData" border style="width: 100%;margin-top:15px;margin-bottom:10px;" :summary-method="getSummaries"  show-summary
+         v-loading.body="loading"  max-height="660" class="smt min_table report" >
+            <el-table-column prop="execDate" label="执行日期" width="85" >
+                <template slot-scope="scope">
+                    <span v-if="scope.row.execDate">{{scope.row.execDate.substring(0,10)}}</span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="orderDate" label="订单日期" width="85" >
+                <template slot-scope="scope">
+                    <span v-if="scope.row.orderDate">{{scope.row.orderDate.substring(0,10)}}</span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="customerName" label="客户" min-width="68">
+                <template slot-scope="scope">
+                    <el-button type="text" @click="view(scope.$index,tableData)" v-if="scope.row.isBranch == 1" style="color:black">{{scope.row.customerName}}</el-button>
+                    <el-button type="text" @click="view(scope.$index,tableData)" v-else style="color:red">{{scope.row.customerName}}</el-button>
+                </template>
+             </el-table-column>
+            <el-table-column prop="refrenceBranchName" label="消费商" min-width="68"></el-table-column>
+            <el-table-column prop="marketConsultantName" label="咨询师" min-width="68"></el-table-column>
+            <el-table-column prop="designerName" label="设计师" min-width="68"></el-table-column>
+            <el-table-column prop="designerAssistName" label="设计师助理" min-width="80"></el-table-column>
+            <el-table-column prop="doctorName" label="医生" min-width="68"></el-table-column>
+            <el-table-column prop="nurseName" label="护士" min-width="68"></el-table-column>
+            <el-table-column prop="itemTypeName" label="项目类型" min-width="70">
+                <template slot-scope="scope">
+                    <span v-if="scope.row.itemType == 1">微整</span>
+                    <span v-if="scope.row.itemType == 2">手术</span>
+                    <span v-if="scope.row.itemType == 3">无痕眼袋</span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="projectName" label="项目明细" min-width="80">
+                <template slot-scope="scope">
+                     <div v-if="scope.row.projectName">
+                          <el-tooltip class="item" effect="dark" :enterable='false' :content="scope.row.projectName" placement="top" v-if="scope.row.projectName.length>7">
+                            <el-button type="text" @click="rowClick(scope.$index,tableData)">{{scope.row.projectName.substring(0,7)}}...</el-button>
+                        </el-tooltip>
+                        <el-button type="text" v-else style="color:#20a0ff" @click="rowClick(scope.$index,tableData)">
+                            {{scope.row.projectName}}
+                        </el-button>
+                    </div>
+                </template>
+            </el-table-column>
+            <el-table-column prop="orderAmount" label="订单金额" min-width="80" align="right">
+                <template slot-scope="scope">
+                   {{scope.row.orderAmount.toQFW()}}
+                </template>
+            </el-table-column>
+            <el-table-column prop="expectAmount" label="已执行" min-width="85" align="right">
+                <template slot-scope="scope">
+                   {{scope.row.expectAmount.toQFW()}}
+                </template>
+            </el-table-column>
+            <el-table-column prop="unExpectAmount" label="未执行" min-width="80" align="right">
+                <template slot-scope="scope">
+                   {{scope.row.unExpectAmount.toQFW()}}
+                </template>
+            </el-table-column>
+            <el-table-column prop="commandAmount" label="执行合计" min-width="85" align="right">
+                <template slot-scope="scope">
+                   {{scope.row.commandAmount.toQFW()}}
+                </template>
+            </el-table-column> 
+             <el-table-column prop="serviceAmount" label="附加费" min-width="75" align="right">
+                 <template slot-scope="scope">
+                   {{scope.row.serviceAmount.toQFW()}}
+                </template>
+             </el-table-column>
+            <el-table-column prop="commandStateName" label="执行状态" min-width="75">
+                <template slot-scope="scope">
+                    <el-tag type="danger" v-if="scope.row.commandState == 0">未执行</el-tag>
+                    <el-tag type="warning" v-if="scope.row.commandState == 1">执行中</el-tag>
+                    <el-tag type="success" v-if="scope.row.commandState == 2">执行完毕</el-tag>
+                </template>
+            </el-table-column>
+            <el-table-column prop="approveState" label="审核状态" min-width="75">
+                <template slot-scope="scope">
+                    <el-tag type="danger" v-if="scope.row.approveState == 0">未审核</el-tag>
+                    <el-tag type="success" v-if="scope.row.approveState == 1">已审核</el-tag>
+                    <el-tag type="success" v-if="scope.row.approveState == 2">已审核</el-tag>
+                </template>
+            </el-table-column> 
+            <el-table-column prop="CommandState" label="操作" fixed="right" min-width="80">
+                <template slot-scope="scope">
+                    <el-button @click="audit(scope.$index,tableData)"
+                               :disabled="scope.row.approveState!='0'"
+                               type="primary" size="small">审核</el-button>
+                </template>
+            </el-table-column>
+          </el-table>  
+          <!-- <div>共计 {{total}} 条数据</div> -->
+          <el-button @click="allCheck" type="primary" >一键审核</el-button>
+        <!-- 信息表 -->
+
+        <!-- 分页 -->
+        <div class="block">
+            <el-pagination
+                @size-change="handleSizeChange"
+                @current-change="handleCurrentChange"
+                :current-page="currentPage"
+                :page-sizes="[10, 20, 30, 40]"
+                :page-size="size"
+                layout="total, sizes, prev, pager, next, jumper"
+                :total="total">
+            </el-pagination>
+        </div>
+        <!-- 分页 -->
+        <el-dialog title="审核" :visible.sync="dialogFormVisible" size=""  :close-on-click-modal="false">
+            <checkDialog :FxCode="FxCode" style="width: 920px" @closeAudit="closeAudit" @reject="reject" v-if="dialogFormVisible"></checkDialog>
+        </el-dialog>
+
+          <el-dialog ref="pay" title="查看详情" :visible.sync="ispopRead" top="5%" @close="ispopRead=false" size="">
+            <pop-read v-if="ispopRead" :data="selectData" style="width:950px"></pop-read>
+        </el-dialog>
+
+        <el-dialog title="客户详情" :visible.sync="dialogView"  top="5%"  size="" :close-on-click-modal="false">
+            <CustomerView :mes="cusMes" style="width: 1100px"  v-if="dialogView"></CustomerView>
+        </el-dialog>
+
+        <el-dialog title="一键审核" :visible.sync="allCheckdialog"  top="20%"  size="" :close-on-click-modal="false">
+            <el-form style="width:400px">
+                <el-form-item label="分成日期：">
+                    <el-select v-model="form.year" placeholder="选择年份" style="width:150px;float:left">
+                        <el-option v-for="(item,index) in yearList" :key="index" :label="item" :value="item"></el-option>
+                    </el-select>
+                    <el-select v-model="form.month" placeholder="选择月份" style="width:150px;float:left">
+                        <el-option v-for="(item,index) in monthList" :key="index" :label="item" :value="item"></el-option>
+                    </el-select>
+                </el-form-item>
+            </el-form>
+            <div class="form_footer" style="text-align:center">
+                <el-button @click="checkSure" type="primary" :loading="allLoading">确定</el-button>
+                 <el-button @click="cancel">取消</el-button>
+            </div>
+        </el-dialog>
+
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+    import "@/style/selfCommon.less"
+    import reportSearch from "./com/reportSeach.vue"
+    import checkDialog from "./com/checkDialog.vue"
+    import PopRead from './com/reportRead.vue'
+    import CustomerView from "./com/customerDetail.vue"
+    import {GetProofOrder,ApproveProofOrder,getBaseDataByCode,GetProofOrderApprove,GetDropDownPermission,BatchApproveProofOrder} from "@/api/myData"
+    var _this
+    export default {
+        data(){
+            return {
+                allCheckdialog:false,
+                allLoading:false,
+                date1:"",
+                loading:false,
+                cusMes:{},
+                dialogView:false,
+                ispopRead: false,
+                selectData: [],
+                dialogFormVisible: false,
+                dialogFormVisible1: false,
+                size: 10,
+                total: 0,
+                currentPage: 1,
+                tableData: [],
+                FxCode: "",
+                searchCondition: {
+                    label: "更新时间",
+                    type: "0",
+                    tHeader: ['订单编号', '订单日期', '纸质单号', '客户', '推荐人', '项目名称', '订单金额', '已支付', '付款状态', '疗程', '已执行', '执行状态','审核', '订单类型'],
+                    filterVal: ['FxCode', 'CreateOn', 'FormNO', 'CustomerName', 'RefrenceBranchName', 'ProjectName', 'OrderAmount', 'RealAmount', 'IsPayOff', 'Course','CurrentCourse','CommandState','ApproveState','OrderType'],
+                    tableData1: [],
+                    name: "订单审核",
+                    ApproveState:"0"
+                },
+                formInline:{
+                    startDate:"",
+                    endDate:"",
+                    customer:"",
+                    type:"0",
+                    projectName:"",
+                    hospitalId:"",
+                },
+                hospitalList:[],
+                consumeList:[],
+                ispopRead:false,
+                allData:[],
+                // time:1,
+                // maxScroll:0,
+                // mult:1,
+                // maxHt:0,
+                sum:{
+                    orderAmount:0,
+                    commandAmount:0,
+                    didAmount:0,
+                    undidAmount:0,
+                    surcharge:0,
+                },
+                form: {
+                    year:new Date().getFullYear(),
+                    month:"",
+                },
+                yearList:[],
+                monthList:[],
+            }
+        },
+       filters:{
+            filFun(val){
+                let len = _this.consumeList.length
+                let list =  _this.consumeList
+                for(var i = 0;i<len;i++){
+                    if(val == list[i].DataCode){
+                        return list[i].DataName
+                    }
+                }
+            },
+            
+        },
+        mounted() {
+            this.getBaseDate()
+            // this.getTop()
+            let date = new Date()
+            date.setDate("01")
+            this.date1 = [date,new Date()]
+            _this = this
+            this.getType()
+        },
+        methods: {
+            getBaseDate(){
+                this.yearList = [new Date().getFullYear()+1,new Date().getFullYear(),new Date().getFullYear()-1,new Date().getFullYear()-2]
+                for(let i = 1 ;i<13;i++){
+                    if(i<10){
+                        this.monthList.push("0"+i)
+                    }else{
+                        this.monthList.push(i)
+                    }
+                }
+                let m = new Date().getMonth()
+                this.form.year = new Date().getFullYear()
+                if(m>9){
+                    this.form.month = m
+                }else{
+                    if(m==0){
+                        this.form.year = new Date().getFullYear()-1
+                        this.form.month = 12
+                    }else{
+                        this.form.month = "0"+m
+                    }
+                    
+                }
+            },
+            rowClick(index, data){
+                this.ispopRead = true
+                this.selectData = data[index]
+            },
+            dateSelect(val){
+                if (val.length) {
+                    val = val.formatDates()
+                    this.formInline.startDate = val.substring(0, 10)
+                    this.formInline.endDate = val.substring(13)
+                } else {
+                    this.formInline.startDate = ""
+                    this.formInline.endDate = ""
+                }
+            },
+
+            view(index,data){
+                this.cusMes = data[index]
+                this.dialogView = true
+            },
+            async getType(){
+                let [consumeList,res1] = await Promise.all([getBaseDataByCode("0017"),GetDropDownPermission({typeId: 1})])
+                this.consumeList = consumeList
+                this.hospitalList = res1.data
+                this.formInline.hospitalId = this.hospitalList[0].code
+            },
+            async getProofOrder(params){
+                this.loading = true
+                try {
+                    let res = await GetProofOrderApprove(params)
+                    if(res.status){
+                        this.allData = this.deal(res.data)
+                        this.total = res.count
+                        this.pageChange()
+                        this.searchCondition.tableData1 = this.dealData(res.data)
+                    }else{
+                        this.$message({ type: 'error', message: '获取数据失败!'+res.errorMessage })
+                    }
+                    this.loading = false
+                } catch (err) {
+                    console.log(err)
+                }
+            },
+            dealData(data){
+                let arr = JSON.parse(JSON.stringify(this.tableData))
+                arr.forEach(row=>{
+                    row.CommandState =  this.getStep(row.CommandState)
+                    row.OrderType = row.OrderType == '1'?'线上':'线下'
+                    row.ApproveState = this.getStatus(row.ApproveState)
+                })
+                return arr
+            },
+            getSummaries(param) {
+                return ["总合计",'','','','','','','','','','',this.sum.orderAmount.toQFW(),
+                this.sum.didAmount.toQFW(),this.sum.undidAmount.toQFW(),this.sum.commandAmount.toQFW(),this.sum.surcharge.toQFW(),'',''];
+            },
+            deal(data){
+                data.forEach(row=>{
+                    row.commandAmount = row.expectAmount.add(row.unExpectAmount)
+                    this.sum.orderAmount = this.sum.orderAmount.add(row.orderAmount)
+                    this.sum.commandAmount = this.sum.commandAmount.add(row.commandAmount)
+                    this.sum.didAmount = this.sum.didAmount.add(row.expectAmount)
+                    this.sum.undidAmount = this.sum.undidAmount.add(row.unExpectAmount)
+                    this.sum.surcharge = this.sum.surcharge.add(row.serviceAmount)
+                })
+                return data
+            },
+
+            getStatus(status){
+                switch (status){
+                    case null: return '未审核';
+                    case 0: return '未审核';
+                    case 1: return '部分审核';
+                    case 2: return '审核完毕';
+                    case 6: return '已退款';
+                    case 10: return '已关闭';
+                }
+            },
+
+            getStep(step){
+                switch (step){
+                    case null: return '未执行';
+                    case 0: return '未执行';
+                    case 1: return '执行中';
+                    case 2: return '执行完毕';
+                }
+            },
+
+
+            handleSizeChange(val) {
+                this.size = val
+                this.pageChange()
+            },
+
+            handleCurrentChange(val) {
+                this.currentPage = val
+                this.pageChange()
+            },
+            pageChange(){
+                this.tableData = this.allData.slice(this.size*(this.currentPage-1),this.size*this.currentPage)
+            },
+
+            onSubmit(){
+                this.currentPage = 1
+                this.search()
+            },
+            search(){
+                this.sum = {
+                    orderAmount:0,
+                    commandAmount:0,
+                    didAmount:0,
+                    undidAmount:0,
+                    surcharge:0,
+                }
+                this.tableData=[]
+                 this.getProofOrder({
+                    startDate: this.formInline.startDate,
+                    endDate: this.formInline.endDate,
+                    "keywords":this.formInline.customer.removeSP(),
+                    "approveState": this.formInline.type,
+                    projectName:this.formInline.projectName,
+                    HospitalId:this.formInline.hospitalId,
+                    pageIndex: this.currentPage,
+                    pageSize: this.size,
+                })
+            },
+
+            audit(index, data){
+                
+                this.dialogFormVisible = true
+                this.FxCode = data[index].fxCode
+            },
+
+            closeAudit(){
+                this.dialogFormVisible = false
+                this.search()
+            },
+            reject(){
+                this.dialogFormVisible = false
+                this.search()
+            },
+            //            查看
+            read(index) {
+                this.selectData = this.tableData[index]
+                this.ispopRead = true
+            },
+            allCheck(){
+                this.getBaseDate()
+                this.allCheckdialog = true
+            },
+            async BatchApproveProofOrder(){
+                let res = await BatchApproveProofOrder({
+                    CommissionDate:this.form.year+'-'+this.form.month,
+                })
+                if(res.status){
+                    this.allCheckdialog = false
+                    this.$message({ type: 'success', message: '审核成功!' })
+                    this.search()
+                }else{
+                    this.$message({ type: 'error', message: '审核失败!'+res.errorMessage })
+                }
+                this.allLoading = false
+                
+            },
+            checkSure(){
+                this.allLoading = true
+                this.BatchApproveProofOrder()
+            },
+
+             cancel(){
+                 this.allCheckdialog = false
+             }
+        },
+        components: {
+            reportSearch,
+            checkDialog,
+            PopRead,
+            CustomerView,
+        }
+    }
+</script>
+
+<style  scoped>
+.block{
+    float: right
+}
+</style>

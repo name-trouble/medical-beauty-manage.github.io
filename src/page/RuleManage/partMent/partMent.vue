@@ -1,0 +1,314 @@
+<template>
+    <div class="tag selCommon">
+        <el-form :inline="true" :model="formInline" class="demo-form-inline form_search" label-width="80px">
+            <el-form-item label="关键字：" class="form_item_mt10">
+                <el-input v-model="formInline.keywords" placeholder="请输入" style="width: 200px;" v-on:keyup.enter.native="onSubmit"></el-input>
+            </el-form-item>
+            <el-form-item label="医院：" class="form_item_mt10">
+                <el-select v-model="formInline.hospitalCode"  style='width:200px;' @change="onSubmit" >
+                    <el-option v-for="(item,index) in hospitalList" :key="index" :label="item.supplierName" :value="item.code"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label=" " class="form_item_mt10">
+                <el-button type="primary" @click="onSubmit" class="searchBtn">查询</el-button>
+                <el-button type="primary" class="searchBtn" @click="addPart('添加')">添加</el-button>
+            </el-form-item>
+        </el-form>
+        <!-- 信息表 -->
+        <el-table :data="tableData" border style="width: 100%;margin-top:15px;margin-bottom:10px;" max-height="560" class="smt min_table" v-loading="loading">
+            <el-table-column prop="deptCode" label="部门编号" min-width="150"></el-table-column>
+            <el-table-column prop="deptName" label="部门名称" min-width="120"></el-table-column>
+            <el-table-column prop="hospitalName" label="医院" min-width="150">
+                <template slot-scope="scope">
+                    <span>{{scope.row.hospitalCode | filterFun}}</span>
+                </template>
+            </el-table-column>
+            <!-- <el-table-column prop="tagName" label="联系人" min-width="150"></el-table-column>
+            <el-table-column prop="tagName" label="联系电话" min-width="150"></el-table-column>
+            <el-table-column prop="tagName" label="传真" min-width="150"></el-table-column>
+            <el-table-column prop="address" label="地址" min-width="150"></el-table-column> -->
+            <el-table-column prop="memo" label="备注" min-width="150"></el-table-column>
+            <el-table-column prop="status" label="操作" width="150">
+                <template slot-scope="scope">
+                    <el-button @click="addPart('编辑',scope.$index,tableData)" type="primary" size="small">编辑</el-button>
+                    <!-- <el-button @click="deleteRow(scope.$index,tableData)" type="primary" size="small">删除</el-button> -->
+                </template>
+            </el-table-column>
+        </el-table>
+        <!-- 信息表 -->
+
+        <!-- 分页 -->
+        <span>共 {{total}} 条数据</span> 
+        <!-- <div class="block">
+            <el-pagination
+                @size-change="handleSizeChange"
+                @current-change="handleCurrentChange"
+                :current-page="currentPage"
+                :page-sizes="[10, 20, 30, 40]"
+                :page-size="size"
+                layout="total, sizes, prev, pager, next, jumper"
+                :total="total">
+            </el-pagination>
+        </div> -->
+        <!-- 分页 -->
+
+        <!--添加-->
+        <el-dialog :title="title" :visible.sync="tag" size="">
+            <el-form :model="form" style="width: 450px" label-width="80px" :inline="true">
+                <el-form-item label="部门名称：" style='' class="form_item_mt10">
+                    <el-input v-model="form.deptName" style="width: 250px"></el-input>
+                </el-form-item>
+                <el-form-item label="医院：" style='' class="form_item_mt10">
+                    <el-select v-model="form.hospital"  style='width:250px;' @change="onSubmit" >
+                        <el-option v-for="(item,index) in selHospital" :key="index" :label="item.supplierName" :value="item.code"></el-option>
+                    </el-select>
+                </el-form-item>
+                <!-- <el-form-item label="备注：" style=''>
+                    <el-input type="textarea" v-model="form.memo" style="width: 300px" :rows="4"></el-input>
+                </el-form-item> -->
+            </el-form>
+            <div class="footer_ope">
+                <el-button @click="sure" type="primary" :loading="saveLoading">确定</el-button>
+                <el-button @click="cancel">取消</el-button>
+            </div>
+        </el-dialog>
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+    import addr from "../../../../static/addresss.json"
+    import {baseImgPath} from "@/config/env"
+    import  "@/style/selfCommon.less"
+    import { getCookie, delCookie } from '@/config/mUtils'
+    import {DeleteTagsById,GetDropDownPermission,AddDept,UpdateDept,GetDeptAllByHospitalCode} from "@/api/myData"
+    var _this
+    export default {
+        // name: "VideoManage",
+        data () {
+            return {
+                saveLoading:false,
+                loading:false,
+                title:"",
+                tag:false,
+                total:0,
+                size:10,
+                currentPage:1,
+                formInline: {
+                    keywords: '',
+                    typeCode:'',
+                    hospitalCode:"",
+                },
+                form:{
+                    deptName:"",
+                    memo:"",
+                    hospital:"",
+                },
+                tableData:[],
+                hospitalList:[],
+                selHospital:[],
+            }
+        },
+        computed: {
+            /* 导出报表参数 tHeader,filterVal,tableData1*/
+            // tHeader(){
+            //     return ['封面', '主题', '发布人', '标签', '视频大小', '发布时间', '浏览人次', '平均浏览时长', '分享','销售额',"商品提成"]
+            // },
+            // filterVal(){
+            //     return ['picture', 'title', 'userName', 'tab', 'videoSize','createDate','views','grade','grade','ReferrerName']
+            // },
+            // tableData1(){
+            //     return this.tableData
+            // },
+            // name(){
+            //     return '视频管理'
+            // },
+            /*导出报表参数 tHeader,filterVal,tableData1*/
+        },
+        filters:{
+            filterFun(val){
+                let name =""
+                _this.hospitalList.forEach(ele => {
+                    if(ele.code == val){
+                        name = ele.supplierName
+                    }
+                });
+                return name
+            }
+        },
+        mounted(){
+            _this = this
+            this.province = addr.area
+            this.GetDropDownPermission()
+        },
+        methods:{
+
+            async GetDropDownPermission(){
+                let res1 = await GetDropDownPermission({typeId: 1});
+                this.hospitalList = res1.data
+                this.formInline.hospitalCode = res1.data[0].code
+                
+                if(res1.data[0].code == ""){
+                    this.selHospital = JSON.parse(JSON.stringify(res1.data.slice(1)))
+                }else{
+                    this.selHospital = JSON.parse(JSON.stringify(res1.data))
+                }
+            },
+            // 添加
+            async AddDept(params){
+                try{
+                    this.saveLoading = true
+                    let res = await AddDept(params)
+                    if(res.status){
+                        this.$message({message: '添加成功', type: 'success'});
+                        this.search()
+                        this.tag = false
+                    }else{
+                        this.$message.error('添加失败');
+                    }
+                    this.saveLoading = false
+                }catch(err){
+                    console.log(err)
+                    this.$message.error('添加失败');
+                }
+            },
+            // 删除
+            async DeleteTagsById(params){
+                try{
+                    let res = await DeleteTagsById(params)
+                    if(res.status){
+                        this.$message({message: '删除成功', type: 'success'});
+                        this.search()
+                    }else{
+                        this.$message.error('删除失败');
+                    }
+                }catch(err){
+                    console.log(err)
+                    this.$message.error('删除失败');
+                }
+            },
+            async GetDeptAllByHospitalCode(params){
+                try{
+                    this.loading = true
+                    let res = await GetDeptAllByHospitalCode(params)
+                    this.tableData = res.data
+                    this.total = res.count
+                    this.loading = false
+                }catch(err){
+                    console.log(err)
+                }
+            },
+            // 编辑
+            async UpdateDept(params){
+                try{
+                    this.saveLoading = true
+                    let res = await UpdateDept(params)
+                    if(res.status){
+                        this.$message({message: '编辑成功', type: 'success'});
+                        this.search()
+                        this.tag = false
+                    }else{
+                        this.$message.error('编辑失败');
+                    }
+                    this.saveLoading = false
+                }catch(err){
+                    console.log(err)
+                    this.$message.error('编辑失败');
+                }
+            },
+            onSubmit(){
+                this.currentPage = 1
+                this.search()
+            },
+            search(){
+                this.GetDeptAllByHospitalCode({
+                    pageIndex:this.currentPage,
+                    pageSize:this.size,
+                    hospitalCode:this.formInline.hospitalCode,
+                    keywords:this.formInline.keywords.removeSP()
+                })
+            },
+            handleSizeChange(val) {
+                this.size = val
+                this.search()
+            },
+            handleCurrentChange(val) {
+                this.currentPage = val
+                this.search()
+            },
+
+            sure(){
+                let obj = {
+                    "hospitalCode": this.form.hospital,
+                    "deptName": this.form.deptName,
+                    "memo":this.form.memo
+                }
+                if (this.title == "编辑") {
+                    obj.id = this.form.id
+                    obj.deptCode = this.form.deptCode
+                    obj.modifiedUserId = getCookie("userId")
+                    obj.modifiedBy = getCookie("userName")
+                    this.UpdateDept(obj)
+                } else {
+                    obj.createUserId = getCookie("userId")
+                    obj.createBy = getCookie("userName")
+                    this.AddDept(obj)
+                }
+            },
+            cancel(){
+                this.tag = false
+            },
+//          添加
+            addPart(ope,index,data){
+                this.reset()
+                this.tag = true
+                this.title = ope
+                this.form.hospital = this.hospitalList[0].code
+                if(data){
+                   this.copyData(JSON.parse(JSON.stringify(data[index])))
+                }
+            },
+            copyData(data){
+                for(var key in data){
+                    if(data[key] == null){
+                        data[key] = ""
+                    }
+                }
+                this.form = {
+                    id:data.id,
+                    deptCode:data.deptCode,
+                    deptName:data.deptName,
+                    memo:"",
+                    hospital:data.hospitalCode,
+                }
+            },
+//            删除
+            deleteRow(index,data){
+                this.$confirm('此操作将删除该数据, 是否继续?', '提示', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    type: 'warning'
+                }).then(() => {
+                    
+                    this.DeleteTagsById({
+                        id:data[index].id
+                    })
+                }).catch(() => {
+
+                });
+            },
+
+            reset(){
+                for(var key in this.form){
+                    this.form[key] = ""
+                }
+            }
+        },
+        components: {
+        }
+    }
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+    .VideoManage{}
+</style>

@@ -1,0 +1,320 @@
+<template>
+    <div class="tag selCommon">
+        <el-form :inline="true"  class="demo-form-inline form_search" label-width="80px">
+            <el-form-item label="日期：" class="form_item_mt10">
+                 <el-select v-model="year" placeholder="选择年份" style="width:100px;float:left">
+                        <el-option v-for="(item,index) in yearList" :key="index" :label="item" :value="item"></el-option>
+                    </el-select>
+                    <el-select v-model="month" placeholder="选择月份" style="width:100px;float:left">
+                        <el-option v-for="(item,index) in monthList" :key="index" :label="item" :value="item"></el-option>
+                    </el-select>
+            </el-form-item>
+            <el-form-item label="医院：" class="form_item_mt10">
+                <el-select v-model="hospitalCode"  style='width:200px;' @change="onSubmit" >
+                    <el-option v-for="(item,index) in hospitalList" :key="index" :label="item.supplierName" :value="item.code"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label=" " class="form_item_mt10">
+                <el-button type="primary" @click="onSubmit" class="searchBtn">查询</el-button>
+                <el-button type="primary" @click="add('添加')" class="searchBtn">添加新设置</el-button>
+            </el-form-item>
+        </el-form>
+        <el-table  :data="tableData" border style="width: 100%;margin-top:20px">
+            <el-table-column prop="expertDate" label="专家日"  min-width="180">
+                <template scope="scope">
+                    <span v-if="scope.row.expertDate">
+                        {{scope.row.expertDate.substring(0,10)}}
+                    </span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="hospitalName" label="医院" min-width="180"></el-table-column>
+            <el-table-column prop="createBy" label="创建人" min-width="180"></el-table-column>
+            <el-table-column prop="createOn" label="创建时间" min-width="180">
+                <template scope="scope">
+                    <span v-if="scope.row.createOn">
+                        {{scope.row.createOn.substring(0,10)}}
+                    </span>
+                </template>
+            </el-table-column>
+             <el-table-column prop="address" label="操作" width="200">
+                 <template scope="scope">
+                     <el-button type="primary" @click="edit(scope.$index,tableData)" size="small">编辑</el-button>
+                     <el-button @click="del(scope.$index,tableData)" size="small">删除</el-button>
+                 </template>
+             </el-table-column>
+        </el-table>
+        <!-- <div class="block" style="margin-bottom:10px">
+            <el-pagination @size-change="pageSizeChange" @current-change="pageIndexChange" 
+            :total="total" :current-page.sync="currentPage" :page-size="pageSize" 
+            :page-sizes="[10, 20, 30, 40]" 
+            layout="total, sizes, prev, pager, next, jumper">
+            </el-pagination>
+        </div> -->
+        <el-dialog :title="title" :visible.sync="dialogFormVisible" size="">
+            <el-form :model="formInline" ref="formInline" class="demo-form-inline" label-width="80px" style="width:400px">
+                <el-form-item label="医院：" class="form_item__mt10" prop="hospital" :rules="[ { required: true, message: '请选择医院'}]">
+                   <el-select v-model="formInline.hospital"  style='width:200px;' @change="hosSelect">
+                        <el-option v-for="(item,index) in hospitalList" :key="index" :label="item.supplierName" :value="item.code+'|'+item.supplierName"></el-option>
+                    </el-select>
+                </el-form-item>
+                <el-form-item label="日期：" class="form_item_mt10">
+                    <el-date-picker type="date" v-model="date" placeholder="请选择时间"  @change="dateChange"></el-date-picker>
+                </el-form-item>
+            </el-form>
+            <div class="form_footer">
+                <el-button type="primary" @click="sure('formInline')" :loading="saveLoading">确 定</el-button>
+                <el-button @click="cancel">取 消</el-button>
+            </div>
+        </el-dialog>
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+    import { getCookie, delCookie } from '@/config/mUtils'
+    import {GetExpertSet,DeleteExpertSetById,UpdateExpertSet,AddExpertSet,
+    GetDropDownPermission} from "@/api/myData"
+    export default {
+        // name: "VideoManage",
+        data () {
+            return {
+                saveLoading:false,
+                hospitalCode:"",
+                date:"",
+                dialogFormVisible:false,
+                project:"",
+                title:"",
+                opeIndex:0,
+                currentPage:1,
+                total:0,
+                pageSize:10,
+                keywords:"",
+                formInline:{
+                    hospital:"",
+                    hospitalCode:"",
+                    hospitalName:"",
+                    date:"",
+                },
+                year:new Date().getFullYear(),
+                month:"",
+                yearList:[],
+                monthList:[],
+                tableData:[],
+                projectList:[],
+                hospitalList:[],
+            }
+        },
+        computed: {
+           
+        },
+        watch:{
+            
+        },
+        mounted(){
+            let m = new Date().getMonth()+1
+            if(m>9){
+                this.month = m
+            }else{
+                this.month = "0"+m
+            }
+            this.getBaseDate()
+            this.GetDropDownPermission()
+        },
+        methods:{
+            getBaseDate(){
+                this.yearList = [new Date().getFullYear()+1,new Date().getFullYear(),new Date().getFullYear()-1,new Date().getFullYear()-2]
+                for(let i = 1 ;i<13;i++){
+                    if(i<10){
+                        this.monthList.push("0"+i)
+                    }else{
+                        this.monthList.push(i)
+                    }
+                }
+            },
+            hosSelect(){
+                if(this.formInline.hospital.length>0){
+                    this.formInline.hospitalCode = this.formInline.hospital.split("|")[0]
+                    this.formInline.hospitalName = this.formInline.hospital.split("|")[1]
+                }else{
+                    this.formInline.hospitalCode = ""
+                    this.formInline.hospitalName = ""
+                }
+                
+            },
+            async GetDropDownPermission(){
+                let res1 = await GetDropDownPermission({typeId: 1});
+                this.hospitalList = res1.data
+                this.hospitalCode = res1.data[0].code
+                this.formInline.hospital = res1.data[0].code+'|'+res1.data[0].supplierName
+                this.search()
+            },
+           dateChange(val){
+               if(val){
+                    this.formInline.date = val
+               }else{
+                   this.formInline.date = ""
+               }
+           },
+            setdata(name,code){
+                this.formInline.name = name
+                this.formInline.code = code
+            },
+
+            parentCode(code){
+                let arr = []
+                for(let i = 0;i<this.catelogList.length;i++){
+                    if(this.catelogList[i].parentCode == code){
+                        arr.push({
+                            name:this.catelogList[i].name,
+                            value:this.catelogList[i].code,
+                            catalogPath:this.catelogList[i].catalogPath
+                        })
+                    }
+                }
+                return arr
+            },
+            sure(formName){
+                this.$refs[formName].validate((valid) => {
+                    if (valid) {
+                        let obj = {
+                            hospitalCode:this.formInline.hospitalCode,
+                            hospitalName:this.formInline.hospitalName,
+                            expertDate:this.formInline.date,
+                        }
+                        let name = getCookie("userName"),id = getCookie("userId")
+                        if(this.opeIndex == 0){
+                            obj.createUserId = id
+                            obj.createBy = name
+                            this.AddExpertSet(obj)
+                        }else{
+                            obj.modifiedUserId = id
+                            obj.modifiedBy = name
+                            obj.id = this.formInline.id
+                            this.UpdateExpertSet(obj)
+                        }
+                    }
+                });
+                
+            },
+            cancel(){
+                this.dialogFormVisible = false
+            },
+
+            add(ope){
+                this.title = ope
+                this.opeIndex = 0
+                this.dialogFormVisible = true
+                this.formInline={
+                    hospital:"",
+                    hospitalCode:"",
+                    hospitalName:"",
+                    date:new Date().formatDate("yyyy-MM-dd"),
+                }
+                this.date = new Date()
+            },
+
+            edit(index,data){
+                this.opeIndex = 1
+                this.dialogFormVisible = true
+                this.initData(data[index])
+            },
+            initData(data){
+                this.formInline.date = data.expertDate?data.expertDate:""
+                if(data.expertDate){
+                    this.date = new Date(data.expertDate.substring(0,4),Number(data.expertDate.substring(5,7))-1,data.expertDate.substring(8,10))
+                }else{
+                    this.date = ""
+                }
+                this.formInline.hospital = data.hospitalCode.length>0?data.hospitalCode+"|"+data.hospitalName:""
+                this.formInline.hospitalCode = data.hospitalCode?data.hospitalCode:""
+                this.formInline.hospitalName = data.hospitalName?data.hospitalName:""
+                this.formInline.id = data.id
+            },
+
+            del(index,data){
+                this.$confirm('此操作将永久删除该文件, 是否继续?', '提示', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    type: 'warning'
+                }).then(() => {
+                    this.DeleteExpertSetById({id:data[index].id})
+                }).catch(() => {
+                    
+                });
+            },
+
+            onSubmit(){
+                this.currentPage = 1
+                this.search()
+            },
+            
+            async AddExpertSet(params){
+                this.saveLoading = true
+                let res = await AddExpertSet(params)
+                if(res.status){
+                    this.$message({message: '添加成功',type: 'success'});
+                    this.dialogFormVisible = false
+                    this.search()
+                }else{
+                    this.$message.error("添加失败");
+                }
+                this.saveLoading = false
+            },
+            async UpdateExpertSet(params){
+                this.saveLoading = true                
+                let res = await UpdateExpertSet(params)
+                if(res.status){
+                    this.$message({message: '编辑成功',type: 'success'});
+                    this.dialogFormVisible = false
+                    this.search()
+                }else{
+                    this.$message.error("编辑失败");
+                }
+                this.saveLoading = false
+            },
+            async DeleteExpertSetById(params){
+                let res = await DeleteExpertSetById(params)
+                 if(res.status){
+                    this.$message({message: '删除成功',type: 'success'});
+                    this.search()
+                }else{
+                    this.$message.error("删除失败");
+                }
+            },
+            async GetExpertSet(params){
+                let res = await GetExpertSet(params)
+                this.tableData = res.data
+            },
+            numCheck(){
+                
+               let vm = this
+                setTimeout(function() {
+                    
+                        vm.formInline.amount = (vm.formInline.amount.match(/\d+(\.\d{0,2})?/)||[''])[0]
+                }, 50)
+            },
+          
+            pageIndexChange(index) {
+                this.search()
+            },
+            pageSizeChange(size) {
+                this.pageSize = size
+                this.search()
+            },
+            search(){
+                this.GetExpertSet({
+                    expertDate:this.year+"-"+this.month,
+                    hospitalCode:this.hospitalCode,
+                })
+            }
+        },
+        components: {
+        }
+    }
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+.form_footer{
+    text-align: center
+}
+</style>

@@ -1,0 +1,6 @@
+#quill-container {
+    height: 300px;
+}
+.el-form-item__error {
+    // line-height: 3;
+}

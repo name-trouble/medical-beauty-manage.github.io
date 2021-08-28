@@ -1,0 +1,213 @@
+<template>
+    <div class="settled selCommon">
+        <el-form :inline="true" :model="formInline" class="demo-form-inline form_search" label-width="80px" >
+            <el-form-item label="时间范围："  class="form_item_mt10 ">
+                <el-date-picker v-model="formInline.date" @change="dateForm1" type="daterange" placeholder="选择日期范围" class="wt200"></el-date-picker>
+            </el-form-item>
+            <el-form-item label="来源医院："  class="form_item_mt10 form_item_wh280">
+                <el-select v-model="formInline.formHospital" placeholder="" style="width: 200px;" @change="submit">
+                    <el-option label="全部" value=""></el-option>
+                    <el-option v-for="item in HospitalList" :key="item.Code" :label="item.SupplierName" :value="item.Code"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="转到医院："  class="form_item_mt10 form_item_wh280">
+                <el-select v-model="formInline.toHospital" placeholder="" style="width: 200px;" @change="submit">
+                    <el-option label="全部" value=""></el-option>
+                    <el-option v-for="item in HospitalList" :key="item.Code" :label="item.SupplierName" :value="item.Code"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label=" " class="form_item_mt10 form_item_wh280">
+                <el-button type="primary" @click="submit" class="searchBtn">查询</el-button>
+            </el-form-item>
+        </el-form>
+        <el-table :data="tableData" border style="width: 100%;margin-top:15px;margin-bottom:10px;"  v-loading="loading"
+        class="min_table smt" max-height="560" show-summary :summary-method="getSummaries">
+            <el-table-column prop="fxCode" label="报单编号" min-width="80"></el-table-column>
+            <el-table-column label="来源医院" prop="fromHospitalName" min-width="100"></el-table-column>
+            <el-table-column label="来源医院分配比例" prop="fromHospitalName" min-width="100">
+                <template scope="scope">
+                    {{scope.row.fromRate*100}}%
+                </template>
+            </el-table-column>
+            <el-table-column label="来源医院分配金额" prop="fromAmount" min-width="120" align="right">
+                <template scope="scope">
+                    <span style="float: right" v-if="scope.row.fromAmount>0">
+                       ￥{{scope.row.fromAmount.toQFW()}}
+                    </span>
+                    <span v-else>￥0</span>
+                </template>
+            </el-table-column>
+            <el-table-column label="转到医院" prop="toHospitalName" min-width="100"></el-table-column>
+            <el-table-column label="转到医院分配比例" prop="toHospitalName" min-width="100">
+                <template scope="scope">
+                    {{scope.row.toRate*100}}%
+                </template>
+            </el-table-column>
+            <el-table-column label="转到医院分配金额" prop="toAmount" min-width="120" align="right">
+                <template scope="scope">
+                    <span style="float: right" v-if="scope.row.toAmount>0">
+                        ￥{{scope.row.toAmount.toQFW()}}
+                    </span>
+                    <span v-else>￥0</span>
+                </template>
+            </el-table-column>
+            <el-table-column label="状态" prop="toHospitalName" min-width="120">
+                <template scope="scope">
+                    <el-tag type="danger" v-if="scope.row.isFinished == 0">
+                        未结算
+                    </el-tag>
+                    <el-tag type="success" v-else>已结算</el-tag>
+                </template>
+            </el-table-column>
+        </el-table>
+        <!-- 分页 -->
+        <div class="">
+            共{{total}}条数据
+        </div>
+        <div class="block">
+            <el-pagination @size-change="handleSizeChange" @current-change="handleCurrentChange" 
+                :current-page="currentPage" :page-sizes="[10, 20, 30, 40]" :page-size="size"
+                layout="total, sizes, prev, pager, next, jumper" :total="total">
+            </el-pagination>
+        </div>
+
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+    import {GetCrossHospitalDetail,getSupplierByPage} from "@/api/myData"
+    import "@/style/selfCommon.less"
+    export default {
+        data () {
+            return {
+                loading:false,
+                title:"",
+                titleList:["代理人详情","消费提成详情","推荐奖详情","特殊增扣款详情"],
+                mes:{},
+                dialogFormVisible:false,
+                total:0,
+                size:10,
+                currentPage:1,
+                HospitalList:[],
+                formInline: {
+                    formHospital:"",
+                    toHospital:"",
+                    date:"",
+                    startTime: "",
+                    endTime: "",
+                },
+                agentList:[],
+                tableData:[],
+                allData:[],
+                sum:{
+                    fromAmountOut:0,
+                    toAmountOut:0
+                },
+            }
+        },
+        computed: {
+            /* 导出报表参数 tHeader,filterVal,tableData1*/
+            // tHeader(){
+            //     return ['代理人', '代理等级', '消费提成', '推荐奖', '特殊正增扣款',"合计打款", "银行卡号", "开户行", "开户人",'操作人' ]
+            // },
+            // filterVal(){
+            //     return ['BranchName', 'GradeName', 'ConsumeAmount', 'RecomAmount', 'DebitAmount','sawCount','BankCardId','OpenBankName','BankCardHolder','OperatorName']
+            // },
+            // name(){
+            //     return '已结算'
+            // },
+            // reportData(){
+            //     let arr = JSON.parse(JSON.stringify(this.tableData))
+            //   /*  arr.forEach(row=>{
+            //         row.sawCount =  Number(row.ConsumeAmount)+Number(row.RecomAmount)-Number(row.DebitAmount)
+            //         row.DebitAmount = Number(row.DebitAmount)*(-1)
+            //     })*/
+            //     return arr
+            // }
+        },
+        mounted(){
+            let date = new Date()
+            let date1 = new Date()
+            date1.setDate(1)
+            this.formInline.date = [date1,date]
+            this.getSupplierByPage()
+        },
+        methods: {
+             getSummaries(param) {
+                return ["总合计",'','',this.sum.fromAmountOut.toQFW(),'','',this.sum.toAmountOut.toQFW(),''];
+            },
+            async GetCrossHospitalDetail(params){
+                this.loading = true
+                try {
+                    let res = await GetCrossHospitalDetail(params)
+                    this.loading = false
+                    this.total = res.count
+                    // this.tableData = res.data
+                    this.allData = res.data
+                    this.pageChange()
+                    this.getTotal()
+                } catch (err) {
+                    console.log(err)
+                }
+            },
+            pageChange(data){
+                this.tableData = this.allData.slice((this.currentPage-1)*this.size,this.currentPage*this.size)
+            },
+            getTotal(){
+                this.allData.forEach(row=>{
+                    row.fromAmount = row.fromAmount !=null?row.fromAmount:0
+                    row.toAmount = row.toAmount !=null?row.toAmount:0
+                   this.sum.fromAmountOut = this.sum.fromAmountOut.add(row.fromAmount)
+                   this.sum.toAmountOut = this.sum.toAmountOut.add(row.toAmount)
+               })
+            },
+           
+            handleSizeChange(val) {
+                this.size = val
+                this.pageChange()
+            },
+
+            handleCurrentChange(val) {
+                this.currentPage = val
+                this.pageChange()
+            },
+            async getSupplierByPage(){
+                let data = {startdate: "", enddate: "", suppliername: "", suptypecode: "", phonenumber: "", pageindex: 1, pagesize: 999}
+                this.HospitalList = await getSupplierByPage(data)
+            },
+            submit(){
+                this.currentPage = 1
+                this.search()
+            },
+            search(){
+                this.sum = {
+                    fromAmountOut:0,
+                    toAmountOut:0
+                }
+                this.GetCrossHospitalDetail({
+                    FromHospitalId:this.formInline.formHospital,
+                    toHospitalId:this.formInline.toHospital,
+                    startdate:this.formInline.startTime,
+                    enddate:  this.formInline.endTime ,
+                })
+            },
+            dateForm1(val){
+                if(val){
+                    this.formInline.startTime = val.substring(0,10)
+                    this.formInline.endTime = val.substring(13)
+                }else{
+                    this.formInline.startTime = ""
+                    this.formInline.endTime = ""
+                }
+            },
+
+        },
+        components: {
+        }
+    }
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+
+</style>

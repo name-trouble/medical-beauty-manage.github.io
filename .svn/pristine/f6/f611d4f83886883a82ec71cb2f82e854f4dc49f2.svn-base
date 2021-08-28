@@ -1,0 +1,340 @@
+<template>
+    <div class="reportSearch">
+        <el-form :inline="true" :model="formInline" class="demo-form-inline form_search" label-width="80px"     >
+            <el-form-item label="订单日期：" class="form_item_mt10 ">
+                <el-date-picker v-model="date1" @change="dateForm1" type="daterange" placeholder="选择日期范围" class="wt200">
+                </el-date-picker>
+            </el-form-item>
+            <el-form-item label="单据编号：" class="form_item_mt10 ">
+                <el-input v-model="formInline.bill" placeholder="" class="form_sear_ipt wt200" v-on:keyup.enter.native="onSubmit(1)"></el-input>
+            </el-form-item>
+            <el-form-item label="纸质单号：" class="form_item_mt10 ">
+                <el-input v-model="formInline.num" placeholder="" class="form_sear_ipt wt200" v-on:keyup.enter.native="onSubmit(1)"></el-input>
+            </el-form-item>
+            <el-form-item label="关键字：" class="form_item_mt10 ">
+                <el-input v-model="formInline.customer" placeholder="客户/基金卡号/手机号" class="form_sear_ipt wt200" v-on:keyup.enter.native="onSubmit(1)"></el-input>
+            </el-form-item>
+            <el-form-item label="推荐人：" class="form_item_mt10 ">
+                <el-input v-model="formInline.rec" placeholder="" class="form_sear_ipt wt200" v-on:keyup.enter.native="onSubmit(1)"></el-input>
+            </el-form-item>
+            <el-form-item label="项目名称：" class="form_item_mt10 ">
+                <el-input v-model="formInline.projectName" placeholder="" class="form_sear_ipt wt200" v-on:keyup.enter.native="onSubmit(1)"></el-input>
+            </el-form-item>
+            
+            <el-form-item label="付款状态：" class="form_item_mt10 " v-if="type == 0&&payOff">
+                <el-select v-model="formInline.IsPayOff" class="wt200" @change="onSubmit(1)">
+                    <el-option label="全部" value=""></el-option>
+                    <el-option label="未付清" value="0"></el-option>
+                    <el-option label="已付定金" value="2"></el-option>
+                    <el-option label="已付清" value="1"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="执行状态：" class="form_item_mt10 " v-if="type == 0">
+                <el-select v-model="formInline.CommandState" class="wt200" @change="onSubmit(1)">
+                    <el-option label="全部" value=""></el-option>
+                    <el-option label="未执行" value="0"></el-option>
+                    <el-option label="执行中" value="1"></el-option>
+                    <el-option label="执行完毕" value="2"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="审核状态：" class="form_item_mt10 " v-if="type == 0||type == 2">
+                <el-select v-model="formInline.ApproveState" class="wt200" @change="onSubmit(1)">
+                    <el-option label="全部" value=""></el-option>
+                    <el-option label="待审核" value="0"></el-option>
+                    <el-option label="部分审核" value="1"></el-option>
+                    <el-option label="审核完毕" value="2"></el-option>
+                    <el-option label="已关闭" value="10"></el-option>
+                    <el-option label="退款" value="6"></el-option>
+                </el-select>
+            </el-form-item>
+           
+            <el-form-item label="订单来源：" class="form_item_mt10 ">
+                <el-select v-model="formInline.OrderType" class="wt200" @change="onSubmit(1)">
+                    <el-option label="全部" value=""></el-option>
+                    <el-option label="app订单" value="1"></el-option>
+                    <el-option label="线下订单" value="2"></el-option>
+                    <el-option label="分期订单" value="3"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="规则类型：" class="form_item_mt10 " v-if="refund">
+                <el-select v-model="formInline.ConsumeTypeId" class="wt200" @change="onSubmit(1)">
+                    <el-option label="全部" value=""></el-option>
+                    <el-option v-for="(item,index) in consumeList" :key="index" :label="item.DataName" :value="item.DataCode"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="支付类型：" class=" form_item_mt0"  v-if="refund">
+                <el-select v-model="formInline.MedicalTypeId" class="wt200" @change="onSubmit(1)">
+                    <el-option label="全部" value=""></el-option>
+                    <el-option v-for="(item,$index) in MedicalTypeList" :key="$index" :label="item.DataName" :value="item.DataCode"></el-option>
+                </el-select>
+            </el-form-item>
+             <el-form-item label="返款状态：" class="form_item_mt10 " v-if="type ==2">
+                <el-select v-model="formInline.IsReturn" class="wt200" @change="onSubmit(1)">
+                    <el-option label="全部" value=""></el-option>
+                    <el-option label="未返款" value="0"></el-option>
+                    <el-option label="已返款" value="1"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="回访状态：" class="form_item_mt10 " v-if="isShowAdd" >
+                <el-select v-model="formInline.IsFeedback" class="wt200" @change="onSubmit(1)">
+                    <el-option label="全部" value=""></el-option>
+                    <el-option label="待回访" value="0"></el-option>
+                    <el-option label="已回访" value="1"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="销售公司：" class="form_item_mt10 " v-if="searchCondition.crossHos" >
+                <el-select v-model="formInline.toBranch" class="wt200" @change="onSubmit(1)">
+                    <el-option v-for="(item,index) in topBranchList" :label="item.branchName" :value="item.code" :key="index"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="执行医院：" class="form_item_mt10">
+                <el-select v-model="formInline.hospital"  style='width:200px;' @change="onSubmit(1)">
+                    <el-option v-for="(item,index) in hospitalList" :key="index" :label="item.supplierName" :value="item.code"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="推荐医院：" class="form_item_mt10 " v-if="searchCondition.crossHos">
+                <el-select v-model="formInline.refHospitalCode"  style='width:200px;' @change="onSubmit(1)">
+                    <el-option v-for="(item,index) in refHospitalList" :key="index" :label="item.supplierName" :value="item.code"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="服务商：" class="form_item_mt10 " v-if="searchCondition.service">
+                <el-autocomplete v-model="serviceSup" :fetch-suggestions="queryCus" placeholder="请输入内容" :trigger-on-focus="false" 
+                custom-item="my-item-memberItem" @select="selectCus" style="width:200px;"></el-autocomplete>
+            </el-form-item>
+            <!-- <br/> -->
+            <el-form-item label=" " class="form_item_mt10 ">
+                <el-button type="primary" @click="onSubmit(1)"
+                           class="searchBtn">查询
+                </el-button>
+
+                <el-button v-if="isShowAdd" type="primary"  @click="add"
+                           class="searchBtn">添加
+                </el-button>
+
+                <Export ref="exportData" :tHeader="searchCondition.tHeader" :filterVal='searchCondition.filterVal'
+                        :tableData1='searchCondition.tableData1' :name='searchCondition.name' style="display:none"></Export>
+                
+                <!-- 跨院 保单列表 才有导出 -->
+                <el-button v-if="searchCondition.isExport" class="searchBtn" @click="searchAllData" :loading="exportLoading">导出报表</el-button>
+            </el-form-item>
+        </el-form>
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+    import dateLink from "@/page/APPCenter/components/DateLinkage"
+    import Export from '@/components/export'
+    import {GetDropDownPermission,getBaseDataByCode,getSupplierByPage,GetServiceInfoByKeywords} from "@/api/myData"
+    import { getCookie } from '../../../../config/mUtils';
+    import Vue from "vue"
+     Vue.component('my-item-memberItem', {
+        functional: true,
+        render: function(h, ctx) {
+            var item = ctx.props.item;
+            return h('li', ctx.data, [
+                h('p', { attrs: { class: 'select_name'+item.Type, title: item.name } }, ['名字：' + item.name]),
+                h('p', { attrs: { class: 'select_name'+item.Type, title: item.name} }, ['编号：' + item.code]),
+                h('p', { attrs: { class: 'select_name'+item.Type, title: item.name} }, ['手机号：' + item.phone]),
+            ]);
+        },
+        props: {
+            item: { type: Object, required: true }
+        }
+    });
+    export default {
+        // name: "reportSearch",
+        props: {
+            addShow:"",
+            searchCondition: {
+                payOff:true,
+                type: Object,
+                IsPayOff:"",
+                CommandState:"",
+                ApproveState:"",
+                crossHos:"",
+            },
+            filterBack: Function,
+            onAdd:Function
+        },
+        created(){
+            this.refund = this.searchCondition.refund == false?false:true
+            this.formInline.ApproveState = this.searchCondition.ApproveState
+            this.formInline.CommandState = this.searchCondition.CommandState
+            this.formInline.IsPayOff = this.searchCondition.IsPayOff?this.searchCondition.IsPayOff:""
+            this.payOff = this.searchCondition.payOff == 'false'?false:true
+            this.formInline.label = this.searchCondition.label
+            this.type = this.searchCondition.type
+            if(this.onAdd) this.isShowAdd=true
+        },
+        mounted(){
+            let date = new Date()
+            date.setDate(1)
+            this.date1 = [date,new Date()]
+            this.getSupplierByPage()
+        },
+        data () {
+            return {
+                serviceSup:'',
+                topBranch:[],
+                refund:true,
+                payOff:false,
+                date1: "",
+                date2: "",
+                tHeader: "",
+                filterVal: "",
+                tableData1: [],
+                name: "",
+                type: "",
+                isShowAdd:false,
+                hospitalList:[],
+                refHospitalList:[],
+                consumeList:[],
+                MedicalTypeList:[],
+                formInline: {
+                    hospital:"",
+                    label: "",
+                    startTimeF: "",
+                    endTimeF: "",
+                    startTimeS: "",
+                    endTimeS: "",
+                    num: "",
+                    bill: "",
+                    customer: "",
+                    rec: "",
+                    projectName: "",
+                    IsPayOff: "",
+                    CommandState: "",
+                    OrderType: "",
+                    ApproveState:"",
+                    SettState:"",
+                    ConsumeTypeId:"",
+                    IsReturn:"",
+                    IsFeedback:"",
+                    MedicalTypeId:"",
+                    topBranchList:"",
+                    toBranch:"",
+                    refHospitalCode:'',
+                    serviceId:'',
+                },
+                customerList:[],
+                exportLoading:false,
+            }
+        },
+        watch:{
+            'serviceSup':{
+                handler(curVal,oldVal){
+                    if(curVal == ''){
+                        this.formInline.serviceId = ""
+                    }
+                }
+            }
+        },
+        methods: {
+            searchAllData(){
+                this.exportLoading = true
+                this.filterBack && this.filterBack(this.formInline,false,1)
+            },
+            exportData(){
+                this.$refs.exportData.handleDownload()
+                this.exportLoading = false
+            },
+             //查找服务商推荐 下拉补全
+            async queryCus(queryString, cb) {
+                this.customerList = []
+                if (queryString !== '' && queryString != undefined) {
+                    let res = await GetServiceInfoByKeywords({ 'keywords': queryString.removeSP() })
+                    this.GetServiceByKeywords(res)
+                }
+                this.formInline.serviceId = ""
+                let _this = this
+                clearTimeout(this.timeout);
+                this.timeout = setTimeout(() => {
+                    cb(_this.customerList);
+                }, 100);
+            },
+            //    搜索代理
+            GetServiceByKeywords(res){
+                // let res = await GetServiceInfoByKeywords(params)
+                if (res.data instanceof Array && res.data.length > 0) {
+                    for (let item of res.data) {
+                        this.customerList.push({
+                            value: item["serviceInfoName"],
+                            phone: item["phoneNumber"],
+                            code: item["code"],
+                            name: item["serviceInfoName"],
+                            Name:item["serviceInfoName"],
+                            hospitalCode: item['hospitalCode'],
+                            hospitalName: item['hospitalName'],
+                        })
+                    }
+                }
+                this.loading1 = false
+            },
+            // 服务商推荐选择
+            selectCus(item) {
+                this.formInline.serviceId = item.code? item.code:""
+            },
+            async getSupplierByPage(){
+                if(this.searchCondition.crossHos){//跨院页面加载所有医院，其他页面有权限控制
+                    let sup = await getSupplierByPage({
+                        "suppliername": "",
+                        "suptypecode": "",
+                        "phonenumber": "",
+                        "startdate": "",
+                        "enddate": "",
+                        "pageindex": 1,
+                        "pagesize": 1000,
+                    })
+                    sup.forEach(row=>{
+                        for(var key in row){//大小写处理
+                            row[key.substring(0,1).toLowerCase()+key.substring(1)] = row[key];
+                        }
+                    })
+                    this.hospitalList = sup
+                    this.hospitalList.unshift({supplierName:"全部", code:''})
+                    let res0 = await GetDropDownPermission({typeId:"2"})
+                    this.topBranchList = res0.data
+                    let res1 = await GetDropDownPermission({typeId:"1"})
+                    this.refHospitalList = res1.data
+                }else{
+                    let res = await GetDropDownPermission({typeId: 1})
+                    this.hospitalList = res.data
+                }
+                this.formInline.hospital = getCookie("hospitalCode")||""
+                let [consume,MedicalTypeList] = await Promise.all([getBaseDataByCode("0017"),getBaseDataByCode("0022")])
+                consume.forEach(row=>{
+                    if(row.DataCode <= 7){this.consumeList.push(row)}
+                })
+                this.MedicalTypeList = MedicalTypeList
+            },
+            dateForm1(val){
+                if(val){
+                     this.formInline.startTimeF = val.substring(0,10)
+                    this.formInline.endTimeF = val.substring(13)
+                }else{
+                     this.formInline.startTimeF = ""
+                    this.formInline.endTimeF = ""
+                }
+            },
+            onSubmit(val){
+                let setPageIndex = val?1:0//点击搜索重新设置pageIndex为1
+                this.filterBack && this.filterBack(this.formInline,setPageIndex)
+            },
+
+            add(){
+                this.onAdd && this.onAdd()
+            },
+        },
+        components: {
+            dateLink,
+            Export
+        }
+    }
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+    .wt200 {
+        width: 200px;
+    }
+</style>

@@ -1,0 +1,392 @@
+<template>
+    <div class="dilog_body system-role">
+        <el-form label-width="100px" ref="dataForm" :model="data" class="demo-dynamic" :rules="rules">
+            <el-form-item label="用户名：" prop="UserName" :error="userNameOk"  class="form_item_mt10">
+                <el-input v-model="data.UserName" size="small" @blur="judgeUserName"></el-input>
+            </el-form-item>
+
+            <el-form-item label="组织机构：" prop="branch.value"
+                          :rules="[ { required: true, message: '请选择组织机构', trigger: 'blur' }]" class="form_item_mt10">
+                <el-select v-model="data.branch" placeholder="请选择" class="area">
+                    <el-option v-for="(item,$index) in organize" :key="$index" :label="item.name" :value="item">
+                    </el-option>
+                </el-select>
+                <el-select v-model="data.branchChild" placeholder="请选择" filterable class="area" 
+                v-show="data.branch.value =='01'||data.branch.value =='03'" @change="hosSelect">
+                    <el-option v-for="(item,$index) in data.branch['sub']" :key="$index" :label="item.name" :value="item">
+                    </el-option>
+                </el-select>
+
+                <el-select v-model="data.branchChild" filterable v-show="data.branch.value == '02'||data.branch.value == '04'"
+                    remote placeholder="请输入关键词" :remote-method="remoteMethod"
+                    :loading="loading">
+                    <el-option
+                        v-for="(item,index) in childList"
+                        :key="index" :label="item.name+'|'+item.value"
+                        :value="item">
+                    </el-option>
+                </el-select>
+
+                 <el-select v-model="service" placeholder="请选择" filterable v-show="data.branch.value == '03'" @change="serChange">
+                    <el-option v-for="(item,$index) in serviceList" :key="$index" :label="item.text"
+                               :value="item">
+                    </el-option>
+                </el-select>
+
+            </el-form-item>
+
+            <el-form-item label="姓名：" prop="Realname"  class="form_item_mt10">
+                <el-input v-model="data.Realname" size="small"></el-input>
+            </el-form-item>
+
+            <el-form-item label="性别：" class="form_item_mt10">
+                <el-radio class="radio" v-model="data.Gender" label="男">男</el-radio>
+                <el-radio class="radio" v-model="data.Gender" label="女">女</el-radio>
+            </el-form-item>
+
+            <el-form-item label="手机号码：" prop="Mobile" class="form_item_mt10">
+                <el-input v-model="data.Mobile" size="small"></el-input>
+            </el-form-item>
+
+            <el-form-item prop="Email" label="邮箱：" class="form_item_mt10">
+                <el-input v-model="data.Email" size="small"></el-input>
+            </el-form-item>
+
+            <el-form-item label="是否有效：" class="form_item_mt10">
+                <el-switch v-model="data.Enabled" on-text="有效" off-text="无效" :on-value='1' :off-value='0' :width="60">
+                </el-switch>
+            </el-form-item>
+             <el-form-item label="是否管理员：" class="form_item_mt10">
+                <el-switch v-model="data.isAdministrator" on-text="是" off-text="否" :on-value='true' :off-value='false' :width="60">
+                </el-switch>
+            </el-form-item>
+            <el-form-item label="是否查看特殊：" class="form_item_mt10">
+                <el-switch v-model="data.isSpecial" on-text="是" off-text="否" :on-value='true' :off-value='false' :width="60">
+                </el-switch>
+            </el-form-item>
+            <el-form-item label="用户角色：" class="form_item_mt10">
+                <el-tag :key="tag" v-for="tag in roleTags" :hit="true" :closable="true" :close-transition="false"
+                        type="success" @close="handleClose(tag)">
+                    {{tag}}
+                </el-tag>
+                <el-button type="success" icon="plus" size="mini" @click="showRole=true">添加角色</el-button>
+            </el-form-item>
+
+            <el-form-item label="描述：" class="form_item_mt10">
+                <el-input type="textarea" v-model="data.Description"></el-input>
+            </el-form-item>
+
+            <el-form-item style="padding-left:20%">
+                <el-button type="primary" @click="Submit()" :loading="saveLoading">提交</el-button>
+                <el-button @click="Reset()">重置</el-button>
+            </el-form-item>
+
+        </el-form>
+
+        <el-dialog ref="updateDialog" title=" " :visible.sync="showRole" size="large" top="10%" :modal="false">
+            <role-select :add-click="addRole" :data="roleSelectData"></role-select>
+        </el-dialog>
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+    import { addUser, addUserRole, existsUser, getTopBranch,GetBranchByKeywords,GetMembersByKeywords,GetServiceManList,GetDropDownPermission } from '@/api/myData'
+    import RoleSelect from './role_select'
+    import { getStore,getCookie} from '@/config/mUtils'
+    export default {
+        components: {RoleSelect},
+        data() {
+            var checkMobile = (rule, value, callback) => {
+                if (value.length === 0) callback()
+                if (!isNaN(value) && value.length === 11 && !value.startsWith(0)) {
+                    callback()
+                }
+                else {
+                    return callback(new Error('请输入有效的手机号'));
+                }
+            };
+
+            var checkBranch = (rule, value, callback) => {
+                if (value) callback()
+
+                else {
+                    return callback(new Error('请选择组织机构'));
+                }
+            };
+            return {
+                saveLoading:false,
+                serviceList:[],
+                allService:[],
+                loading:false,
+                roleSelectData: [],
+                showRole: false,
+                roleTags: [],
+                roleIds: [],
+                userNameOk: "",
+                childList:[],
+                service:{},
+                data: {
+                    UserName: "",
+                    Realname: "",
+                    Gender: "男",
+                    Mobile: "",
+                    Email: "",
+                    Enabled: 1,
+                    Description: "",
+                    TypeCode: "",
+                    branch: {},
+                    branchChild: {},
+                    isAdministrator:true,
+                    isSpecial:0,
+                    spec:false,
+                    imgUrl:"",
+                    "createUserId": getCookie("userId"),
+                    "createBy": getCookie("userName"),
+                },
+                rules: {
+                    UserName: [
+                        {required: true, message: '请输入用户名', trigger: 'blur'},
+                    ],
+
+                    Realname: [
+                        {required: true, message: '请输入姓名', trigger: 'blur'},
+                    ],
+                    
+                    Mobile: [
+                        {validator: checkMobile, trigger: 'blur'}
+                    ],
+
+                    Email: [
+                        {type: 'email', message: '请输入正确的邮箱地址', trigger: 'blur'}
+                    ],
+
+                    branch: [
+                        {validator: checkBranch, trigger: 'blur'}
+                    ]
+                },
+                organize: [],
+                allOrganize:[
+                    {name: "平台", value: "01", sub: [{name: "平台", value: ""}]},
+                    {name: "代理商", value: "02", sub: []},
+                    {name: "医院", value: "03", sub: []},
+                    {name: "会员", value: "04", sub: []},
+                    {name: "平台客服", value: "05", sub: []},
+                    {name: "线上app会员", value: "06", sub: []},
+                ]
+            }
+        },
+
+        watch:{
+          'data.branch':{
+              handler(curVal,oldVal){
+                  
+                  this.data.branchChild = ""
+              },
+              deep:true
+          }
+        },
+
+        mounted() {
+            if(getStore("typeCode") != '01'){
+                this.organize = this.allOrganize.slice(1)
+            }else{
+                this.organize = this.allOrganize
+            }
+            this.organizeInfo()
+        },
+
+        methods: {
+            Reset() {
+                this.$refs["dataForm"].resetFields();
+            },
+            Submit() {
+                this.$refs["dataForm"].validate((valid) => {
+                    if (valid) this.addUser()
+                    else return false;
+                })
+            },
+
+            async GetBranchByKeywords(params){
+                try{
+                    let branch = await GetBranchByKeywords(params)
+                    
+                    this.loading = false;
+                    if(getCookie("hospitalCode")){
+                        branch = branch.filter(row=>{
+                            return row.HospitalCode == getCookie("hospitalCode")
+                        })
+                    }
+                    if (branch instanceof Array && branch.length > 0) {
+                        branch.forEach(item => {
+                            this.childList.push({name: item.BranchName, value: item.Code,
+                            hospitalName:item.HospitalName,hospitalCode:item.HospitalCode,
+                            Phonenumber:item.PhoneNumber})
+                        })
+                    }
+                }catch(err){
+                }
+            },
+
+            hosSelect(){
+                
+                if(this.data.branch.value == "03"){
+                     let arr = []
+                    for (let item of this.allService) {
+                        let hosCodes = item.hospitalCode.split(",")//多权限筛选
+                        if (hosCodes.indexOf(this.data.branchChild.value)>=0) {
+                            arr.push({
+                                value: item["code"],
+                                name: item["serviceName"],
+                                text: item["serviceName"] + "(" + item["code"] + ")",
+                                serTypeCode:item["serTypeCode"]
+                            });
+                        }
+                    }
+                    this.serviceList = arr
+                }
+            },
+
+            serChange(){
+                this.data.ServiceManCode = this.service.value
+                this.data.ServiceManName = this.service.name
+                this.data.SerTypeCode = this.service.serTypeCode
+            },
+
+            async GetMembersByKeywords(params){
+                try{
+                    let branch = await GetMembersByKeywords(params)
+                    this.loading = false;
+                    if (branch instanceof Array && branch.length > 0) {
+                        branch.forEach(item => {
+                            this.childList.push({name: item.MemberName, value: item.Code})
+                        })
+                    }
+
+                }catch(err){
+                }
+            },
+
+            async organizeInfo() {
+                let supply = await GetDropDownPermission({typeId: 1})
+                let _this = this,index = 0
+                // 平台账户与销售公司
+                if(getStore("typeCode") == '01'){
+                    index = 2
+                }else index = 1
+                if (supply.data instanceof Array && supply.data.length > 0) {
+                    supply.data.forEach(item => {
+                        if(item.code != ""){
+                            _this.organize[index].sub.push({name: item.supplierName, value: item.code})
+                        }
+                        
+                    })
+                }
+                let ser = await GetServiceManList();
+                this.allService = ser.data
+            },
+            async judgeUserName() {
+                //判断能添加此用户名， 能1，不能0
+                let res = await existsUser(this.data.UserName)
+                if (res != 1) {
+                    this.userNameOk = "用户名重复！"
+                }
+                else {
+                    this.userNameOk = ""
+                }
+                return res
+            },
+
+            addRole(data) {
+                this.showRole = false
+                this.roleTags = []
+                this.roleIds = []
+                let _this = this
+                setTimeout(function () {
+                    data.forEach((item, index) => {
+                        _this.roleTags.push(item["Realname"]);
+                        _this.roleIds.push(item["Id"])
+                    })
+                }, (300))
+            },
+
+            async setRole() {
+                let param = []
+                let userId = this.data["Id"]
+                this.roleIds.forEach(function (roleId) {
+                    param.push({"UserId": userId, "RoleId": roleId})
+                })
+                
+                // data.UserName = data.UserName.replace(/(^\s*)|(\s*$)/g, "").split(",")
+                this.saveLoading = true
+                let res = await addUserRole(JSON.stringify(param))
+                if (res > 0) {
+                    this.$message({type: 'success', message: '保存成功!'})
+                }
+                else {
+                    this.$message({type: 'warning', message: '保存失败!'})
+                }
+                this.saveLoading = false
+                this.$refs["dataForm"].$parent.$parent.$parent.ispopAdd = false
+            },
+
+            async addUser() {
+                let data = JSON.parse(JSON.stringify(this.data))
+                data.isSpecial = data.spec?1:0
+                data["TypeCode"] = this.data.branch.value || ""
+                
+                if(data.TypeCode == '02'){
+                    data["HospitalName"] = this.data.branchChild.hospitalName || ""
+                    data["HospitalCode"] = this.data.branchChild.hospitalCode || ""
+                }else{
+                    data["BranchCode"] = ""
+                }
+                if (this.judgeUserName() == 0) {
+                    this.$message({type: 'info', message: '用户名重复!'})
+                    return
+                }
+                if(data.TypeCode == '03'){
+                    data.hospitalCode = data.branchChild.value || ""
+                }
+                if(data.TypeCode == '04'||data.TypeCode == '02'){
+                    data["BranchCode"] = this.data.branchChild.value || ""
+                    data["BranchName"] = this.data.branchChild.name || ""
+                }
+                data.branch = ""
+                data.branchChild = ""
+                try {
+                    // 去除用户名首尾空格
+                    data.UserName = data.UserName.replace(/(^\s*)|(\s*$)/g, "").split(",")
+                    let res = await addUser(data)
+                    if (res > 0) {
+                        this.data["Id"] = res
+                        if (this.roleIds.length == 0) {
+                            this.$message({type: 'success', message: '保存成功!'})
+                        }
+                        else this.setRole()
+                    }
+                    this.$refs["dataForm"].$parent.$parent.$parent.ispopAdd = false
+                }
+                catch (err) {
+                    this.$message({type: 'warning', message: '提交失败!'})
+                    this.$refs["dataForm"].$parent.$parent.$parent.ispopAdd = false
+                }
+            },
+            remoteMethod(query) {
+                if (query !== '') {
+                    this.loading = true;
+                    if(this.data.branch.value == "02"){
+                        this.GetBranchByKeywords({
+                            keyWords:query.removeSP()
+                        })
+                    }else{
+                        this.GetMembersByKeywords({
+                            keyWords:query.removeSP()
+                        })
+                    }
+                } else {
+
+                }
+            }
+        }
+    }
+</script>

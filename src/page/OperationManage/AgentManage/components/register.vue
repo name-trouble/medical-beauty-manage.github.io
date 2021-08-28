@@ -1,0 +1,1352 @@
+<template>
+    <div class="register">
+        <el-form :model="ruleForm" :rules="rules" :inline="true" ref="ruleForm" label-width="120px"
+                 class="demo-ruleForm">
+            <el-form-item style="width: 100%;margin: 0 0 10px 0" label="" label-width="90px">
+                <span style="font-size: 16px;font-weight: bold">基础信息</span>
+            </el-form-item>
+            <el-col :span="24" style="background: #F2F2F2;padding-top: 10px">
+                <el-form-item label="注册日期：" prop="date" class="form_item">
+                    <el-date-picker type="date" placeholder="选择日期" v-model="ruleForm.date"
+                                    style="width: 250px;"></el-date-picker>
+                </el-form-item>
+                <el-form-item label="代理编号：" prop="RecCode" class="form_item">
+                    <el-input class="form_ipt" v-model="ruleForm.RecCode" :disabled="true"></el-input>
+                    <el-button @click="searchV" type="primary" size="small">搜索会员</el-button>
+                </el-form-item>
+                <el-form-item label="注册等级：" prop="grade" class="form_item">
+                    <el-select v-model="ruleForm.grade" placeholder="请选择等级" class="form_select_2">
+                        <el-option v-for="item in gradeList" :label="item.BranchGradeName" :value="item.Code"
+                                   :key="item.Code"></el-option>
+                    </el-select>
+                </el-form-item>
+                <el-form-item label="医院：" prop="" class="form_item" v-if="!show">
+                    <el-select v-model="ruleForm.Hospital" class="form_ipt">
+                        <el-option v-for="(item,index) in supplyList" v-if='item.code' :label="item.supplierName" :value="item.code+'|'+item.supplierName" :key="index"></el-option>
+                    </el-select>
+                </el-form-item>
+                <el-form-item label="推荐人：" prop="Recommender" required class="form_item" filterable v-if="ruleForm.grade !='G100000'">
+                    <el-select v-model="ruleForm.Recommender" filterable remote placeholder="请输入关键词"  :disabled="ruleForm.RecCode.length>0"
+                               :remote-method="remoteMethod" :loading="loading" style="width: 250px">
+                        <el-option
+                            v-for="(item,index) in referList"
+                            :key="index" :label="item.Name+'('+item.PhoneNumber+')'"
+                            :value="item">
+                        </el-option>
+                    </el-select>
+                </el-form-item>
+                <el-form-item label="标签：" prop="" class="form_item">
+                    <el-select v-model="ruleForm.BranchTags" placeholder="请选择" style="width: 250px">
+                        <el-option label="空" value=""></el-option>
+                        <el-option v-for="(item,index) in tagsList" :label="item.tagName" :value="item.tagName" :key="index"></el-option>
+                    </el-select>
+                </el-form-item>
+                <el-form-item label="代理类型：" prop="" class="form_item">
+                    <el-select v-model="ruleForm.BranchType" placeholder="请选择" style="width: 250px" @change="typeChange">
+                        <el-option label="个人" value="1"></el-option>
+                        <el-option label="店铺" value="2"></el-option>
+                    </el-select>
+                </el-form-item>
+
+                <el-form-item label="店铺面积：" prop="" class="form_item" v-if="ruleForm.BranchType == 2">
+                    <el-input-number v-model="ruleForm.ShopArea" :min="0" :debounce='10' :controls="false"
+                                     style="width: 250px;float: left"></el-input-number>
+                    <span style="float: left">m²</span>
+                </el-form-item>
+
+                 <el-form-item label="店铺名称：" prop="" class="form_item" v-if="ruleForm.BranchType == 2">
+                    <el-input v-model="ruleForm.shopName" style="width: 250px;float: left"></el-input>
+                </el-form-item>
+                <el-form-item label="经营类型：" prop="" class="form_item" v-if="ruleForm.BranchType == 2">
+                    <el-input v-model="ruleForm.businessType" style="width: 250px;float: left"></el-input>
+                </el-form-item>
+                <el-form-item label="店家凭证：" prop="" class="form_item" v-if="ruleForm.BranchType == 2">
+                    <el-button @click="uploadImg" type="primary">上传图片</el-button>
+                </el-form-item>
+                <el-form-item label="专家日提成：" class="form_item" prop="" v-if="ruleForm.BranchType == 2">
+                    <el-radio v-model="ruleForm.IsExpert" label="0">无</el-radio>
+                    <el-radio v-model="ruleForm.IsExpert" label="1">有</el-radio>
+                </el-form-item>
+                <el-form-item label="生效时间：" class="form_item" v-if="ruleForm.IsExpert == 1">
+                    <el-date-picker type="date" placeholder="选择日期" v-model="ruleForm.enableDate"
+                                    style="width: 250px;"></el-date-picker>
+                </el-form-item>
+                <el-form-item label="专家日提成比例：" class="form_item" v-if="ruleForm.IsExpert == 1&&ruleForm.BranchType == 2">
+                    <el-input v-model="ruleForm.ExpertRate" class="form_ipt"></el-input><span style="float: left">%</span>
+                </el-form-item>
+                <el-form-item label="消费商卡号：" prop="" class="form_item">
+                    <el-input v-model="ruleForm.cardNO" style="width: 250px;float: left" ></el-input>
+                </el-form-item>
+                <el-form-item label="会费金额：" class="form_item">
+                    <el-input-number class="form_ipt" v-model="ruleForm.payAmount" :min="0" :controls="false"></el-input-number>
+                </el-form-item>
+                <el-form-item label="姓名：" prop="name" class="form_item">
+                    <el-input class="form_ipt" v-model="ruleForm.name"></el-input>
+                </el-form-item>
+                <el-form-item label="联系电话：" prop="Tel" class="form_item">
+                    <el-input class="form_ipt" v-model="ruleForm.Tel"></el-input>
+                </el-form-item>
+                <el-form-item label="性别：" prop="Sex" class="form_item">
+                    <el-radio class="radio" v-model="ruleForm.Sex" label="1">男</el-radio>
+                    <el-radio class="radio" v-model="ruleForm.Sex" label="0">女</el-radio>
+                </el-form-item>
+                <el-form-item label="邮箱：" prop="email" class="form_item">
+                    <el-input class="form_ipt" v-model="ruleForm.email"></el-input>
+                </el-form-item>
+                <el-form-item label="来源渠道：" prop="region" class="form_item">
+                    <el-select v-model="ruleForm.region" placeholder="请选择等级" class="form_select_2">
+                        <el-option v-for="item in origionList" :label="item.DataName" :value="item.DataName"
+                                   :key="item.DataCode"></el-option>
+                    </el-select>
+                </el-form-item>
+                <el-form-item label="地区：" class="form_item">
+                    <el-select v-model="ruleForm.province" placeholder="请选择" class="form_select" filterable>
+                        <el-option v-for="item in detAddr" :label="item.name" :value="item.name"
+                                   :key="item.name"></el-option>
+                    </el-select>
+                    <el-select v-model="ruleForm.city" placeholder="请选择" class="form_select" filterable>
+                        <el-option v-for="item in cityList" :label="item.name" :value="item.name"
+                                   :key="item.name"></el-option>
+                    </el-select>
+                    <el-select v-model="ruleForm.area" placeholder="请选择" class="form_select" filterable>
+                        <el-option v-for="item in areaList" :label="item.name" :value="item.name"
+                                   :key="item.name"></el-option>
+                    </el-select>
+                </el-form-item>
+                <el-form-item label="详细地址：" prop="address" class="form_item">
+                    <el-input class="form_ipt" v-model="ruleForm.address"></el-input>
+                </el-form-item>
+                <el-form-item label="身份证号码：" class="form_item">
+                    <el-input class="form_ipt" v-model="ruleForm.IdCard"></el-input>
+                </el-form-item>
+                <el-form-item label="生日：" class="form_item">
+                    <el-select v-model="ruleForm.year" style="width:80px" @change="yearChange" filterable>
+                        <el-option v-for="(item,index) in yearList" :key="index" :label="item" :value="item"></el-option>
+                    </el-select>
+                    <el-select v-model="ruleForm.month" style="width:80px" @change="mouChange" filterable>
+                        <el-option v-for="(item,index) in monthList" :key="index" :label="item" :value="item"></el-option>
+                    </el-select>
+                    <el-select v-model="ruleForm.day" style="width:80px" filterable>
+                        <el-option v-for="(item,index) in dayList" :key="index" :label="item" :value="item"></el-option>
+                    </el-select>
+                </el-form-item>
+                <el-form-item label="公司名称：" class="form_item" v-if="!show">
+                    <el-input class="form_ipt" v-model="ruleForm.company"></el-input>
+                </el-form-item>
+                <!--<el-form-item label="推荐提成策略：" prop="identityType" class="form_item">-->
+                    <!--<el-select v-model="ruleForm.identityType" @change="identityTypeC" placeholder="请选择" class="form_select_2">-->
+                        <!--<el-option label="新策略" value="1"></el-option>-->
+                        <!--<el-option label="老策略" value="2"></el-option>-->
+                    <!--</el-select>-->
+                <!--</el-form-item>-->
+                <el-form-item label="咨询师：" class="form_item">
+                    <el-select v-model="ruleForm.consult" filterable placeholder="请选择" class="form_select_2" @change="conSelect">
+                        <el-option  label="空" value=""></el-option>
+                        <el-option v-for="(item,index) in consultList" :key="index" :label="item.name" :value="item.name+'|'+item.code"></el-option>
+                    </el-select>
+                </el-form-item>
+                <el-form-item label="消费订单：" class="form_item" v-if="ruleForm.order">
+                    <el-checkbox v-model="ruleForm.order"></el-checkbox>
+                    <span v-if="ruleForm.order">支付金额：{{reportPay}}</span>
+                </el-form-item>
+                <el-form-item label="消费客户：" class="form_item" v-if="ruleForm.RecCode.length==0&&ruleForm.order">
+                    <el-autocomplete v-model="ruleForm.transCustomer" :fetch-suggestions="queryCus" placeholder="请输入内容" :trigger-on-focus="false" @select="selectCus" style="width:220px;margin-right:5px">
+                        <template v-slot="{item}">
+                            <my-item-member :item="item"></my-item-member>
+                        </template>
+                    </el-autocomplete>
+                </el-form-item>
+                <el-form-item label="订单编号：" class="form_item" prop="formNum" v-if="ruleForm.order">
+                    <el-input v-model="ruleForm.formNum" class="form_ipt"></el-input>
+                </el-form-item>
+                <el-form-item label="订单：" style="width:100%"  v-if="ruleForm.order">
+                    <el-table ref="multipleTable" :data="multipleTable" border style="width: 780px" max-height="400" @selection-change="handleSelectionChange">
+                        <el-table-column type="selection"   align="center" width="55"></el-table-column>
+                        <el-table-column prop="fxCode" min-width="100" label="订单号">
+                            <template slot-scope="scope">
+                                <el-button @click="getRP(scope.row)" type="text">{{scope.row.fxCode}}</el-button>
+                            </template>
+                        </el-table-column>
+                        <el-table-column prop="price" label="订单类型" min-width="100">
+                            <template slot-scope="scope">
+                                <el-tag type="success">{{scope.row.consumeTypeId|filFun}}</el-tag>
+                            </template>
+                        </el-table-column>
+                        <el-table-column prop="price" label="订单金额" min-width="100"></el-table-column>
+                        <el-table-column prop="ReceiveAccount" label="付款状态" min-width="100">
+                            <template slot-scope="scope">
+                                <el-tag v-if="scope.row.isPayOff" type="success">已付清</el-tag>
+                                <el-tag v-else  type="danger">未付清</el-tag>
+                            </template>
+                        </el-table-column>
+                        <el-table-column prop="realAmount" label="支付金额" min-width="100"></el-table-column>
+                        <el-table-column prop="projectName" label="项目名称" min-width="100" show-overflow-tooltip=""></el-table-column>
+                    </el-table>
+                </el-form-item>
+            </el-col>
+            <el-form-item style="width: 100%;margin: 10px 0" label="" label-width="70px">
+                <span style="font-size: 16px;font-weight: bold">支付信息</span>
+            </el-form-item>
+            <el-col :span="24" style="background: #F2F2F2;padding-top: 10px">
+                <el-form-item label=" " style="width: 100%;margin-bottom: 10px" label-width="40px">
+                    <el-table ref="singleTable" :data="payTable" border style="width: 850px">
+                        <el-table-column prop="PayTypeName" min-width="100" label="支付方式"></el-table-column>
+                        <el-table-column prop="ReceiveAccount" label="收款账户" min-width="100"></el-table-column>
+                        <el-table-column prop="RealAmount" label="实际金额" min-width="100">
+                            <template slot-scope="scope">
+                                {{scope.row.RealAmount.toQFW()}}
+                            </template>
+                        </el-table-column>
+                        <el-table-column prop="ProcFee" label="手续费" min-width="80"></el-table-column>
+                        <el-table-column prop="PayDate" label="收款时间" min-width="100"></el-table-column>
+                        <el-table-column prop="ReceiveBranchName" label="销售公司" min-width="100"></el-table-column>
+                        <el-table-column prop="Memo" label="备注" min-width="100"></el-table-column>
+                        <el-table-column prop="" label="操作" min-width="100">
+                            <template slot-scope="scope">
+                                <el-button @click="deleteRow(scope.$index,payTable)" size="small">删除</el-button>
+                            </template>
+                        </el-table-column>
+                    </el-table>
+                    <el-button type="success" @click="add('form')" style="margin-top: 10px" size="small">添加支付信息</el-button>
+                </el-form-item>
+            </el-col>
+            <el-form-item style="width: 100%;margin: 10px" label="" label-width="70px">
+                <span style="font-size: 16px;font-weight: bold">银行信息</span>
+            </el-form-item>
+            <el-col :span="24" style="background: #F2F2F2;padding-top: 10px">
+                <el-form-item label="银行：" class="form_item">
+                    <el-select v-model="ruleForm.bank" placeholder="请选择" class="form_select_2">
+                        <el-option v-for="item in bankList" :label="item.DataName" :value="item.DataName"
+                                   :key="item.DataCode"></el-option>
+                    </el-select>
+                </el-form-item>
+                <el-form-item label="开户行支行：" class="form_item">
+                    <el-input class="form_ipt" v-model="ruleForm.BankName"></el-input>
+                </el-form-item>
+                <el-form-item label="银行卡号：" class="form_item">
+                    <el-input class="form_ipt" v-model="ruleForm.BankCard" @change="checkStr"></el-input>
+                </el-form-item>
+                <el-form-item label="开户人：" class="form_item">
+                    <el-input class="form_ipt" v-model="ruleForm.person"></el-input>
+                </el-form-item>
+            </el-col>
+            <el-form-item style="width: 100%;margin: 10px 0" label="" label-width="70px">
+                <span style="font-size: 16px;font-weight: bold">套餐信息</span>
+            </el-form-item>
+            <el-col :span="24" style="background: #F2F2F2;padding-top: 10px">
+                <el-form-item label="选择套餐组合：" style="margin-bottom: 0px">
+                    <el-row>
+                        <el-col v-for="(items,index) in packageList" :key="index" style="width: 150px">
+                            <el-select v-model="packageVal[index].code" form placeholder="请选择" @change="selPAC" :disabled="ruleForm.identityType == 1">
+                                <el-option label="请选择" value=""></el-option>
+                                <el-option v-for="item in items" :label="item.ConPacName"
+                                           :value="item.ConPacCode" :key="item.ConPacCode"></el-option>
+                            </el-select>
+                        </el-col>
+                    </el-row>
+                </el-form-item>
+                <el-form-item label="卡券：" style="width: 100%;margin-bottom: 0px">
+                    <el-table ref="singleTable" :data="tableData" border highlight-current-row style="width: 800px">
+                        <el-table-column type="index" width="60" label="序号"></el-table-column>
+                        <el-table-column prop="ConPacName" label="套餐名称" min-width="100"></el-table-column>
+                        <el-table-column prop="TickInfoCode" label="券种编号" min-width="100"></el-table-column>
+                        <el-table-column prop="TickName" label="券名称" min-width="120"></el-table-column>
+                        <el-table-column prop="Price" label="面值" min-width="80"></el-table-column>
+                        <el-table-column prop="TicNum" label="数量" min-width="80"></el-table-column>
+                        <el-table-column prop="IsUserLimit" label="有效期" min-width="120">
+                            <template slot-scope="scope">
+                                <span v-if="scope.row.PrdOfVal!='' && scope.row.PrdOfVal!=null "> {{ '售后'+ scope.row.PrdOfVal +'天'}}</span>
+                                <div v-else>
+                                    <p>开始：{{ scope.row.StartDate&&scope.row.StartDate.substr(0,10) }} </p>
+                                    <p>结束：{{ scope.row.EndDate&&scope.row.EndDate.substr(0,10) }} </p>
+                                </div>
+                            </template>
+                        </el-table-column>
+                    </el-table>
+                </el-form-item>
+                <el-form-item label="积分：" class="form_item">
+                    <span>{{integral}}</span>
+                </el-form-item>
+                <el-form-item style="width: 100%;margin: 10px 0" label="备注：" >
+                    <el-input type="textarea" v-model="ruleForm.memo" style="width:500px" :rows="4"></el-input>
+                </el-form-item>
+                <el-form-item style="width: 100%;margin: 10px 0" label="上传图片：" >
+                    <el-upload
+                        :action="action"
+                        list-type="picture-card"
+                        :acceptImage="acceptImage"
+                        :on-success="success"
+                        :fileList="fileList"
+                        :on-remove="handleRemove">
+                        <i class="el-icon-plus"></i>
+                    </el-upload>
+                </el-form-item>
+            </el-col>
+            <el-form-item style="width: 100%;text-align: center;margin-top: 20px">
+                <el-button type="primary" @click="submitForm('ruleForm')" :loading="saveLoading">保存</el-button>
+                <el-button @click="resetForm('ruleForm')">取消</el-button>
+                <el-button type="primary" @click="resetForm('ruleForm')">重置</el-button>
+            </el-form-item>
+        </el-form>
+        <el-dialog title="搜索会员" :visible.sync="dialogTableVisible" :modal="body" size="">
+            <searMem @handleCurrentChange="handleCurrentChange"></searMem>
+        </el-dialog>
+        <el-dialog title="添加支付信息" :visible.sync="dialogTableVisible1" :modal="body" size="">
+            <payInfo @payOpe="payOpe" style="width: 380px" :editMes="editMes" :code="ruleForm.RecCode" :dialogTableVisible1="dialogTableVisible1" :isHos="true"></payInfo>
+        </el-dialog>
+        <el-dialog title="上传图片" :visible.sync="dialogImg" :modal="body" size="">
+                <span style="color:red">(请上传 1M以内图片, 最多6张)</span>
+                <upload @onSuccess="onSuccess3" :fileList="fileListImg3" @onRemove="onRemove3" @imgView="imgView" :action="action" style="width:660px"></upload>
+                <div style="text-align:center;margin-top:10px">
+                    <el-button @click="dialogImg = false" type="primary">确认</el-button>
+                    <el-button @click="dialogImg = false">取消</el-button>
+                </div>
+        </el-dialog>
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+
+import upload from '@/components/upload'
+import { xmxUrl, baseImgPath } from '@/config/env'
+import { imgApi, acceptImage } from '@/config/common'
+let uploadUrl = xmxUrl + imgApi + '?op=branchshop'
+    import {GetBaseDataAll,GetBranchGradeAll,GetConsumerPackageAll,GetBranchByKeywords,GetTagByPage,
+    getBaseDataByCode,GetDropDownPermission,GetBranchByCode,getTopBranch,getServiceManAll,GetUserAllByKeywords,
+    GetProofOrder,GetOrderCommandByCus2,GetPackageOrderNumAll,AddBranch,GetTicketsAll,GetOrderPayAmount,DelImg, GetBranchGradeByCode,GetHospitalAccountByCode} from "../../../../api/myData"
+    import addr from '../../../../../static/addresss.json'
+    import payInfo from "./pay.vue"
+    import searMem from './searchMem'
+    import { getCookie, delCookie } from '../../../../config/mUtils'
+    var _this
+    import Vue from "vue"
+    Vue.component('my-item-member', {
+        functional: true,
+        render: function(h, ctx) {
+            var item = ctx.props.item;
+            return h('div', ctx.data, [
+                h('p', { attrs: { class: 'select_name'+item.Type, title: item.name } }, ['名字：' + item.name]),
+                h('p', { attrs: { class: 'select_name'+item.Type, title: item.name} }, ['编号：' + item.code]),
+                h('p', { attrs: { class: 'select_name'+item.Type, title: item.name} }, ['手机号：' + item.phone]),
+                h('p', { attrs: { class: 'select_name'+item.Type, title: item.name} }, ['卡号：' + item.CardNO]),
+            ]);
+        },
+        props: {
+            item: { type: Object, required: true }
+        }
+    });
+    export default {
+        // name: "register",
+        props: {},
+        data () {
+            var idCard = (rule, value, callback) => {
+                let reg = /(^\d{15}$)|(^\d{18}$)|(^\d{17}(\d|X|x)$)/
+                if (!value) {
+                    // return callback(new Error('请填写身份证号码'));
+                     callback()
+                }
+                if (reg.test(value) == false) {
+                    callback(new Error('请检查身份证号码'))
+                } else {
+                    callback()
+                }
+            };
+            var email = (rule, value, callback) => {
+                let reg = /^([a-zA-Z0-9]+[_|\_|\.]?)*[a-zA-Z0-9]+@([a-zA-Z0-9]+[_|\_|\.]?)*[a-zA-Z0-9]+\.[a-zA-Z]{2,3}$/;
+                if (!value) {
+                    callback()
+                } else {
+                    if (value.length != 0 && reg.test(value) == false) {
+                        callback(new Error('请检查邮箱'))
+                    } else {
+                        callback()
+                    }
+                }
+            };
+            var bankCard = (rule, value, callback) => {
+                let reg = /^\d{19}$/g;   // 以19位数字开头，以19位数字结尾
+                if (!reg.test(value)) {
+                    callback(new Error('请检查卡号'))
+                } else {
+                    callback()
+                }
+            };
+            var rec = (rule, value, callback) => {
+                if (!value) {
+                    return callback(new Error('请填写推荐人'));
+                } else {
+                    callback()
+                }
+            };
+            return {acceptImage,
+                fileListImg3:[],
+                action:uploadUrl,
+                baseImgPath,
+                tagsList:[],
+                dialogImg:false,
+                transCustomerList:[],
+                saveLoading:false,
+                editMes:{},
+                supplyList:[],
+                loading:false,
+                dialogTableVisible1: false,
+                payTable: [],
+                accountList:[],//医院收款账户
+                referList: [],
+
+                body: false,
+                currentRow: null,
+                dialogTableVisible: false,
+                ticketsList: [],
+                packageList: [],
+                packageVal: [],
+                packageAll: [],
+                bankList: [],//004
+                eduList: [],//001
+                industryList: [],//002
+                origionList: [],//003来源
+                gradeList: [],
+                detAddr: [],
+                cityList: [],
+                areaList: [],
+                integral: 0,
+                payWayList:[],
+                recHospital:"",//推荐人带出的医院信息
+                yearList:[],
+                monthList:[],
+                dayList:[],
+                multipleSelection:[],
+                multipleTable:[],
+                reportPay:0,
+                ruleForm: {
+                    BranchTags:"",
+                    transCustomer:"",
+                    transCustomerId:"",
+                    enableDate:"",
+                    year:new Date().getFullYear()+"",
+                    month:"",
+                    day:"",
+                    order:false,
+                    formNum:"",
+                    Hospital:"",//自己选择的医院信息
+                    Pledge: "",
+                    BranchType: "",
+                    ShopArea: "",
+                    shopName:"",//店铺名称
+                    date: new Date(),
+                    grade: "",
+                    RecCode: "",
+                    name: '',
+                    Tel: "",
+                    Sex: "1",
+                    email: "",
+                    region: '',
+                    province: "",
+                    city: "",
+                    area: "",
+                    address: "",
+                    IdCard: "",
+                    BirthDay: "",
+                    Recommender: '',
+                    company: "",
+                    bank: "",
+                    BankName: "",
+                    BankCard: "",
+                    person: "",
+                    edu: "",
+                    payAmount: "",
+                    industry: "",
+                    income: "",
+                    identityType: "",
+                    type: "",
+                    Memo: "",
+                    RealAmount: "",
+                    cardNO:"",
+                    memo:"",
+                    IsExpert:"0",
+                    ExpertRate:0,
+                    consult:"",
+                    MarketConsultantCode:"",
+                    MarketConsultantName:"",
+                    businessType:'',
+                },
+                rules: {
+                    type: [
+                        {required: true, message: '请选择', trigger: 'change'}
+                    ],
+
+                    identityType: [
+                        {required: true, message: '请选择', trigger: 'change'}
+                    ],
+                    grade: [
+                        {required: true, message: '请选择', trigger: 'change'}
+                    ],
+                    name: [
+                        {required: true, message: '请输入姓名', trigger: 'blur'}
+                    ],
+                    Sex: [
+                        {required: true, message: '请选择性别', trigger: 'change'}
+                    ],
+                    Tel: [
+                        {required: true, message: '请输入电话', trigger: 'blur'}
+                    ],
+                    region: [
+                        {required: true, message: '请选择来源渠道', trigger: 'change'}
+                    ],
+                    date: [
+                        {type: 'date', required: true, message: '请选择日期', trigger: 'change'}
+                    ],
+                    IdCard: [
+                        {validator: idCard, trigger: 'blur'}
+                    ],
+                    Recommender: [
+                        {validator: rec, trigger: 'change'}
+                    ],
+                    email: [
+                        {validator: email, trigger: 'blur'}
+                    ],
+                    BankCard: [
+                        {validator: bankCard, trigger: 'blur'}
+                    ],
+                    company: [
+                        {required: true, message: '请填写推荐公司', trigger: 'blur'}
+                    ],
+                    formNum:[
+                        {required: true, message: '请填写订单号', trigger: 'blur'}
+                    ],
+                },
+                packSelect: [],
+                tableData: [],
+                consultList: [],//咨询师
+                consumeList:"",//订单类型
+                time:0,
+                fileList:[],
+            }
+        },
+        filters:{
+            filFun(val){
+                let len = _this.consumeList.length
+                let list =  _this.consumeList
+                for(var i = 0;i<len;i++){
+                    if(val == list[i].DataCode){
+                        return list[i].DataName
+                    }
+                }
+            }
+        },
+        computed: {
+            show(){
+                let show = true
+                this.gradeList.forEach(data=> {
+                    if (data.Code == this.ruleForm.grade) {
+                        if (data.GradeProperty == "终结") {
+                            show = false
+                        }
+                    }
+                })
+                return show
+            }
+        },
+        watch: {
+            'ruleForm.province': {
+                handler(curVal, oldVal){
+                    this.cityList = []
+                    this.ruleForm.city = ""
+                    let len = this.detAddr.length
+                    this.detAddr.forEach(data=> {
+                        if (data.name == curVal) {
+                            this.cityList = data.sub
+                        }
+                    })
+                },
+                deep: true
+            },
+            'ruleForm.city': {
+                handler(curVal, oldVal){
+                    this.ruleForm.area = ""
+                    this.areaList = []
+                    let len = this.cityList.length
+                    this.cityList.forEach(data=> {
+                        if (data.name == curVal) {
+                            this.areaList = data.sub
+                        }
+                    })
+                },
+                deep: true
+            },
+            'ruleForm.grade': {
+                handler(curVal, oldVal){
+                    let grade = ""
+                    this.ruleForm.Hospital = ""
+                    this.gradeList.forEach(data=> {
+                        if (data.Code == curVal) {
+                            grade = data.OrderNum
+                        }
+                        let BranchCode = ""
+                        if (this.ruleForm.Recommender.Code) {
+                            BranchCode = this.ruleForm.Recommender.Code
+                        }
+                        this.getBranchGradeFee({
+                            MemberCode: "",
+                            gradeCode: curVal,
+                            BranchCode: BranchCode
+                        })
+                    })
+                    this.packGradeSelect(grade)
+                },
+                deep: true
+            },
+            "packageVal": {
+                handler(curVal, oldVal){
+
+                    this.getTickSplit(curVal)
+                },
+                deep: true
+            },
+            "ruleForm.Recommender": {
+                handler(curVal, oldVal){
+
+                    if(this.ruleForm.grade.length!=0){
+                        this.getBranchGradeFee({
+                            MemberCode: "",
+                            MemberGradeCode: this.ruleForm.grade,
+                            BranchCode: curVal.value
+                        })
+                    }
+
+                    if (this.ruleForm.RecCode.length == 0) {
+                        let code = curVal.hospitalCode||""
+                        let name = curVal.hospitalName||""
+                        this.recHospital = code + "|" + name
+                    }
+                },
+                deep: true
+            },
+            'ruleForm.order':{
+                handler(curVal, oldVal){
+                    if(curVal){
+                        this.getOrder()
+                    }
+                    this.ruleForm.formNum = ""
+                },
+                deep: true
+            },
+            'ruleForm.transCustomerId':{
+                handler(curVal, oldVal){
+
+                    if(curVal){
+                        this.getOrder()
+                    }
+                    this.ruleForm.formNum = ""
+                },
+                deep: true
+            }
+        },
+        mounted(){
+            _this = this
+            this.getBirthMes()
+
+            this.GetBaseDataAll()
+            this.detAddr = addr.area
+        },
+        methods: {
+            success(response, file, fileList){
+
+                this.fileList = fileList
+            },
+            handleRemove(file, fileList) {
+                this.fileList = fileList
+            },
+            imgView(url){
+                this.$emit("photoShow",url)
+            },
+            onSuccess3(fileList){
+                this.fileListImg3 = fileList
+            },
+            onRemove3(file,fileList){
+                this.DelImg(file.url)
+                this.fileListImg3 = fileList
+            },
+            // 删除原图片/视频
+            async DelImg(filepath){
+                let res = await DelImg({filepath:filepath})
+                if(!res.status){
+                    this.$message({message: '原图片删除失败！'+res.errorMessage,type: 'warning'});
+                }
+            },
+            uploadImg(){this.dialogImg = true},
+            identityTypeC(val){if(val == 1){this.ruleForm.order = true}else{this.ruleForm.order = false}},
+            // 打开订单
+            getRP(data){this.$emit("reportD",data)},
+            async GetOrderPayAmount(){
+                let res = await GetOrderPayAmount({fxcodes:this.ruleForm.formNum})
+                this.reportPay = res.data.realAmount
+            },
+            async getOrder(){
+                let res = await GetOrderCommandByCus2({
+                   customerCode:this.ruleForm.RecCode.length>0?this.ruleForm.RecCode:this.ruleForm.transCustomerId//资格转让判断 A本人注册或者A满足资质转让至B
+                })
+                let arr = []
+                res.data.forEach(row=>{
+                    if(row.approveState !=6&&row.approveState !=10&&row.consumeTypeId == 5){
+                        arr.push(row)
+                    }
+                })
+                this.multipleTable = arr
+            },
+            handleSelectionChange(val) {
+                this.multipleSelection = val;
+                let NS = ""
+                this.multipleSelection.forEach(row=>{
+                    NS +=","+row.fxCode
+                })
+                this.ruleForm.formNum = NS.replace(/(^\,*)|(\,*$)/g, "")
+                if(val.length>0){
+                    this.GetOrderPayAmount()
+                }else{
+                    this.reportPay = 0
+                }
+            },
+            payOpe(val){
+                if(val.PayType){
+                    // val.ItemType =  1//买套餐
+                    this.payTable.push(JSON.parse(JSON.stringify(val)))
+                }
+                this.dialogTableVisible1 = false
+            },
+             getBirthMes(){
+                let year = (new Date()).getFullYear()
+                let arr = [],arr1 = []
+                for(let i = 0;i<80;i++){
+                    arr.push((year-i)+"")
+                }
+                this.yearList = arr
+                for(let j = 1;j<13;j++){
+                    if(j<10){
+                        arr1.push("0"+j)
+                    }else{
+                        arr1.push(j+"")
+                    }
+                }
+                this.monthList = arr1
+                 setTimeout(()=>{//处理 月份联动会清除日期
+                    this.ruleForm.month = "01"
+                },200)
+                setTimeout(()=>{
+                    this.ruleForm.day = "01"
+                },200)
+            },
+            yearChange(){
+                this.mouChange()
+            },
+            mouChange(){
+                let arr=['01','03','05','07','08','10','12'],arr2 = ['04','06','09','11']
+                let day = []
+                for(let i = 1;i<32;i++){
+                    if(i<10){
+                        day.push("0"+i)
+                    }else{
+                        day.push(i+"")
+                    }
+                }
+                this.dayList = []
+
+                if(this.ruleForm.month == '02'){
+
+                    if(this.isLeapYear(Number(this.ruleForm.year))){
+                        this.dayList = day.slice(0,day.length-3)
+                    }else{
+                        this.dayList = day.slice(0,day.length-2)
+                    }
+                }
+                if(arr.indexOf(this.ruleForm.month)>=0){
+                    this.dayList = day
+                }
+                if(arr2.indexOf(this.ruleForm.month)>=0){
+                    this.dayList = day.slice(0,day.length-1)
+                }
+            },
+            // 闰年判断
+            isLeapYear(year) {
+                  return (year % 4 == 0) && (year % 100 != 0 || year % 400 == 0);
+            },
+
+            typeChange(){
+                this.ruleForm.IsExpert = "0"
+                this.ruleForm.ExpertRate = 0
+                this.ruleForm.enableDate = ""
+            },
+            async GetBranchByCode(params){
+                try {
+                    let res = await GetBranchByCode(params)
+                    let hospitalCode = res.Branch.HospitalCode?res.Branch.HospitalCode:""
+                    let hospitalName = res.Branch.HospitalName?res.Branch.HospitalName:""
+                    if(hospitalCode.length==0){
+                        this.recHospital = hospitalCode+" | "+hospitalName
+                    }else{
+                        this.recHospital = hospitalCode+"|"+hospitalName
+                    }
+
+                } catch (err) {
+                    console.log(err)
+                }
+            },
+            async getBranchGradeFee(params){
+                try {
+                    let res = await GetBranchGradeByCode(params)
+                    this.ruleForm.payAmount = res.price
+                    this.ruleForm.Pledge = res.pledge
+                } catch (err) {
+                    console.log(err)
+                }
+            },
+
+//            等级套餐
+            // async getPackageOrderNumAll(){
+            //     try {
+            //         let res = await GetPackageOrderNumAll()
+            //         this.packageAll = res
+            //         this.GetTicketsAll()
+            //     } catch (err) {
+            //         console.log(err)
+            //     }
+            // },
+//            搜索代理
+            async getBranchByKeywords(params, index){
+                try {
+                    let res = await GetBranchByKeywords(params)
+
+                    this.referList = []
+                     this.loading = false;
+                    if (res instanceof Array && res.length > 0) {
+                         this.referList = []
+                        res.forEach(item => {
+                            let tagName = ""
+                            if(item["BranchTags"] != ''&&item["BranchTags"] != null&&item["BranchTags"] != undefined){
+                                tagName = '('+item["BranchTags"]+')'
+                            }
+                             this.referList.push({
+                                 Name:item.BranchName+tagName,
+                                 name: item.BranchName,
+                                 value: item.Code,
+                                 hospitalName:item.HospitalName,
+                                 hospitalCode:item.HospitalCode,
+                                 PhoneNumber:item.PhoneNumber
+                            })
+                        })
+                    }
+
+                } catch (err) {
+                    console.log(err)
+                }
+            },
+//            获取所有等级
+            async getBranchGradeAll(){
+                try {
+                    let [grade,pack,tickets] = await Promise.all([GetBranchGradeAll(),GetPackageOrderNumAll(),GetTicketsAll()])
+                    this.gradeList = grade
+                    this.packageAll = pack
+                    this.ticketsList = tickets
+                    // this.getPackageOrderNumAll()
+                } catch (err) {
+                    console.log(err)
+                }
+            },
+//            获取基础信息
+            async GetBaseDataAll(){
+                try {
+                    let [tags,consumeList,service,res,hos] = await Promise.all([GetTagByPage({TypeCode:"7", pageIndex:1, pageSize:100, keywords:""}),
+                    getBaseDataByCode("0017"),getServiceManAll(),GetBaseDataAll(),GetDropDownPermission({typeId: 1})])
+                    this.tagsList = tags.data
+                    this.consumeList = consumeList
+                    service.forEach(item => {
+                        if (item.SerTypeCode == "004") {
+                            this.consultList.push({
+                                code: item["Code"],
+                                name: item["ServiceName"],
+                                text: item["ServiceName"] + "(" + item["Code"] + ")"
+                            });
+                        }
+                    });
+                    this.supplyList = hos.data//医院
+                    this.baseMesSplit(res)
+                    this.getBranchGradeAll()
+                } catch (err) {
+                    console.log(err)
+                }
+            },
+//            添加代理
+            async AddBranch(params){
+                try {
+                    let res = await AddBranch(params)
+                    if (res.success) {
+                        this.$message({message: '添加成功', type: 'success'});
+                        this.$emit("close", true)
+                    } else {
+                        this.$message.error('添加失败'+res.error);
+                    }
+                    this.saveLoading = false
+                } catch (err) {
+                    console.log(err)
+                    this.$message.error('添加失败');
+                }
+            },
+            // async GetTicketsAll(){
+            //     try {
+            //         let res = await GetTicketsAll()
+            //         this.ticketsList = res
+            //     } catch (err) {
+            //         console.log(err)
+            //     }
+            // },
+//            远程搜索推荐人
+            remoteMethod(query) {
+                if (query !== '') {
+
+                    this.loading = true;
+                        this.getBranchByKeywords({
+                            keywords: query.removeSP()
+                        })
+                } else {
+                    this.referList = [];
+                }
+            },
+            //查找会员 下拉补全
+            async queryCus(queryString, cb) {
+                // queryString=enCode(queryString)
+                this.transCustomerList = []
+                if (queryString !== '' && queryString != undefined) {
+                    let res = await GetUserAllByKeywords({ 'keywords': queryString.removeSP() })
+                    this.getMember(res)
+                }
+                let _this = this
+                clearTimeout(this.timeout);
+                this.timeout = setTimeout(() => {
+                    cb(_this.transCustomerList);
+                }, 100);
+            },
+
+            getMember(res) {
+                // let res = await GetUserAllByKeywords({ 'keywords': str.removeSP() })
+                if (res instanceof Array && res.length > 0) {
+                    for (let item of res) {
+                        this.transCustomerList.push({
+                            value: '(' + item["Code"] + ')' + item["MemberName"],
+                            phone: item["PhoneNumber"],
+                            code: item["Code"],
+                            name: item["MemberName"],
+                            referrerCode: item['ReferrerCode'],
+                            referrerName: item['ReferrerName'],
+                            Type:item.Type == 1?"black":"red",
+                            CardNO:item["CardNO"]?item["CardNO"]:"",
+                            MarketConsultantCode:item["MarketConsultantCode"],
+                            MarketConsultantName:item["MarketConsultantName"]
+                        })
+                    }
+                }
+            },
+            //点击获取 会员信息  Oject
+            selectCus(item) {
+
+               this.ruleForm.transCustomerId = item.code
+               this.ruleForm.transCustomer = item.name
+            },
+
+            async GetUserAllByKeywords(params){
+                let res = await GetUserAllByKeywords(params)
+                this.transCustomerList = res
+                this.loading = false;
+            },
+
+            checkStr(){
+                let vm = this
+                setTimeout(()=> {
+                    vm.ruleForm.BankCard = vm.ruleForm.BankCard.replace(/\D/g, '')
+                }, 10)
+            },
+            submitForm(formName) {
+                let _this = this
+                this.$refs[formName].validate((valid) => {
+                    if (valid) {
+                        // if (this.getPackage()) {
+                            this.saveLoading = true
+                            _this.payTable.forEach(row=> {
+                                row.BranchCode = _this.ruleForm.RecCode
+                            })
+                            //    获取医院
+                            let hospitalcode="",hospitalname=""
+                            if(_this.show&&_this.recHospital.length>1){
+                                hospitalcode = _this.recHospital.split("|")[0]
+                                hospitalname = _this.recHospital.split("|")[1]
+                            }else{
+                                hospitalcode=_this.ruleForm.Hospital.split("|")[0]
+                                hospitalname=_this.ruleForm.Hospital.split("|")[1]
+                            }
+                            // 获取推荐人
+                            let name,code
+                            if(_this.ruleForm.RecCode.length>0){
+                                name = _this.ruleForm.Recommender.split("|")[0]
+                                code = _this.ruleForm.Recommender.split("|")[1]
+                            } else{
+                                if(_this.ruleForm.grade!='G100000'){
+                                    name = _this.ruleForm.Recommender.name
+                                    code = _this.ruleForm.Recommender.value
+                                }else{
+                                    name = ""
+                                    code = ""
+                                }
+                            }
+                            let object = {
+                                ShopEffectiveDate:String(this.ruleForm.enableDate).length>0?this.ruleForm.enableDate.formatDate("yyyy-MM-dd"):"",
+                                hospitalCode:hospitalcode,
+                                hospitalName:hospitalname,
+                                code: _this.ruleForm.RecCode,
+                                Pledge: _this.ruleForm.Pledge,
+                                BranchType: _this.ruleForm.BranchType,
+                                ShopArea: _this.ruleForm.ShopArea,
+                                shopName: _this.ruleForm.shopName,
+                                branchOrderPayList: JSON.stringify(_this.payTable),
+                                branchName: _this.ruleForm.name,
+                                branchGradeCode: _this.ruleForm.grade,
+                                ReferrerCode: code,
+                                referrerName: name,
+                                payAmount: _this.ruleForm.payAmount,
+                                idCard: _this.ruleForm.IdCard,
+                                bankCardId: _this.ruleForm.BankCard,
+                                openBankCode: _this.ruleForm.bank,
+                                openBankName: _this.ruleForm.BankName,
+                                bankCardHolder: _this.ruleForm.person,
+                                registDate: String(this.ruleForm.date).length>0?this.ruleForm.date.formatDate("yyyy-MM-dd"):"",
+                                sex: _this.ruleForm.Sex,
+                                birthday: this.ruleForm.year+"-"+this.ruleForm.month+"-"+this.ruleForm.day,
+                                formNO:_this.ruleForm.formNum,
+                                phoneNumber: _this.ruleForm.Tel,
+                                email: _this.ruleForm.email,
+                                income: _this.ruleForm.income,
+                                professionCode: _this.ruleForm.industry,
+                                education: _this.ruleForm.edu,
+                                province:_this.ruleForm.province,
+                                city:this.ruleForm.city,
+                                area:this.ruleForm.area,
+                                address:this.ruleForm.address,
+                                sourcWayeCode: _this.ruleForm.region,
+                                createUserId: getCookie("userId"),
+                                createBy: getCookie("userName"),
+                                IsEnable: false,
+                                CompanyName: _this.ruleForm.company,
+                                conPackage: _this.conPackSplit(_this.packageVal),
+                                comPakageOrderList: JSON.stringify(_this.packageTurn(_this.tableData)),
+                                identityType: _this.ruleForm.identityType,
+                                BranchPoints:_this.integral,
+                                cardNO:_this.ruleForm.cardNO,
+                                memo:this.ruleForm.memo,
+                                ExpertRate:Number(this.ruleForm.ExpertRate).div(100),
+                                IsExpert:this.ruleForm.IsExpert,
+                                MarketConsultantCode:this.ruleForm.MarketConsultantCode,
+                                MarketConsultantName:this.ruleForm.MarketConsultantName,
+                                AuthCustomer:this.ruleForm.RecCode.length == 0&&this.ruleForm.order?this.ruleForm.transCustomerId+'|'+this.ruleForm.transCustomer:"",
+                                BranchTags:this.ruleForm.BranchTags,
+                                CommonPhotoList:this.getImgMes(this.fileListImg3),
+                                imageUrl:this.getImg(this.fileList),
+                            }
+                            _this.AddBranch(object)
+                    } else {
+                        console.log('error submit!!');
+                        return false;
+                    }
+                });
+            },
+            getImg(data){
+                let arr = []
+                data.forEach(row=>{
+                    arr.push(row.response)
+                })
+                return arr.join("#")
+            },
+            getImgMes(data){
+                let arr = []
+                data.forEach(ele=>{
+                    arr.push({
+                        typeId:1,
+                        refCode:"",
+                        imgUrl:ele.url,
+                        createBy:getCookie("userName"),
+                        createUserId:getCookie("userId"),
+                    })
+                })
+                return JSON.stringify(arr)
+            },
+            resetForm(formName) {
+                this.$refs[formName].resetFields();
+                this.$emit("close", false)
+            },
+            conSelect() {
+                if (this.ruleForm.consult.length > 0) {
+                    this.ruleForm.MarketConsultantCode = this.ruleForm.consult.split( "|")[1];
+                    this.ruleForm.MarketConsultantName = this.ruleForm.consult.split("|")[0];
+                } else {
+                    this.ruleForm.MarketConsultantCode = "";
+                    this.ruleForm.MarketConsultantName = "";
+                }
+            },
+//            基础信息
+            baseMesSplit(data){
+                data.forEach(row=> {
+
+                    if (row.BusinessCode == "0001") {
+                        this.eduList.push(row)
+                    }
+                    if (row.BusinessCode == "0002") {
+                        this.industryList.push(row)
+                    }
+                    if (row.BusinessCode == "0003") {
+                        this.origionList.push(row)
+                    }
+                    if (row.BusinessCode == "0004") {
+                        this.bankList.push(row)
+                    }
+                    if(row.BusinessCode == "0006"){
+                        if(row.DataCode !="008"&&row.DataCode !="009"&&row.DataCode !="010"&&row.DataCode !="011"){
+                            this.payWayList.push({
+                                name:row.DataName,
+                                value:row.DataCode
+                            })
+                        }
+                    }
+                })
+            },
+//            套餐等级筛选
+            packGradeSelect(grade){
+//                获取所有套餐筛选等级
+                let arr = []
+                this.gradeList.forEach(data=> {
+                    if (data.OrderNum >= grade) {
+                        arr.push(data.OrderNum)
+                    }
+                })
+                this.removeDup(arr)
+            },
+            searchV(){
+                this.dialogTableVisible = true
+            },
+            setCurrent(row) {
+                this.$refs.singleTable.setCurrentRow(row);
+            },
+            handleCurrentChange(val) {
+                this.ruleForm.formNum = ""
+                this.ruleForm.order = false
+                if(val.Address == null||val.Address == undefined){
+                    val.Address == ",,,"
+                }
+                for(var p in val){
+                    if(val[p] == null||val[p] == undefined){
+                        val[p] = ""
+                    }
+                }
+                this.dialogTableVisible = false
+                this.ruleForm.id = val.Id
+                this.ruleForm.RecCode = val.Code
+                this.ruleForm.Recommender = val.ReferrerName + "|" + val.ReferrerCode
+                this.ruleForm.name = val.MemberName
+                this.ruleForm.Tel = val.PhoneNumber
+                this.ruleForm.email = val.Email
+                this.ruleForm.IdCard = val.IDCard
+
+                this.ruleForm.year = val.Birthday.substring(0,4).length==4?val.Birthday.substring(0,4):"",
+                this.ruleForm.month = val.Birthday.substring(5,7).length==2?val.Birthday.substring(5,7):"",
+                this.ruleForm.day = val.Birthday.substring(8,10).length==2?val.Birthday.substring(8,10):"",
+                this.ruleForm.Sex = val.Sex
+                this.ruleForm.region = val.SourcWayeCode
+                this.ruleForm.industry = val.ProfessionCode
+                this.ruleForm.edu = val.Education
+                this.ruleForm.income = val.Income
+                this.ruleForm.province = val.Province
+                setTimeout(()=> {this.ruleForm.city = val.City}, 20)
+                setTimeout(()=> {this.ruleForm.area = val.Area}, 40)
+                setTimeout(()=> {this.ruleForm.address = val.Address}, 60)
+                this.GetBranchByCode({BranchCode:val.ReferrerCode})
+            },
+//            去重
+            removeDup(data){
+                let arr = []
+                let len = data.length
+                data.sort()
+                for (let i = 0; i < len; i++) {
+                    if (data[i] != data[i + 1]) {
+                        arr.push(data[i])
+                    } else {
+                        if (i >= len - 1) {
+                            arr.push(data[i + 1])
+                        }
+                    }
+                }
+                this.packageSelect(arr, this.packageAll)
+            },
+//            套餐筛选组合
+            packageSelect(numList, dataList){
+
+                this.packageList = []
+                this.packageVal = []
+                for (let i = 0; i < numList.length; i++) {
+                    for (let j = 0; j < dataList.length; j++) {
+                        if (numList[i] == dataList[j].OrderNum) {
+                            if (!this.packageList[i]) {
+                                this.packageList.push([])
+                            }
+                            this.packageList[this.packageList.length - 1].push(dataList[j])
+                        }
+                    }
+                }
+                this.packageList.forEach(data=> {
+                    this.packageVal.push({code: "",jifen:""})
+                })
+            },
+            getTickSplit(data){
+                let arr = []
+                for (let i = 0; i < data.length; i++) {
+                    for (let j = 0; j < this.ticketsList.length; j++) {
+                        if (data[i].code.length != 0 && data[i].code == this.ticketsList[j].ConPacCode) {
+                            this.ticketsList[j].TicketCode = ""
+                            arr.push(this.ticketsList[j])
+                        }
+                    }
+                }
+                this.tableData = this.removeDu(arr)
+                this.integral = this.recharge()
+            },
+              removeDu(data){
+                let arr = []
+                let pack = JSON.parse(JSON.stringify(data))
+                for(var i = 0;i<data.length-1;i++){
+                    for(var j = i+1;j<data.length;j++){
+                        if(data[i].TickInfoCode == data[j].TickInfoCode){
+                            pack[j].TicNum+=pack[i].TicNum
+                            pack[i].dul = true
+                            break;
+                        }
+                    }
+                }
+                pack.forEach(row=>{
+                    if(!row.dul){
+                        arr.push(row)
+                    }
+                })
+
+               return arr
+            },
+            recharge(){
+                let arr = []
+                let num = 0
+                this.packageVal.forEach(row=>{
+                    for(let i =0;i<this.packageAll.length;i++){
+                        if(row.code ==this.packageAll[i].ConPacCode ){
+                            num+=Number(this.packageAll[i].JifenRecharge)
+                            break
+                        }
+                    }
+                })
+                return num
+            },
+            packageTurn(data){
+                let arr = []
+                data.forEach(row=> {
+                    arr.push({
+                        ConPacCode: row.ConPacCode,
+                        ConPacName: row.ConPacName,
+                        createUserId: getCookie("userId"),
+                        createBy: getCookie("userName"),
+                        TickInfoCode: row.TickInfoCode,
+                        TicketCode: row.TicketCode,
+                        TicketsType:row.TicketsType,
+                        ProjCodes:row.ProjCodes,
+                        UseCount:row.UseCount,
+                        TicNum:row.TicNum,
+                        ProjCodesNames:row.ProjCodesNames
+                    })
+                })
+                return arr
+            },
+            conPackSplit(data){
+                let arr = []
+                data.forEach(row=> {
+                    arr.push(row.code)
+                })
+                return arr.join(",")
+            },
+            // 获取医院收款账户
+             async GetHospitalAccountByCode(id){
+                let res = await GetHospitalAccountByCode({
+                    hospitalCode:id
+                })
+
+                this.accountList = res.data
+            },
+            // 添加支付信息
+           add(){
+                 this.dialogTableVisible1 = true
+            },
+            deleteRow(index, data){
+                data.splice(index, 1)
+            },
+            resetForm(formName){
+                this.$refs[formName].resetFields();
+                this.recHospital  = ""
+            },
+            selPAC(){
+                if(this.ruleForm.identityType == 1){
+                    if(this.time == 0){
+                        this.$alert('当前为新策略,请谨慎选择套餐','警告', {
+                        confirmButtonText: '确定',
+                        type:"warning",
+                        callback: action => {
+                            }
+                        });
+                    }
+                    this.time = 1
+                }
+            },
+            // 套餐选择判断
+            // getPackage(){
+            //     let flg = true
+            //     this.packageVal.forEach(row=> {
+            //         if (row.code.length == 0) {
+            //             flg = false
+            //         }
+            //     })
+            //     return flg
+            // }
+        },
+        components: {
+            payInfo,
+            searMem,
+            upload
+        }
+    }
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped lang="less">
+    .demo-ruleForm {
+        height: 750px;
+        overflow-y: auto;
+        overflow-x: hidden;
+    }
+
+    .form_item {
+        width: 49%;
+        margin-bottom: 10px;
+        margin-right: 0;
+    }
+
+    .form_select {
+        width: 100px;
+    }
+
+    .form_ipt {
+        width: 250px;
+    }
+
+    .form_select_2 {
+        width: 250px;
+    }
+</style>

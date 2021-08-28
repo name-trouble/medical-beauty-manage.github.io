@@ -1,0 +1,355 @@
+<template>
+    <div class="tag selCommon">
+        <el-form :inline="true" :model="formInline" class="demo-form-inline form_search" label-width="80px">
+            <el-form-item label="关键字：" class="form_item_mt10">
+                <el-input v-model="formInline.keywords" placeholder="标签内容" style="width: 200px;" v-on:keyup.enter.native="onSubmit"></el-input>
+            </el-form-item>
+            <el-form-item label="类型：" class="form_item_mt10">
+                <el-select v-model="formInline.typeCode" @change="onSubmit">
+                    <el-option label="全部" value=""></el-option>
+                    <el-option label="店铺" value="1"></el-option>
+                    <el-option label="医美项目" value="2"></el-option>
+                    <el-option label="积分商城" value="3"></el-option>
+                    <el-option label="商家商品" value="4"></el-option>
+                    <el-option label="人物" value="5"></el-option>
+                    <el-option label="客户类型" value="6"></el-option>
+                    <el-option label="代理类型" value="7"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label=" " class="form_item_mt10">
+                <el-button type="primary" @click="onSubmit" class="searchBtn">查询</el-button>
+                <el-button type="primary" class="searchBtn" @click="addTag('添加')">添加新标签</el-button>
+            </el-form-item>
+        </el-form>
+        <!-- 信息表 -->
+        <el-table :data="tableData" border style="width: 100%;margin-top:15px;margin-bottom:10px;" max-height="560" class="smt min_table" v-loading="loading">
+            <el-table-column prop="code" label="编号" min-width="100"></el-table-column>
+            <el-table-column prop="sortCode" label="排序" min-width="100"></el-table-column>
+            <el-table-column prop="typeName" label="类型" min-width="120"></el-table-column>
+            <el-table-column prop="tagName" label="标签内容" min-width="150"></el-table-column>
+            <el-table-column prop="status" label="操作" width="150">
+                <template slot-scope="scope">
+                    <el-button @click="addTag('编辑',scope.$index,tableData)" type="primary" size="small">编辑</el-button>
+                    <el-button @click="deleteRow(scope.$index,tableData)" type="primary" size="small">删除</el-button>
+                </template>
+            </el-table-column>
+        </el-table>
+        <!-- 信息表 -->
+
+        <!-- 分页 -->
+        <div class="block">
+            <el-pagination
+                @size-change="handleSizeChange"
+                @current-change="handleCurrentChange"
+                :current-page="currentPage"
+                :page-sizes="[10, 20, 30, 40]"
+                :page-size="size"
+                layout="total, sizes, prev, pager, next, jumper"
+                :total="total">
+            </el-pagination>
+        </div>
+        <!-- 分页 -->
+
+        <!--添加-->
+        <el-dialog :title="title" :visible.sync="tag" size="">
+            <el-form :model="form" style="width: 400px" label-width="80px">
+                <el-form-item label="标签类型："  class="form_item_mt10" style=''>
+                    <el-select v-model="form.typeCode" style='width: 250px'>
+                        <!--1.店铺 2.医美项目3.积分商城 4.商家商品  5.人物-->
+                        <el-option label="店铺" value="1"></el-option>
+                        <el-option label="医美项目" value="2"></el-option>
+                        <el-option label="积分商城" value="3"></el-option>
+                        <el-option label="商家商品" value="4"></el-option>
+                        <el-option label="人物" value="5"></el-option>
+                        <el-option label="客户类型" value="6"></el-option>
+                        <el-option label="代理类型" value="7"></el-option>
+                    </el-select>
+                </el-form-item>
+                <el-form-item label="内容："  class="form_item_mt10" style=''>
+                    <el-input v-model="form.tagName" style="width: 250px"></el-input>
+                </el-form-item>
+                <el-form-item label="排序："  class="form_item_mt10" style=''>
+                    <el-input v-model="form.sortCode" style="width: 250px"></el-input>
+                </el-form-item>
+                <el-form-item label="图片："  class="form_item_mt10" style=''>
+                    <el-upload
+                        class="avatar-uploader"
+                        :action="uploadUrl"
+                        :acceptImage="acceptImage"
+                        :show-file-list="false"
+                        :on-success="handleAvatarSuccess"
+                        :before-upload="beforeAvatarUpload">
+                        <img v-if="imageUrl" :src="imageUrl" class="avatar">
+                        <i v-else class="el-icon-plus avatar-uploader-icon"></i>
+                    </el-upload>
+                </el-form-item>
+            </el-form>
+            <div class="footer_ope">
+                <el-button @click="sure" type="primary" :loading="saveLoading">确定</el-button>
+                <el-button @click="cancel">取消</el-button>
+            </div>
+        </el-dialog>
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+    import {baseImgPath,xmxUrl} from "@/config/env"
+    import { imgApi, acceptImage } from '@/config/common'
+    let uploadUrl = xmxUrl + imgApi + '?op=card'
+    import  "@/style/selfCommon.less"
+    import { getCookie, delCookie } from '@/config/mUtils'
+    import {GetTagByPage,AddTags,UpdateTags,DeleteTagsById,DelImg} from "@/api/myData"
+    export default {
+        // name: "VideoManage",
+        data () {
+            return {
+                saveLoading:false,
+                loading:false,
+                title:"",
+                tag:false,
+                total:0,
+                size:10,
+                currentPage:1,
+                formInline: {
+                    keywords: '',
+                    typeCode:''
+                },
+                form:{
+                    typeCode:'',
+                    tagName:'',
+                    sortCode:1,
+                },
+                tableData:[],
+                imageUrl:'',
+                baseImgUrl:'',
+                uploadUrl,
+                acceptImage,
+            }
+        },
+        computed: {
+            /* 导出报表参数 tHeader,filterVal,tableData1*/
+            // tHeader(){
+            //     return ['封面', '主题', '发布人', '标签', '视频大小', '发布时间', '浏览人次', '平均浏览时长', '分享','销售额',"商品提成"]
+            // },
+            // filterVal(){
+            //     return ['picture', 'title', 'userName', 'tab', 'videoSize','createDate','views','grade','grade','ReferrerName']
+            // },
+            // tableData1(){
+            //     return this.tableData
+            // },
+            // name(){
+            //     return '视频管理'
+            // },
+            /*导出报表参数 tHeader,filterVal,tableData1*/
+        },
+        mounted(){
+            this.onSubmit()
+        },
+        methods:{
+            // 删除原图片/视频
+            async DelImg(filepath){
+                let res = await DelImg({filepath:filepath})
+                if(!res.status){        
+                    this.$message({message: '原图片删除失败！'+res.errorMessage,type: 'warning'});
+                }
+            },
+            handleAvatarSuccess(res, file) {
+                if(this.baseImgUrl!=''){
+                    this.DelImg(this.baseImgUrl)
+                }
+                
+                this.baseImgUrl = res
+                this.imageUrl = URL.createObjectURL(file.raw);
+            },
+            beforeAvatarUpload(file) {
+                const isLt2M = file.size / 1024 / 1024 < 1;
+                if (!isLt2M) {
+                this.$message.error('上传头像图片大小不能超过 1MB!');
+                }
+                return isLt2M;
+            },
+            async AddTags(params){
+                try{
+                    this.saveLoading = true
+                    let res = await AddTags(params)
+                    if(res.success){
+                        this.$message({message: '添加成功', type: 'success'});
+                        this.search()
+                        this.tag = false
+                    }else{
+                        this.$message.error('添加失败');
+                    }
+                    this.saveLoading = false
+                }catch(err){
+                    console.log(err)
+                    this.$message.error('添加失败');
+                }
+            },
+            async DeleteTagsById(params){
+                try{
+                    let res = await DeleteTagsById(params)
+                    if(res.success){
+                        this.$message({message: '删除成功', type: 'success'});
+                        this.search()
+                    }else{
+                        this.$message.error('删除失败');
+                    }
+                }catch(err){
+                    console.log(err)
+                    this.$message.error('删除失败');
+                }
+            },
+            async GetTagByPage(params){
+                try{
+                    this.loading = true
+                    let res = await GetTagByPage(params)
+                    this.tableData = this.dealData(res.data)
+                    this.total = res.count
+                    this.loading = false
+                }catch(err){
+                    console.log(err)
+                }
+            },
+            async UpdateTags(params){
+                try{
+                    this.saveLoading = true
+                    let res = await UpdateTags(params)
+                    if(res.success){
+                        this.$message({message: '编辑成功', type: 'success'});
+                        this.search()
+                        this.tag = false
+                    }else{
+                        this.$message.error('编辑失败');
+                    }
+                    this.saveLoading = false
+                }catch(err){
+                    console.log(err)
+                    this.$message.error('编辑失败');
+                }
+            },
+            onSubmit(){
+                this.currentPage = 1
+                this.search()
+            },
+            search(){
+                this.GetTagByPage({
+                    TypeCode:this.formInline.typeCode,
+                    pageIndex:this.currentPage,
+                    pageSize:this.size,
+                    keywords:this.formInline.keywords.removeSP()
+                })
+            },
+            handleSizeChange(val) {
+                console.log(`每页 ${val} 条`);
+                this.size = val
+                this.search()
+            },
+            handleCurrentChange(val) {
+                console.log(`当前页: ${val}`);
+                this.currentPage = val
+                this.search()
+            },
+
+            sure(){
+                this.form.imgUrl = this.baseImgUrl
+                if (this.title == "编辑") {
+                    this.UpdateTags(this.form)
+                } else {
+                    this.form.isEnable = 1
+                    this.AddTags(this.form)
+                }
+            },
+            cancel(){
+                this.tag = false
+            },
+//            发布视频
+            addTag(ope,index,data){
+                this.imageUrl = '',
+                this.baseImgUrl = '',
+                this.reset()
+                this.tag = true
+                this.title = ope
+                if(data){
+                    this.form = JSON.parse(JSON.stringify(data[index]))
+                    this.imageUrl = this.form.imgUrl? baseImgPath+ this.form.imgUrl:''
+                    this.baseImgUrl = this.form.imgUrl?this.form.imgUrl:''
+                }
+            },
+//            删除
+            deleteRow(index,data){
+                this.$confirm('此操作将删除该数据, 是否继续?', '提示', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    type: 'warning'
+                }).then(() => {
+                    
+                    this.DeleteTagsById({
+                        id:data[index].id
+                    })
+                }).catch(() => {
+
+                });
+            },
+            dealData(data){
+                data.forEach(row=>{
+                    row.typeName = this.getName(row.typeCode)
+                })
+                return data
+            },
+//            <!--1.店铺 2.医美项目3.积分商城 4.商家商品  5.人物-->
+            getName(code){
+                switch(Number(code)){
+                    case 1: return "店铺"
+                        break;
+                    case 2: return "医美项目"
+                        break;
+                    case 3: return "积分商城"
+                        break;
+                    case 4: return "商家商品"
+                        break;
+                    case 5: return "人物"
+                        break;
+                    case 6: return "客户类型"
+                        break;
+                    case 7: return "代理类型"
+                        break
+                }
+            },
+            reset(){
+                this.form = {
+                    typeCode:'',
+                    tagName:'',
+                }
+            }
+        },
+        components: {
+        }
+    }
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+  .avatar-uploader .el-upload {
+    border: 1px dashed #d9d9d9;
+    border-radius: 6px;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+  }
+  .avatar-uploader .el-upload:hover {
+    border-color: #20a0ff;
+  }
+  .avatar-uploader-icon {
+    font-size: 28px;
+    color: #8c939d;
+    width: 178px;
+    height: 178px;
+    line-height: 178px;
+    text-align: center;
+  }
+  .avatar {
+    width: 178px;
+    height: 178px;
+    display: block;
+  }
+</style>

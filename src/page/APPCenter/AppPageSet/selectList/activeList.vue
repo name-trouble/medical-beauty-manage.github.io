@@ -1,0 +1,231 @@
+<template>
+<div class="activeList" style="text-align:left">
+    <div class="Activity newNotice selCommon">
+        <el-form :inline="true" :model="formInline" class="demo-form-inline" label-width="70px">
+            <el-form-item label="关键字" class="form_item_mt10 form_item_wh280">
+                <el-input v-model="formInline.abstract" placeholder="" style="width: 200px;"></el-input>
+            </el-form-item>
+            <el-form-item label=" " class="form_item_mt10 form_item_wh280">
+                <el-button type="primary" @click="onSubmit" class="searchBtn">查询</el-button>
+            </el-form-item>
+        </el-form>
+        <div>
+            <el-table :data="tableData" border style="width: 100%;margin-top:15px;margin-bottom:10px;" height="460">
+                <el-table-column type="index" width="40" label="序号"></el-table-column>
+                <el-table-column prop="code" label="活动编号" min-width="80"></el-table-column>
+                <el-table-column prop="pictureUrl" label="封面图" min-width="80">
+                    <template slot-scope="scope">
+                        <img :src="baseImgPath+scope.row.pictureUrl" alt="" width="50" height="50">
+                    </template>
+                </el-table-column>
+                <el-table-column prop="outTitle" label="外部标题" min-width="120"></el-table-column>
+
+
+                <el-table-column prop="createDate" label="创建时间" min-width="120"></el-table-column>
+                <el-table-column prop="status" label="操作" min-width="150">
+                    <template slot-scope="scope">
+                        <el-button  size="mini" icon="edit" @click="select(scope)"> 选择</el-button>
+                    </template>
+                </el-table-column>
+            </el-table>
+            <!-- 分页 -->
+            <div class="block">
+                <el-pagination
+                    @size-change="handleSizeChange"
+                    @current-change="handleCurrentChange"
+                    :current-page="currentPage[0]"
+                    :page-sizes="[10, 20, 30, 40]"
+                    :page-size="size[0]"
+                    layout="total, sizes, prev, pager, next, jumper"
+                    :total="total[0]">
+                </el-pagination>
+            </div>
+            <!-- 分页 -->
+        </div>
+
+    </div>
+</div>
+
+</template>
+
+<script type="text/ecmascript-6">
+    import {baseImgPath} from "@/config/env"
+    import { getCookie, delCookie } from '@/config/mUtils'
+    import {GetActive,} from "@/api/myData"
+    import  "@/style/selfCommon.less"
+    export default {
+
+        data () {
+            return {
+                baseImgPath:baseImgPath,
+                currentIndex:0,
+                total:[10,10],
+                size:[10,10],
+                currentPage:[1,1],
+                formInline: {
+                    abstract:"",
+                },
+                tableData:[],
+            }
+        },
+        mounted(){
+            this.getActive({
+                pageIndex:1,
+                pageSize:10
+            })
+        },
+        methods:{
+
+//            已发布活动
+            async getActive(params){
+                try{
+                    let res = await GetActive(params)
+                    if(res.status == true){
+                        this.tableData = res.data
+                        this.total[this.currentIndex] = res.count
+                    }
+                }catch(err){
+                    console.log(err)
+                }
+            },
+
+
+            select(item) {
+                ;
+                // item.column.type='primary';
+                this.$emit('ActiveSelectInfo',item.row.id, item.row.pictureUrl,item.row.outTitle)
+            },
+
+            publish(){
+                this.dialogVisible = true
+            },
+
+
+            handleSizeChange(val) {
+                console.log(`每页 ${val} 条`);
+                this.size[this.currentIndex] = val
+                this.search()
+            },
+
+            handleCurrentChange(val) {
+                console.log(`当前页: ${val}`);
+                this.currentPage[this.currentIndex] = val
+                this.search()
+            },
+            closeAct(val){
+                this.dialogVisible = false
+                this.search()
+            },
+
+            cancel(){
+                this.dialogVisible1 = false
+            },
+            getDate1(val1,val2){
+                this.formInline.date1 = val1
+                this.formInline.date2 = val2
+            },
+            getDate2(val1,val2){
+               this.formInline.date3 = val1
+                this.formInline.date4 = val2
+            },
+            createDate(){
+                let date = new Date()
+                return this.formatDate(date)
+            },
+            // 时间格式转化
+            formatTen (num) {
+                return num > 9 ? (num + "") : ("0" + num)
+            },
+            formatDate(date) {
+                if (date === '') {
+                    return ''
+                } else {
+                    var year = date.getFullYear();
+                    var month = date.getMonth() + 1;
+                    var day = date.getDate();
+                    // var hour = date.getHours();
+                    // var minute = date.getMinutes();
+                    // var second = date.getSeconds();
+                    return year + "-" + this.formatTen(month) + "-" + this.formatTen(day);
+                }
+            },
+            onSubmit(){                this.search()
+            },
+            search(num){
+                if(num==1){
+                    this.getCancelActive({
+                        pageIndex:this.currentPage[this.currentIndex],
+                        pageSize:this.size[this.currentIndex],
+                        where:this.getConditions()
+                    })
+                }  else{
+                    this.getActive({
+                        pageIndex:this.currentPage[this.currentIndex],
+                        pageSize:this.size[this.currentIndex],
+                        where:this.getConditions()
+                    })
+                }
+            },
+            getConditions(){
+                let abstract = this.formInline.abstract
+                let abs = abstract.length>0?"inTitle like '%"+abstract+"%' or outTitle like '%"+abstract + "%' or abstract like '%"+abstract+ "%'":""
+                let str =  abs
+                return str
+            },
+            getStr(date1,date2,key){
+                if(date1.length!=0&&date2.length!=0){
+                    return key+this.getMinStr(date1)+" and " + key + this.getMaxStr(date2)
+                }else{
+                    if(date1.length!=0){
+                        return key+this.getMinStr(date1)
+                    }else{
+                        if(date2.length!= 0){
+                            return key + this.getMaxStr(date2)
+                        }else{
+                            return ""
+                        }
+                    }
+                }
+            },
+            getMinStr(data){
+                if(data.length !=0){
+                    return ">"+"'"+data+"'"
+                }else{
+                    return ""
+                }
+            },
+            getMaxStr(data){
+                if(data.length !=0){
+                    return "<"+"'"+data+"'"
+                }else{
+                    return ""
+                }
+            },
+            getNull(data,key){
+
+                if(data.length!=0){
+                    return key+"="+"'"+data+"'"
+                }else{
+                    return ""
+                }
+            },
+            // dealData(data){
+                // data.forEach(row=>{
+                //     if(row.pictureUrl){
+                //         row.pictureUrl = baseImgPath + row.pictureUrl
+                //     }else{
+                //         row.pictureUrl = ""
+                //     }
+                // })
+                // return data
+            // }
+        },
+    }
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+.Activity{
+    text-align: left
+}
+</style>

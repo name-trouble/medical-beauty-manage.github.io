@@ -1,0 +1,598 @@
+<template>
+    <div class="selCommon">
+        <div style="margin-left:20px">
+            <div class="classification">
+                <div class="classify-tittle">栏目</div>
+                <ul class="classify_container">
+                    <li v-for='(item,index) in column' class="classify-list" :key="index" :class="{'active':currentIndex0===index}"
+                        @click='select(item,0,index)'>{{item.Name}}
+                    </li>
+                </ul>
+                <div class="classify-footer"></div>
+            </div>
+            <div class="classification">
+                <div class="classify-tittle">大类</div>
+                <ul class="classify_container">
+                    <li v-for='(item,index) in item1' class="classify-list" :key="index" :class="{'active':currentIndex1===index}"
+                        @click='select(item,1,index)'>{{item.name}}
+                    </li>
+                </ul>
+                <div class="classify-footer">
+                    <el-button class='edit-btn' type="primary" size='small' icon="plus" @click='add(1)'></el-button>
+                    <el-button class='edit-btn' type="primary" size='small' icon="edit" @click='edit(1)'></el-button>
+                    <el-button class='edit-btn' type="primary" size='small' icon="delete" @click='del(1)'></el-button>
+                </div>
+            </div>
+            <div class="classification">
+                <div class="classify-tittle">中类</div>
+                <ul class="classify_container">
+                    <li v-for='(item,index) in item2' class="classify-list" :key="index" :class="{'active':currentIndex2===index}"
+                        @click='select(item,2,index)'>{{item.name}}
+                    </li>
+                </ul>
+                <div class="classify-footer">
+                    <el-button class='edit-btn' type="primary" size='small' icon="plus" @click='add(2)'></el-button>
+                    <el-button class='edit-btn' type="primary" size='small' icon="edit" @click='edit(2)'></el-button>
+                    <el-button class='edit-btn' type="primary" size='small' icon="delete" @click='del(2)'></el-button>
+                </div>
+            </div>
+            <div class="classification">
+                <div class="classify-tittle">小类</div>
+                <ul>
+                    <li v-for='(item,index) in item3' class="classify-list" :key="index" :class="{'active':currentIndex3===index}"
+                        @click='select(item,3,index)'>{{item.name}}
+                    </li>
+                </ul>
+                <div class="classify-footer">
+                    <el-button class='edit-btn' type="primary" size='small' icon="plus" @click='add(3)'></el-button>
+                    <el-button class='edit-btn' type="primary" size='small' icon="edit" @click='edit(3)'></el-button>
+                    <el-button class='edit-btn' type="primary" size='small' icon="delete" @click='del(3)'></el-button>
+                </div>
+            </div>
+        </div>
+        
+<!--一级添加-->
+        <el-dialog title="添加：" :visible.sync="dialogFormVisible0" size="">
+            <el-form :model="form" :inline='true' style="width: 320px;">
+                <el-form-item label="名称" :label-width="formLabelWidth">
+                    <el-input v-model="form.name" auto-complete="off" style='width:200px;'></el-input>
+                </el-form-item>
+            </el-form>
+            <div slot="footer" class="dialog-footer">
+                <el-button type="primary" @click="addSure">确 定</el-button>
+                <el-button @click="dialogFormVisible0 = false">取 消</el-button>
+            </div>
+        </el-dialog>
+
+        <el-dialog title="编辑" :visible.sync="dialogFormVisible1" size="">
+            <el-form :model="form" :inline='true' style="width: 320px;">
+                <el-form-item label="名称：" :label-width="formLabelWidth">
+                    <el-input v-model="form.name" auto-complete="off" style='width:200px;'></el-input>
+                </el-form-item>
+            </el-form>
+            <div slot="footer" class="dialog-footer">
+                <el-button type="primary" @click="editSure()">确 定</el-button>
+                <el-button @click="dialogFormVisible1 = false">取 消</el-button>
+            </div>
+        </el-dialog>
+
+        <div class="clear">
+            <p style="line-height: 36px;display:inline-block;margin-top:20px">当前已选分类：“{{selectItem.name}}”,请选择属性：</p>
+            <div style="display:inline-block;margin-top:20px">
+                <input v-model="searMes" type="text" @keyup.enter="down($event)" placeholder="搜索" class="self_ipt" style="margin-bottom: 10px">
+                <el-button type="primary" @click="search">搜索</el-button>
+                <el-button type="primary" @click="addAttributes">确认添加</el-button>
+            </div>
+            <el-table ref="multipleTable" :data="tableData3" border tooltip-effect="dark" style="width: 100%;margin-bottom: 20px"
+                min-height="400px" max-height="500px" highlight-current-row @current-change="handleCurrentChange" @selection-change="handleSelectionChange">
+                <el-table-column type="selection" align="center" width="55" ></el-table-column>
+                <el-table-column prop="Code" label="编号" width="65"></el-table-column>
+                <el-table-column label="属性名称" min-width="120">
+                    <template scope="scope">{{ scope.row.Name }}</template>
+                </el-table-column>
+                <el-table-column prop="EnterWay" label="属性值的录入方式" min-width="120" align="center">
+                    <template scope="scope">
+                        <span v-if="scope.row.EnterWay == 1">文本框</span>
+                        <span v-if="scope.row.EnterWay == 2">下拉框</span>
+                        <span v-if="scope.row.EnterWay == 3">多选</span>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="TextValue" min-width="300" label="可选值列表">
+                    <template scope="scope">
+                        <span>{{scope.row.TextValue}}</span>
+                    </template>
+                </el-table-column>
+                <el-table-column type="index" width="70"></el-table-column>
+            </el-table>
+        </div>
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+    import '@/style/selfCommon.less';
+    import {GetCatelogByColumnCode,GetColumnAll,DeleteCatelogById,
+        GetPropertyByKeywords,GetCatelogChildrensByCode,AddCatalog,UpdateCatalog,BatchSaveCatalogProperty} from "@/api/myData"
+    export default {
+        // name: 'goodsClassification',
+        data () {
+            return {
+                path:"",
+                selectItem:{},
+                searMes:'',
+                dialogFormVisible0:false,
+                dialogFormVisible1:false,
+                formLabelWidth: '80px',
+                form: {},
+                formList:[],
+                column:[],
+                addIndex:"",
+                editIndex:"",
+                index0:'',
+                index1: '',
+                index2: '',
+                index3: '',
+                currentIndex0: '',
+                currentIndex1: '',
+                currentIndex2: '',
+                currentIndex3: '',
+                item1: [],
+                item2: [],
+                item3: [],
+                data:[],
+                tableData3:[],
+                multipleSelection: []
+            }
+        },
+        mounted: function () {
+            this.getColumn()
+//            this.tableData2 = this.tableData3
+        },
+        computed:{
+        },
+        watch:{
+            searMes(curVal,oldVal){
+                this.search()
+            },
+        },
+        methods: {
+            async getColumn(){
+                try{
+                    let column = await GetColumnAll();
+                    this.column = column
+                    this.getProperty({keywords:""})
+                }catch(err){
+                    console.log('获取数据失败', err);
+                }
+            },
+    //    编辑
+            async editCatalog(data,code,num){
+                try{
+                    let res = await UpdateCatalog(data);
+                    this.getList(code,num)
+                }catch(err){
+                    console.log('获取数据失败', err);
+                }
+            },
+//    获取所有分类
+            async getall(data,num){
+                try{
+                    let res = await GetCatelogByColumnCode({code:this.column[this.currentIndex0].CloumnCode})
+                     this.data = res.data
+                    if(num == 0){
+                        this.item1=this.parentCode("")
+                        
+                    }
+                    if(num == 1){
+                        this.item2=this.parentCode(this.item1[this.currentIndex1].code)
+                    }
+                    if(num == 2){
+                        this.item3=this.parentCode(this.item2[this.currentIndex2].code)
+                    }
+                }catch (err) {
+                    console.log('获取数据失败', err);
+                }
+            },
+//    删除分类
+            async DeleteCatelog(data,item,index){
+                try{
+                    let res = await DeleteCatelogById(data);
+                    item.splice(index,1)
+                }catch(err){
+                    console.log('获取数据失败', err);
+                }
+            },
+//    添加类名
+            async AddCatalog(params,code,index){
+                try{
+                    var res = await AddCatalog(params);
+                    this.getList(code,index)
+                    
+                }catch(err){
+                    console.log('获取数据失败', err);
+                }
+            },
+            //    搜索属性
+            async getProperty(params){
+                try{
+                    var res = await GetPropertyByKeywords(params);
+                    this.tableData3 = res
+                    var vm =this
+
+                    setTimeout(function(){
+                        vm.check()
+                    },200)
+                }catch(err){
+                    console.log('添加数据数据失败', err);
+                }
+            },
+            async batchSaveCatalog(params){
+                try{
+                    var res = await BatchSaveCatalogProperty({"JsonStr":JSON.stringify(params)});
+                    if(res.success != 0){
+                        this.$alert('添加成功', '提示', {
+                            confirmButtonText: '确定',
+                            type:"success"
+                        });
+                    }
+                }catch(err){
+                    console.log('添加数据数据失败', err);
+                    this.$alert('添加失败', '提示', {
+                        confirmButtonText: '确定',
+                        type:"warning"
+                    });
+                }
+            },
+
+            select: function (item, num, index) {
+                if(num === 0){
+                    this.currentIndex0 = index
+                    this.getall({code:this.column[index].CloumnCode},num)
+                    this.currentIndex1=""
+                    this.currentIndex2 = ''
+                    this.currentIndex3 = ''
+                    this.item2=[]
+                    this.item3=[]
+                    this.dataBind(item, 0, index)
+                }
+                if (num === 1) {
+                    this.currentIndex1 = index
+                    
+                    this.getall({code:this.column[this.currentIndex0].CloumnCode},num)
+                    this.item3 = []
+                    this.currentIndex2 = ''
+                    this.currentIndex3 = ''
+                    this.dataBind(item, 1, index)
+                }
+                if (num === 2) {
+                    this.currentIndex3 = ''
+                    this.currentIndex2 = index
+                    this.getall({code:this.column[this.currentIndex0].CloumnCode},num)
+                    this.dataBind(item, 2, index)
+                }
+                if (num === 3) {
+                    this.currentIndex3 = index
+                    this.dataBind(item, 3, index)
+                }
+                this.selectItem=item
+                if(item.CatalogPath){
+                    this.path = item.catalogPath
+                }else{
+                    this.path = ""
+                }
+                this.search()
+//                this.toggleSelection([this.tableData3[1]])
+            },
+            edit (num) {
+                this.editIndex = num
+                let flag = 0
+                if (this.form == {}) {
+                } else {
+                    if (num === 1&&this.item1[this.currentIndex1]) {
+                        this.form= JSON.parse(JSON.stringify(this.item1[this.currentIndex1]))
+                        flag = 1
+                    }
+                    if (num === 2&&this.item2[this.currentIndex2]) {
+                        this.form = JSON.parse(JSON.stringify(this.item2[this.currentIndex2]))
+                        flag = 1
+                    }
+                    if (num === 3&&this.item3[this.currentIndex3]) {
+                        this.form = JSON.parse(JSON.stringify(this.item3[this.currentIndex3]))
+                        flag = 1
+                    }
+                    if(flag == 1){
+                        this.dialogFormVisible1 = true
+                    }else{
+                        this.$alert('请选择分类', '提示', {
+                            confirmButtonText: '确定',
+                            type:"warning"
+                        });
+                    }
+                }
+            },
+            del: function (num) {
+                    if (num === 1&&this.item1!="") {
+                        this.item2 = ""
+                        this.item3 = ""
+                        var Id=this.item1[this.currentIndex1].id
+                        var index = this.currentIndex1
+                        var item = this.item1
+                        this.form1=""
+                        this.DeleteCatelog({id:Id},item,index)
+                        this.currentIndex1 = ""
+                    }
+                    if (num === 2&&this.item2!="") {
+                        this.item3 = ""
+                        var Id=this.item2[this.currentIndex2].id
+                        var index = this.currentIndex2
+                        var item = this.item2
+                        this.form2=""
+                        this.DeleteCatelog({id:Id},item,index)
+                        this.currentIndex2 = ""
+                    }
+                    if (num === 3&&this.item3!="") {
+                        var Id=this.item3[this.currentIndex3].id
+                        var index = this.currentIndex3
+                        var item = this.item3
+                        this.form3=""
+                        this.DeleteCatelog({id:Id},item,index)
+                        this.currentIndex3 = ""
+                    }
+            },
+            add: function (num) {
+                let flag = 0
+                if(num == 1&&String(this.currentIndex0).length!=0){
+                    flag = 1
+                }
+                if(num == 2&&String(this.currentIndex1).length!=0){
+                    flag = 1
+                }
+                if(num == 3&&String(this.currentIndex2).length!=0){
+                    flag = 1
+                }
+                if(flag == 1){
+                    this.addIndex = num
+                    this.form= {}
+                    this.dialogFormVisible0 = true
+                }else{
+                    this.$alert('请先选择上一分类', '提示', {
+                        confirmButtonText: '确定',
+                        type:"warning"
+                    });
+                }
+            },
+            addSure(){
+                var cloumnCode = this.column[this.currentIndex0].CloumnCode
+                var name = this.form.name
+
+                let catalogPath = ""
+                if(this.addIndex == 1){
+                    var cloumnName = this.column[this.currentIndex0].Name
+                    parentCode = ""
+                    this.AddCatalog({cloumnCode:cloumnCode, cloumnName:cloumnName, name:name,catalogPath:""},parentCode,1)
+                }
+                if (this.addIndex == 2) {
+                    var parentCode = this.item1[this.currentIndex1].code
+                    var cloumnName = this.item1[this.currentIndex1].name
+                    catalogPath = "|"+this.item1[this.currentIndex1].code+"|"
+                    this.AddCatalog({cloumnCode:cloumnCode, parentCode:parentCode, cloumnName:cloumnName, name:name,catalogPath:catalogPath},parentCode,2)
+                }
+                if (this.addIndex == 3) {
+                    var parentCode = this.item2[this.currentIndex2].code
+                    var cloumnName = this.item2[this.currentIndex2].name
+                    catalogPath = "|"+this.item1[this.currentIndex1].code+"|"+this.item2[this.currentIndex2].code+"|"
+                    this.AddCatalog({cloumnCode:cloumnCode, parentCode:parentCode, cloumnName:cloumnName, name:name,catalogPath:this.path},parentCode,3)
+                }
+               this.dialogFormVisible0 = false
+            },
+            editSure () {
+                var name = this.form.name
+                if(this.editIndex == 1){
+                    var parentCode = this.item1[this.currentIndex1].code
+                    var Id = this.item1[this.currentIndex1].id
+                    this.editCatalog({id:Id, name:name},"",this.editIndex)
+                }
+                if (this.editIndex == 2) {
+                    var Id = this.item2[this.currentIndex2].id
+                    var parentCode = this.item2[this.currentIndex2].parentCode
+                    this.editCatalog({id:Id, name:name},parentCode,this.editIndex)
+                }
+                if (this.editIndex == 3) {
+                     var Id = this.item3[this.currentIndex3].id
+                    var parentCode = this.item3[this.currentIndex3].parentCode
+                    this.editCatalog({id:Id, name:name},parentCode,this.editIndex)
+                }
+                this.dialogFormVisible1 = false
+            },
+            dataBind: function (item, num, index) {
+                // 中间过度参数
+                if (num === 1) {
+                    this.form1 = item
+                    this.index1 = index
+                }
+                if (num === 2) {
+                    this.form2 = item
+                    this.index2 = index
+                }
+                if (num === 3) {
+                    this.form3 = item
+                    this.index3 = index
+                }
+            },
+             async getList(code,num){
+                try{
+                    this.data = []
+                    let res =await GetCatelogByColumnCode({code:this.column[this.currentIndex0].CloumnCode})
+                    this.data = res.data
+                    if(num == 1){
+                        this.item1=this.parentCode("")
+                    }
+                    if(num == 2){
+                        this.item2=this.parentCode(code)
+                    }
+                    if(num == 3){
+                        this.item3=this.parentCode(code)
+                    }
+                }catch (err) {
+                    console.log('获取数据失败', err);
+                }
+            },
+            handleSelectionChange(val) {
+                
+                this.multipleSelection = val;
+            },
+
+            toggleSelection(rows) {
+                
+                if (rows) {
+                    rows.forEach(row => {
+                        this.$refs.multipleTable.toggleRowSelection(row);
+                    });
+                } else {
+                    this.$refs.multipleTable.clearSelection();
+                }
+            },
+            down (ev){
+                if(ev.keyCode == 13){
+                    this.search()
+                }
+            },
+            search(){
+                var columncode = ""
+                var Catelogcode = ""
+                if(this.selectItem == {}){
+                    columncode = ""
+                    Catelogccode = ""
+                }else{
+                    columncode = this.selectItem.cloumnCode
+                    if( this.selectItem.code){
+                        Catelogcode = this.selectItem.code
+                    }else{
+                        Catelogcode = ""
+                    }
+                }
+                this.getProperty({
+                    keywords:this.searMes.removeSP(),
+                    columncode:columncode,
+                    catelogcode:Catelogcode
+                })
+            },
+            addAttributes(){
+                var childCode = this.parentCode(this.selectItem.code)
+                if(childCode.length == 0){
+                    var arr=[]
+
+                    for (let i = 0; i < this.multipleSelection.length; i++) {
+                        arr.push({
+                            columnCode: this.selectItem.cloumnCode,
+                            catalogCode: this.selectItem.code,
+                            propertyCode: this.multipleSelection[i].code,
+                            propertyName: this.multipleSelection[i].name
+                        })
+                    }
+                    this.batchSaveCatalog(JSON.parse(JSON.stringify(arr)))
+                }else{
+                    this.$alert('请选择最终节点', '提示', {
+                            confirmButtonText: '确定',
+                            callback: action => {
+                         }
+                    });
+                }
+            },
+            handleCurrentChange(val) {
+                this.currentRow = val;
+            },
+            parentCode (code) {
+                
+                var arr =[]
+                for(let i =0;i<this.data.length;i++){
+                    if(code == this.data[i].parentCode){
+                        arr.push(this.data[i])
+                    }
+                }
+                
+                return arr
+             },
+            check(){
+                let arr=[]
+                this.tableData3.forEach(data=>{
+                    if(data.IsChecked == 1){
+                        arr.push(data)
+                    }
+                })
+                this.toggleSelection(arr)
+            }
+        }
+    }
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+    .classification {
+        display: block;
+        float: left;
+        width: 240px;
+        /* width: 20%; */
+        position: relative;
+        margin-top: 60px;
+        border:1px solid #dedede;
+        border-right: none;
+        height: 560px;
+    }
+    .classification:nth-child(4){
+        border:1px solid #dedede;
+    }
+
+    .classify-tittle {
+        position: absolute;
+        top: -40px;
+        width: 100%;
+        height: 40px;
+        color: #666;
+        text-align: center;
+        line-height: 40px;
+        font-size: 16px;
+    }
+
+    .classification .classify-list{
+        cursor: pointer;
+        width:100%;
+        height:32px;
+        line-height: 32px;
+        font-size: 14px;
+        text-indent: 21px;
+        color: #666;
+    }
+    .classify_container{
+        height:513px;
+        overflow: auto;
+    }
+    .classify-footer  {
+        position: absolute;
+        bottom: 0px;
+        width: 100%;
+        height: 47px;
+        background-color: rgba(242, 242, 242, 1);
+        line-height: 48px;
+        text-indent: 110px;
+    }
+
+    .edit-btn {
+        /*float: right;*/
+        margin-left: 0px;
+    }
+
+    .classify-list.active {
+        background:#cda382;
+        color: #fff;
+    }
+
+    .el-button--primary {
+        color: #fff;
+        background-color: #cda382;
+        border-color: #cda382;
+    }
+    .clear{
+        clear: both;
+        margin-left: 20px;
+    }
+</style>

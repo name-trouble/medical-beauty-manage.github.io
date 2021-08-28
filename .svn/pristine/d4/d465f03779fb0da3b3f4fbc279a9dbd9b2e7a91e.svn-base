@@ -1,0 +1,329 @@
+<template>
+    <div class="PostManage selCommon">
+        <el-form :inline="true" :model="formInline" class="demo-form-inline form_search" label-width="80px">
+            <el-form-item label="发布时间：" style='margin-bottom:10px;font-size:12px !important;'>
+                <el-date-picker
+                    v-model="date"
+                    type="daterange"
+                    style="width: 200px;"
+                    @change="dateSelect"
+                    placeholder="选择日期范围">
+                </el-date-picker>
+            </el-form-item>
+            <!-- <el-form-item label="发布人：" class="form_item_mt10">
+                <el-input v-model="formInline.userName" placeholder="" style="width: 200px;"></el-input>
+            </el-form-item> -->
+            <el-form-item label="浏览：" class="form_item_mt10">
+                <el-input v-model="formInline.ViewsStart" placeholder="" style="width: 92px;"></el-input>
+                <span style="float: left;margin-right: 5px">-</span>
+                <el-input v-model="formInline.ViewsEnd" placeholder="" style="width: 92px;"></el-input>
+            </el-form-item>
+            <el-form-item label="点赞：" class="form_item_mt10">
+                <el-input v-model="formInline.PraiseCountStart" placeholder="" style="width: 92px;"></el-input>
+                <span style="float: left;margin-right: 5px">-</span>
+                <el-input v-model="formInline.PraiseCountEnd" placeholder="" style="width: 92px;"></el-input>
+            </el-form-item>
+            <el-form-item label="评论：" class="form_item_mt10">
+                <el-input v-model="formInline.CommentCountStart" placeholder="" style="width: 92px;"></el-input>
+                <span style="float: left;margin-right: 5px">-</span>
+                <el-input v-model="formInline.CommentCountEnd" placeholder="" style="width: 92px;"></el-input>
+            </el-form-item>
+            <el-form-item label="分享：" class="form_item_mt10">
+                <el-input v-model="formInline.shareStart" placeholder="" style="width: 92px;"></el-input>
+                <span style="float: left;margin-right: 5px">-</span>
+                <el-input v-model="formInline.shareEnd" placeholder="" style="width: 92px;"></el-input>
+            </el-form-item>
+            <el-form-item label="关键字：" class="form_item_mt10">
+                <el-input v-model="formInline.keyWords" placeholder="发布人/主题" style="width: 200px;"></el-input>
+            </el-form-item>
+            <el-form-item label=" " class="form_item_mt10">
+                <el-button type="primary" @click="onSubmit" class="searchBtn">查询</el-button>
+                <!-- <Export :tHeader="tHeader" :filterVal=' filterVal' :tableData1='tableData1' :name='name'></Export> -->
+            </el-form-item>
+        </el-form>
+        <!-- 信息表 -->
+        <el-table :data="tableData" border style="width: 100%;margin-top:15px;margin-bottom:10px;"  class="smt min_table" max-height="500">
+            <el-table-column type="index" width="40"></el-table-column>
+            <el-table-column prop="content" label="主题" min-width="150"></el-table-column>
+            <el-table-column prop="RegistDate" label="照片1" min-width="70">
+                <template scope="scope">
+                     <span v-if="scope.row.pictures[0]">
+                         <img :src="scope.row.pictures[0]" alt="" width="50" height="50">
+                     </span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="RegistDate" label="照片2" min-width="70">
+                <template scope="scope">
+                    <span v-if="scope.row.pictures[1]">
+                          <img :src="scope.row.pictures[1]" alt=""  width="50" height="50">
+                    </span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="RegistDate" label="照片3" min-width="70">
+                <template scope="scope">
+                    <span v-if="scope.row.pictures[2]">
+                          <img :src="scope.row.pictures[2]" alt=""  width="50" height="50">
+                    </span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="RegistDate" label="照片4" min-width="70">
+                <template scope="scope">
+                    <span v-if="scope.row.pictures[3]">
+                          <img :src="scope.row.pictures[3]" alt=""  width="50" height="50">
+                    </span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="RegistDate" label="照片5" min-width="70">
+                <template scope="scope">
+                    <span v-if="scope.row.pictures[4]">
+                          <img :src="scope.row.pictures[4]" alt=""  width="50" height="50">
+                    </span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="RegistDate" label="照片6" min-width="70">
+                <template scope="scope">
+                    <span v-if="scope.row.pictures[5]">
+                          <img :src="scope.row.pictures[5]" alt=""  width="50" height="50">
+                    </span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="RegistDate" label="照片7" min-width="70">
+                <template scope="scope">
+                    <span v-if="scope.row.pictures[6]">
+                          <img :src="scope.row.pictures[6]" alt=""  width="50" height="50">
+                    </span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="RegistDate" label="照片8" min-width="70">
+                <template scope="scope">
+                    <span v-if="scope.row.pictures[7]">
+                          <img :src="scope.row.pictures[7]" alt=""  width="50" height="50">
+                    </span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="RegistDate" label="照片9" min-width="70">
+                <template scope="scope">
+                    <span v-if="scope.row.pictures[8]">
+                          <img :src="scope.row.pictures[8]" alt=""  width="50" height="50">
+                    </span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="createDate" label="发布时间" min-width="150">
+                <template scope="scope">
+                    {{scope.row.createDate.substring(0,10)}}
+                </template>
+            </el-table-column>
+            <el-table-column prop="userRealName" label="发布人" min-width="120"></el-table-column>
+            <el-table-column prop="views" label="浏览" min-width="80"></el-table-column>
+            <el-table-column prop="praiseCount" label="点赞" min-width="80"></el-table-column>
+            <el-table-column prop="replyCount" label="评论" min-width="80">
+                <template scope="scope">
+                    <el-button type="text" @click="comment(scope.row)">{{scope.row.commentCount}}</el-button>
+                </template>
+            </el-table-column>
+            <el-table-column prop="shareCount" label="分享" min-width="80"></el-table-column>
+            <el-table-column prop="" label="操作" min-width="100">
+                <template scope="scope">
+                    <el-button @click="setTop(scope.$index,tableData,0)" type="primary" size="small" v-if="scope.row.status == 1">取消置顶</el-button>
+                    <el-button @click="setTop(scope.$index,tableData,1)" type="primary" size="small" v-if="scope.row.status == 0">置顶</el-button>
+                </template>
+            </el-table-column>
+        </el-table>
+        <!-- 信息表 -->
+
+        <!-- 分页 -->
+        <div class="block">
+            <el-pagination
+                @size-change="handleSizeChange"
+                @current-change="handleCurrentChange"
+                :current-page="currentPage"
+                :page-sizes="[10, 20, 30, 40]"
+                :page-size="size"
+                layout="total, sizes, prev, pager, next, jumper"
+                :total="total">
+            </el-pagination>
+        </div>
+        <el-dialog title="评论管理" :visible.sync="dialogComment" size="">
+            <comment  :themeType="2" v-if="dialogComment" :propsId="propsId" style="width:1000px;" @search="search"></comment>
+        </el-dialog>
+        <!-- 分页 -->
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+    import { getCookie, delCookie } from '@/config/mUtils'
+    import {baseImgPath} from "@/config/env"
+    import  "@/style/selfCommon.less"
+    import {GetPost,SetPostStick} from "@/api/myData"
+    import comment from "./components/commentView.vue"
+    export default {
+        // name: "PostManage",
+        data () {
+            return {
+                total:0,
+                size:10,
+                date:"",
+                dialogComment:false,
+                currentPage:1,
+                formInline: {
+                    keyWords:"",
+                    date1: '',
+                    date2: '',
+                    userName:"",
+                    CommentCountStart:"",
+                    CommentCountEnd:"",
+                    PraiseCountStart:"",
+                    PraiseCountEnd:"",
+                    ViewsStart:"",
+                    ViewsEnd:"",
+                    shareStart:"",
+                    shareEnd:"",
+                },
+                tableData:[],
+                state:"",
+                propsId:'',
+            }
+        },
+        computed: {
+            /* 导出报表参数 tHeader,filterVal,tableData1*/
+            // tHeader(){
+            //     return ['主题', '照片1', '照片2', '照片3', '照片4', '照片5', '照片6', '照片7', '照片8','照片9','发布时间','浏览','点赞','评论','分享']
+            // },
+            // filterVal(){
+            //     return ['content', 'pictures[0]', 'pictures[1]', 'pictures[2]', 'pictures[3]','pictures[4]','pictures[5]','pictures[6]','pictures[7]',
+            //         'pictures[8]','createDate','userName','views','praiseCount','replyCount','shareCount']
+            // },
+            // tableData1(){
+            //     return this.tableData
+            // },
+            // name(){
+            //     return '帖子管理'
+            // },
+            /*导出报表参数 tHeader,filterVal,tableData1*/
+        },
+        mounted(){
+         /*   this.getPost({
+                pageIndex:this.currentPage,
+                pageSize:this.size
+            })*/
+            this.search()
+        },
+        methods:{
+           
+            async setStick(params){
+                try {
+                    let res = await SetPostStick(params)
+                    if(res.status == true){
+                        this.$message({message: '操作成功', type: 'success'});
+                        this.search()
+                    }else{
+                        this.$message.error('操作失败')
+                    }
+                }catch(err){
+                    console.log(err)
+                    this.$message.error('操作失败')
+                }
+            },
+            async getPost(params){
+                try{
+                    let res = await GetPost(params)
+                    this.total = res.count
+                    this.tableData = this.dealData(res.data)
+
+                }catch(err){
+                console.log(err)
+                }
+            },
+            dateSelect(val){
+                if(val.length!=0){
+                    this.formInline.date1 = val.substring(0,10)
+                    this.formInline.date2 = val.substring(13)
+                }else{
+                    this.formInline.date1 = ""
+                    this.formInline.date2 = ""
+                }
+                
+            },
+            onSubmit(){
+                this.currentPage = 1
+                this.search()
+            },
+            handleSizeChange(val) {
+                console.log(`每页 ${val} 条`);
+                this.size = val
+                this.search()
+            },
+            handleCurrentChange(val) {
+                console.log(`当前页: ${val}`);
+                this.currentPage = val
+                this.search()
+            },
+            setTop(index,data,num){
+//              num  2置顶 1取消置顶
+
+                    this.setStick({
+                        id:data[index].id,
+                        modifiedUserId:getCookie("userId"),
+                        modifiedBy:getCookie("userName"),
+                        modifiedOn:new Date().formatDate("yyyy-MM-dd"),
+                        status:num
+                    })
+            },
+           
+            dealData(data){
+                data.forEach(row=>{
+                    if(row.pictures){
+                        row.pictures = row.pictures.split("#")
+                        for(let i = 0;i<row.pictures.length;i++){
+                            row.pictures[i] = baseImgPath + row.pictures[i]
+                        }
+                    }
+                })
+                return data
+            },
+            comment(data){
+                this.propsId = data.id
+                this.dialogComment = true
+            },
+            search(){
+                this.getPost({
+                    pageIndex:this.currentPage,
+                    pageSize:this.size,
+                    where:this.getConditions()
+                })
+            },
+            getConditions(){
+                let date1 =this.formInline.date1
+                let date2 =this.formInline.date2
+                let abstract = this.formInline.keyWords
+                let abs = abstract.length>0?"content like '%"+abstract+"%' or userName like '%"+abstract +"%'":""
+                let conditions = ''
+                if(date1){conditions+="CreateDate>='"+date1+"'"}
+                if(date2){conditions+=" and CreateDate<='"+date2+"'"}
+
+                if(this.formInline.ViewsStart){conditions+=" and Views>='"+this.formInline.ViewsStart+"'"}
+                if(this.formInline.ViewsEnd){conditions+=" and Views<='"+this.formInline.ViewsEnd+"'"}
+
+                if(this.formInline.shareStart){conditions+=" and shareCount>='"+this.formInline.shareStart+"'"}
+                if(this.formInline.shareEnd){conditions+=" and shareCount<='"+this.formInline.shareEnd+"'"}
+
+                if(this.formInline.PraiseCountStart){conditions+="and PraiseCount>='"+this.formInline.PraiseCountStart+"'"}
+                if(this.formInline.PraiseCountEnd){conditions+=" and PraiseCount<='"+this.formInline.PraiseCountEnd+"'"}
+
+                if(this.formInline.CommentCountStart){conditions+="and CommentCount>='"+this.formInline.CommentCountStart+"'"}
+                if(this.formInline.CommentCountEnd){conditions+=" and CommentCount<='"+this.formInline.CommentCountEnd+"'"}
+
+                if(abstract){conditions+=" and "+abs}
+                return conditions
+            },
+        },
+        components: {
+            comment
+        }
+    }
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+    .PostManage{}
+</style>

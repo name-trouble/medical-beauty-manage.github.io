@@ -1,0 +1,329 @@
+<template>
+    <div class="AttributeList selCommon">
+        <div class="clear">
+            <input v-model="searMes" type="text"  v-on:keyup.enter.native="search" placeholder="搜索" class="self_ipt" style="margin-bottom: 10px">
+            <el-button type="primary" class="searchBtn" @click="search">搜索</el-button>
+            <el-button type="primary" @click="addAttributes" class="searchBtn">添加属性</el-button>
+            <el-table ref="multipleTable" :data="tableData3" border tooltip-effect="dark" style="width: 100%;margin-bottom: 20px" max-height="500px"
+                highlight-current-row @current-change="handleCurrentChange1">
+                <el-table-column type="index" width="70"></el-table-column>
+                <el-table-column prop="Code" label="编号" width="65"></el-table-column>
+                <el-table-column label="属性名称" min-width="120"><template slot-scope="scope">{{ scope.row.Name }}</template></el-table-column>
+                <el-table-column prop="EnterWay" label="属性值的录入方式" min-width="80">
+                    <template slot-scope="scope">
+                        <span v-if="scope.row.EnterWay == 1">文本框</span>
+                        <span v-if="scope.row.EnterWay == 2">下拉框</span>
+                        <span v-if="scope.row.EnterWay == 3">多选</span>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="TextValue" min-width="300" label="可选值列表">
+                    <template slot-scope="scope">
+                        <span>{{scope.row.TextValue}}</span>
+                    </template>
+                </el-table-column>
+                <el-table-column label="操作" min-width="120">
+                    <template slot-scope="scope">
+                        <el-button type="primary" size="small" @click="edit(scope.$index,tableData3)">编辑</el-button>
+                        <el-button type="primary" size="small"  @click="deleteRow(scope.$index,tableData3)">删除</el-button>
+                    </template>
+                </el-table-column>
+            </el-table>
+            <el-dialog :title="tittle" :visible.sync="dialogFormVisible" size="">
+                <el-form :model="form" style="width: 550px">
+                    <el-form-item label="属性名称：" :label-width="formLabelWidth" class="form_item_mt10">
+                        <el-input v-model="form.Name" style="width: 300px"></el-input>
+                    </el-form-item>
+                    <el-form-item label="录入方式：" :label-width="formLabelWidth" class="form_item_mt10">
+                        <el-radio-group v-model="form.EnterWay" @change="handleRadioChange">
+                            <el-radio :label="1">输入框</el-radio>
+                            <el-radio :label="2">下拉框</el-radio>
+                            <el-radio :label="3">多选</el-radio>
+                        </el-radio-group>
+                    </el-form-item>
+                    <el-form-item label="可选值列表：" :label-width="formLabelWidth" class="form_item_mt10">
+                        <!--手工录入-->
+                        <div class="optional_list" v-if="form.EnterWay == 1">
+
+                        </div>
+                        <!--列表选取-->
+                        <div class="optional_list" v-if="form.EnterWay == 2">
+                            <ul>
+                                <li class="select_list" v-for="(item,index) in selectList" :key="index">
+                                    <span style="float: left">
+                                        {{item}}
+                                    </span>
+                                    <span style="float: right">
+                                         <i class="el-icon-close scale" @click="deleteAttr(index)"></i>
+                                    </span>
+                                </li>
+                            </ul>
+                            <input v-model="selectMes" @keydown.enter="addAttr($event)" style="float: none;border: none;width: 100%"
+                             placeholder="请自行添加，点击回车完成单条数据录入">
+                        </div>
+                        <!--列表多选-->
+                        <div class="optional_list" v-if="form.EnterWay == 3">
+                            <ul>
+                                <li class="select_list" v-for="(item,index) in selectList" :key="item">
+                                    <span style="float: left">
+                                        {{item}}
+                                    </span>
+                                    <span style="float: right">
+                                         <i class="el-icon-close scale" @click="deleteAttr(index)"></i>
+                                    </span>
+                                </li>
+                            </ul>
+                            <input v-model="selectMes" @keydown.enter="addAttr($event)" style="float: none;border: none;width: 100%"
+                             placeholder="请自行添加，点击回车完成单条数据录入">
+                        </div>
+                    </el-form-item>
+
+                </el-form>
+                <div slot="footer" class="dialog-footer">
+                    <el-button type="primary" @click="save" :loading="saveLoading">保 存</el-button>
+                    <el-button @click="dialogFormVisible = false">取 消</el-button>
+                </div>
+            </el-dialog>
+
+
+        </div>
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+    import '@/style/selfCommon.less';
+    import {AddProperty,GetPropertyByKeywords,DeletePropertyById,UpdateProperty} from "@/api/myData"
+    export default {
+        // name: 'AttributeList',
+        data () {
+            return {
+//                属性搜索
+                saveLoading:false,
+                searMes:'',
+//                添加属性可选值
+                selectList:[],
+                selectMes:[],
+                attr_radio:"",
+                tittle:"",
+                currentPage4: 1,
+                dialogFormVisible: false,
+                formLabelWidth: '100px',
+                form: {
+                    name: '',
+                    EnterWay:"",
+                },
+                tableData3:[],
+                multipleSelection: []
+            }
+        },
+        mounted: function () {
+            this.getProperty({keywords:""})
+        },
+        computed:{
+            
+        },
+        watch:{
+            searMes(curVal,oldVal){
+                this.search()
+            },
+            "form.EnterWay":{
+                handler(curVal,oldVal){
+                    if(oldVal != ""){
+//                        this.selectList = []
+                    }
+                },
+                deep:true
+            }
+        },
+        methods: {
+//            添加属性
+            async addProperty(params){
+                try{
+                    this.saveLoading = true
+                    let res = await AddProperty(params);
+                    if(res.success){
+                        this.$message({
+                            message: '添加成功',
+                            type: 'success'
+                        });
+                        this.dialogFormVisible = false
+                        this.form = {}
+                        this.getProperty({keywords:""})
+                    }else{
+                        this.$message.error('添加失败'+res.errorMessage);
+                    }
+                    this.saveLoading = false
+                }catch(err){
+                    console.log('添加数据数据失败', err);
+                    this.$message.error('添加失败');
+                }
+            },
+//    搜索属性
+            async getProperty(params){
+                try{
+                    let res = await GetPropertyByKeywords(params);
+                    this.tableData3 = res
+                }catch(err){
+                    console.log('添加数据数据失败', err);
+                }
+            },
+//    删除属性
+            async DeleteProperty(params){
+                try{
+                    var res = await DeletePropertyById(params);
+                    if(res.success){
+                        this.$message({
+                            message: '删除成功',
+                            type: 'success'
+                        });
+                        this.getProperty({keywords:""})
+                    }
+                }catch(err){
+                    console.log('添加数据数据失败', err);
+                    this.$message.error('删除失败');
+                }
+            },
+            //    更新属性
+            async updateProperty(params){
+                try{
+                    this.saveLoading = true
+                    var res = await UpdateProperty(params);
+                    if(res.success){
+                        this.$message({
+                            message: '更新成功',
+                            type: 'success'
+                        });
+                        this.dialogFormVisible = false
+                        this.getProperty({keywords:""})
+                    }
+                    this.saveLoading = false
+                }catch(err){
+                    console.log('添加数据数据失败', err);
+                    this.$message.error('更新失败');
+                }
+            },
+            search(){
+                this.getProperty({keywords:this.searMes.removeSP()})
+            },
+            handleSizeChange(val) {
+                console.log(`每页 ${val} 条`);
+            },
+            handleCurrentChange(val) {
+                console.log(`当前页: ${val}`);
+            },
+            down (ev){
+                if(ev.keyCode == 13){
+                    this.search()
+                }
+            },
+            addAttributes(){
+                this.tittle="添加属性"
+                this.selectList= []
+                this.dialogFormVisible = true
+                this.form={
+                    name: '',
+                    EnterWay:"",
+                }
+                this.$refs.multipleTable.setCurrentRow();
+            },
+//            单行点击背景变色
+            handleCurrentChange1(val) {
+                this.currentRow = val;
+            },
+            edit (index,data){
+                this.selectMes = ""
+                this.tittle="编辑属性"
+                this.selectList= []
+                this.dialogFormVisible = true
+                this.form= JSON.parse(JSON.stringify(data[index]))
+
+                if(data[index].TextValue&&data[index].TextValue !=""){
+                    this.selectList = data[index].TextValue.split(",")
+                }
+            },
+            deleteRow(index,data){
+                this.$confirm('此操作将删除该属性, 是否继续?', '提示', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    type: 'warning'
+                }).then(() => {
+                    this.DeleteProperty({id:data[index].Id})
+                }).catch (()=>{
+
+                })
+            },
+            addAttr(ev){
+                this.selectList.push(this.selectMes)
+                this.selectMes = ""
+            },
+            deleteAttr (index) {
+                this.selectList.splice(index,1)
+            },
+            save (){
+                if(this.tittle == "添加属性"){
+                    if(this.selectMes==""){
+                    }else{
+                        this.selectList.push(this.selectMes)
+                    }
+                    this.addProperty({
+                        name:this.form.Name,
+                        textValue:this.selectList,
+                        EnterWay:this.form.EnterWay
+                    })
+                }else{
+                    let value = ""
+                    if(this.form.EnterWay == 1){
+                        value = ""
+                    }else{
+                        value = this.selectList
+                    }
+
+                    this.updateProperty({
+                        id:this.form.Id,
+                        name:this.form.Name,
+                        code:this.form.Code,
+                        enterWay:this.form.EnterWay,
+                        textValue:value
+                    })
+                }
+            },
+            handleRadioChange (){
+//                this.selectList = []
+            }
+        }
+    }
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+    .clear{
+        clear: both;
+    }
+    .block {
+        float: right;
+    }
+    .scale{
+        cursor: pointer;
+        -webkit-transform: scale(0.7);
+        -moz-transform: scale(0.7);
+        -ms-transform: scale(0.7);
+        -o-transform: scale(0.7);
+        transform: scale(0.7);
+    }
+    .scale:hover{
+        color: #00a0e9;
+    }
+    .select_list{
+        float: left;
+        width: 100%;
+        height: 30px;
+        border-bottom: 1px solid #bfcbd9;
+    }
+    .optional_list{
+        min-height: 60px;
+        width:300px;
+        padding: 10px;
+        background-color: #fff;
+        border-radius: 4px;
+        border: 1px solid #bfcbd9;
+    }
+</style>

@@ -1,0 +1,378 @@
+<template>
+    <div class="selCommon projectOrder">
+        <el-form :inline="true" :model="formInline" class="demo-form-inline form_search" label-width="80px" >
+            <el-form-item label="项目：" class=" form_item_mt0">
+                <el-autocomplete v-model="project" :fetch-suggestions="queryPro" placeholder="请输入内容" style="width:220px" :trigger-on-focus="false" @select="selectPro">
+                    <template v-slot="{item}">
+                        <my-item-transPro :item="item"></my-item-transPro>
+                    </template>
+                </el-autocomplete>
+            </el-form-item>
+            <el-form-item label=" " class="form_item_mt10 form_item_wh280">
+                <el-button type="primary" @click="onSubmit" class="searchBtn">查询</el-button>
+                <Export ref="exportCom" :tHeader="tHeader" :filterVal=' filterVal' :tableData1='tableData1' :name='name' style="display:none"></Export>
+                <el-button class="searchBtn" @click="exportData">导出报表</el-button>
+            </el-form-item>
+        </el-form>
+        <!--信息表-->
+        <el-table :data="tableData" border style="width: 100%;margin-top:15px;margin-bottom:10px;" class="min_table" v-loading="tableLoading">
+            <el-table-column prop="registDate" label="注册日期" width="100">
+                <template slot-scope="scope">
+                    <span v-if="scope.row.registDate">
+                         {{scope.row.registDate.substring(0,10)}}
+                    </span>
+                </template>
+            </el-table-column>
+           <el-table-column prop="code" label="代理编号" min-width="120">
+                <template slot-scope="scope">
+                    <div @click="DetailMes(scope.row,tableData)">
+                        <span class="table_btn" >{{scope.row.branchName}}</span><br/>
+                        <span class="table_btn" >[{{scope.row.code}}]</span>
+                    </div>
+                </template>
+            </el-table-column>
+
+            <el-table-column prop="referrerName" label="推荐人" min-width="140">
+                <template slot-scope="scope">
+                    <span v-if="scope.row.referrerName">{{scope.row.referrerName}}</span><br/>
+                    <span v-if="scope.row.referrerCode">[{{scope.row.referrerCode}}]</span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="hospitalName" label="医院" min-width="130"></el-table-column>
+            <el-table-column prop="phoneNumber" label="联系电话" min-width="100">
+                 <template slot-scope="scope">
+                    <span v-if="scope.row.phoneNumber">{{scope.row.phoneNumber.substring(0,3)+'****'+scope.row.phoneNumber.substring(7)}}</span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="cardNO" label="消费商卡号" min-width="120"></el-table-column>
+            <el-table-column prop="sourcWayeCode" label="来源渠道" min-width="100"></el-table-column>
+            <el-table-column prop="branchGradeName" label="代理等级" min-width="140"></el-table-column>
+            <el-table-column prop="price" label="缴纳会费" min-width="100" align="right">
+                <template slot-scope="scope">
+                   <span v-if="scope.row.payAmount||scope.row.payAmount==0">￥{{scope.row.payAmount.toQFW()}}</span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="realPayAmount" label="已缴纳会费" min-width="100" align="right">
+                <template slot-scope="scope">
+                    <span v-if="scope.row.realPayAmount||scope.row.realPayAmount==0">￥{{scope.row.realPayAmount.toQFW()}}</span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="pledge" label="缴纳押金" min-width="100" align="right">
+                <template slot-scope="scope">
+                    <span v-if="scope.row.pledge||scope.row.pledge==0">￥{{scope.row.pledge.toQFW()}}</span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="isPayOff" label="是否结清" min-width="90">
+                <template slot-scope="scope">
+                    <el-tag type="warning" v-if="scope.row.isPayOff == false">未结清</el-tag>
+                    <el-tag type="success" v-if="scope.row.isPayOff == true">已结清</el-tag>
+                </template>
+            </el-table-column>
+            <el-table-column prop="isEnable" label="状态" min-width="80">
+                <template slot-scope="scope">
+                    <el-tag type="warning" v-if="scope.row.isEnable==0">未启用</el-tag>
+                    <el-tag type="success" v-if="scope.row.isEnable==1">启用</el-tag>
+                     <el-tag type="danger" v-if="scope.row.isEnable==2">退会</el-tag>
+                </template>
+            </el-table-column>
+            <el-table-column prop="isEnable" label="状态" min-width="80">
+                <template slot-scope="scope">
+                    <el-button type="primary" @click="onlineOrder(scope.row)">线上订单</el-button>
+                </template>
+            </el-table-column>
+        </el-table>
+        <!-- 分页 -->
+        <div class="block">
+            <el-pagination
+                @size-change="handleSizeChange"
+                @current-change="handleCurrentChange"
+                :current-page="currentPage"
+                :page-sizes="[10, 20, 30, 40]"
+                :page-size="size"
+                layout="total, sizes, prev, pager, next, jumper"
+                :total="total">
+            </el-pagination>
+        </div>
+        <el-dialog title="客户详情" :visible.sync="dialogView"  top="5%"  size="" :close-on-click-modal="false">
+            <CustomerView :mes="cusMes" style="width: 1100px"  v-if="dialogView"></CustomerView>
+        </el-dialog>
+
+        <el-dialog title="客户详情" :visible.sync="dialogorder"  top="5%"  size="" :close-on-click-modal="false">
+            <el-table :data="orderData" border style="width: 100%;margin-top:15px;margin-bottom:10px;" class="min_table">
+                <el-table-column prop="orderCode" label="合并订单号" min-width="100"></el-table-column>
+                <el-table-column prop="subOrderCode" label="订单编号" min-width="100">
+                    <!-- <template slot-scope="scope">
+                        <el-button type="text" @click="view(scope.row.subOrderCode)">{{scope.row.subOrderCode}}</el-button>
+                    </template> -->
+                </el-table-column>
+                <el-table-column prop="contactName" label="客户" min-width="100">
+                    <template slot-scope="scope">
+                        <span :style="{'color':scope.row.isBranch?'black':'red'}" >{{scope.row.contactName}}</span>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="branchName" label="消费商" min-width="80"></el-table-column>
+                <el-table-column prop="createDate" label="订单时间" min-width="120">
+                    <template slot-scope="scope">
+                        <span v-if="scope.row.createDate">{{scope.row.createDate}}</span>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="offlineDate" label="线下开单日期" min-width="100" show-overflow-tooltip>
+                    <template slot-scope="scope">
+                        <span v-if="scope.row.offlineDate">{{scope.row.offlineDate}}</span>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="source" label="来源" min-width="80" show-overflow-tooltip></el-table-column>
+                <el-table-column prop="payType" label="支付方式" min-width="80" show-overflow-tooltip>
+                    <template slot-scope="scope">
+                        <span v-if="scope.row.payType == 1">支付宝</span>
+                        <span v-if="scope.row.payType == 2">微信</span>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="goodsName" label="商品名称" min-width="150" show-overflow-tooltip></el-table-column>
+                <el-table-column prop="price" label="价格" min-width="80" align="right">
+                    <template slot-scope="scope">
+                        {{scope.row.price}}
+                    </template>
+                </el-table-column>
+                <el-table-column prop="status" label="状态" min-width="80" align="center">
+                    <template slot-scope="scope">
+                            <el-tag type="gray" v-if="scope.row.status == 0">待付款</el-tag>
+                            <el-tag type="success" v-if="scope.row.status == 1">已付款</el-tag>
+                            <el-tag type="success" v-if="scope.row.status == 2">已确认</el-tag>
+                            <el-tag type="success" v-if="scope.row.status == 3">待评价</el-tag>
+                            <el-tag type="danger" v-if="scope.row.status == 4">已关闭</el-tag>
+                            <el-tag type="danger" v-if="scope.row.status == 5">已退款</el-tag>
+                            <el-tag type="danger" v-if="scope.row.status == 6">已取消</el-tag>
+                    </template>
+                </el-table-column>
+            </el-table>
+            <div class="block">
+                <el-pagination
+                    @size-change="handleSizeChange1"
+                    @current-change="handleCurrentChange1"
+                    :current-page="dialogIndex"
+                    :page-sizes="[10, 20, 30, 40]"
+                    :page-size="dialogSize"
+                    layout="total, sizes, prev, pager, next, jumper"
+                    :total="dialogTotal">
+                </el-pagination>
+            </div>
+        </el-dialog>
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+    import "@/style/selfCommon.less"
+    import CustomerView from "@/page/FinanceManage/ReportManage/com/customerDetail.vue"
+    import Export from '@/components/export'
+    import {SearchAppActivityBenefit,GetGoodsByKeywords,AppGoodsConsumeSet,GetSubOrdersListByMobile} from "@/api/myData"
+    import { getCookie, getStore } from '../../../config/mUtils';
+    import Vue from 'vue'
+    Vue.component('my-item-transPro', {
+        functional: true,
+        render: function(h, ctx) {
+            var item = ctx.props.item;
+            return h('div', ctx.data, [
+                h('p', { attrs: { class: 'select_name', title: item.Name } }, ['名称：' + item.Name]),
+            ]);
+        },
+        props: {
+            item: { type: Object, required: true }
+        }
+    });
+    export default {
+        // name:"projectOrder",
+        data () {
+            return {
+                orderData:[],
+                dialogorder:false,
+                cusMes:{},
+                dialogView:false,
+                tableLoading:false,
+                formInline:{
+                    projectId:'',
+                    type:'2',//1订单 2会员转化
+                },
+                tableData:[],
+                currentPage:1,
+                size:10,
+                total:0,
+                allData:[],
+                project:'',
+                projectList:[],
+
+                dialogIndex:1,
+                dialogSize:10,
+                dialogTotal:0,
+            }
+        },
+        computed: {
+            /* 导出报表参数 tHeader,filterVal,tableData1*/
+            tHeader(){
+                return ['编号','消费商', '注册日期', '推荐人','咨询师', '医院','联系电话', '消费商卡号', '来源渠道', '代理等级', '缴纳会费','已缴会费','是否结清','状态']
+            },
+            filterVal(){
+                return ['code','branchName','registDate','referrerName','marketConsultantName', 'hospitalName','phoneNumber', 'cardNO','sourcWayeCode','branchGradeName','payAmount','realPayAmount','isPayOff','isEnable']
+            },
+            tableData1(){
+                let data = JSON.parse(JSON.stringify(this.allData))
+                return data
+            },
+            name(){
+                return '会员转化'
+            },
+            /*导出报表参数 tHeader,filterVal,tableData1*/
+        },
+        watch:{
+            'project':{
+                handler(curVal,oldVal){
+                    if(curVal == ''){
+                        this.formInline.projectId = ''
+                    }
+                }
+            }
+        },
+        mounted(){
+
+        },
+        methods: {
+            async onlineOrder(data){
+                try {
+                    this.dialogorder = true
+                    let res = await GetSubOrdersListByMobile({
+                        pageIndex: this.dialogIndex,
+                        pageSize: this.dialogSize,
+                        mobile:data.phoneNumber,
+                    })
+                    this.dialogTotal = res.count
+                    this.orderData = this.dealData(res.data)
+                } catch (err) {
+                    console.log(err)
+                }
+            },
+
+            dealData(data){
+                data.forEach(row=>{
+                    row.Surplus =  row.OrderAmount - row.RealAmount
+                })
+                return data
+            },
+
+            DetailMes(data){
+                this.cusMes = {
+                    CustomerId:data.code
+                }
+                this.dialogView = true
+            },
+            async queryPro(queryString, cb) {
+                this.projectList = []
+                if (queryString !== '' && queryString != undefined) {
+                    let res = await AppGoodsConsumeSet({ "keywords": queryString.removeSP(), isMall:0 })
+                    this.getProject(res)
+                }
+                this.formInline.projectId = ""
+                let _this = this
+                clearTimeout(this.timeout)
+                this.timeout = setTimeout(() => {
+                    cb(_this.projectList)
+                }, 100)
+            },
+            getProject(res) {
+                let arr = []
+                if (res.data instanceof Array && res.data.length > 0) {
+                    for (let item of res.data) {
+                        arr.push({
+                            value: item.goodsName,
+                            code: item.goodsId,
+                            Name: item.goodsName,
+                        })
+                    }
+                }
+                this.projectList = arr
+            },
+            selectPro(item) {
+                this.formInline.projectId = item.code
+            },
+
+            exportData(){
+                this.getProofOrder({
+                    'pageIndex': 1,
+                    'pageSize': this.total,
+                   "goodsId": this.formInline.projectId,
+                    "typeId":1,
+                },1)
+            },
+
+            submit(){
+                this.pageIndex = 1
+                this.search()
+            },
+            async getProofOrder(params,ope){
+                try {
+                    this.tableLoading = true
+                    let res = await SearchAppActivityBenefit(params)
+                    if(ope){
+                        this.allData = res.data
+                        this.$refs.exportCom.handleDownload()
+                    }else{
+                        this.total = res.count
+                        this.tableData =res.data
+                    }
+                    this.tableLoading = false
+                } catch (err) {
+                    console.log(err)
+                }
+            },
+
+            onSubmit(){
+                this.currentPage = 1
+                this.search()
+            },
+            search(){
+
+                this.getProofOrder({
+                    pageIndex: this.currentPage,
+                    pageSize: this.size,
+                    "goodsId": this.formInline.projectId,
+                    "typeId": 1,
+                })
+            },
+            handleSizeChange(val) {
+                console.log(`每页 ${val} 条`);
+                this.size = val
+                this.search()
+            },
+            handleCurrentChange(val) {
+                console.log(`当前页: ${val}`);
+                this.currentPage = val
+                this.search()
+            },
+
+
+            handleSizeChange1(val) {
+                console.log(`每页 ${val} 条`);
+                this.dialogSize = val
+                this.onlineOrder()
+            },
+            handleCurrentChange1(val) {
+                console.log(`当前页: ${val}`);
+                this.dialogIndex = val
+                this.onlineOrder()
+            },
+
+            view(code){// 查看订单详情
+                this.viewFxCode = code
+                this.dialogVisible = true
+                this.IsRefund = false
+            },
+        },
+        components: {
+            Export,CustomerView
+        }
+    }
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+
+</style>

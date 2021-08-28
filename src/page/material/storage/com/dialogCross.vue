@@ -1,0 +1,172 @@
+<template>
+    <div class="tag selCommon">
+        <!-- 信息表 -->
+        <span>日期：</span>
+        <el-date-picker
+        v-model="date"
+        type="daterange"
+        @change="dateChange"
+        style="margin-right:5px;float:none"
+        placeholder="选择日期范围">
+        </el-date-picker>
+        <Export :tHeader="tHeader"  ref="exportTable" :filterVal=' filterVal' :tableData1='tableData1' :name='name'></Export>
+        
+        <el-table :data="tableData" border style="width: 100%;margin-top:15px;margin-bottom:10px;" max-height="560" class="smt min_table" v-loading="loading">
+            <el-table-column prop="drugOutDate" label="出库日期" min-width="90">
+                <template slot-scope="scope">
+                    <span v-if="scope.row.drugOutDate">{{scope.row.drugOutDate.substring(0,10)}}</span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="hospitalName" label="出库医院" min-width="90"></el-table-column>
+            <el-table-column prop="fromHospitalName" label="调往医院" min-width="90"></el-table-column>
+          <el-table-column prop="drugId" label="药品编号" min-width="80"></el-table-column>
+            <el-table-column prop="drugName" label="药品名称" min-width="90"></el-table-column>
+            <el-table-column prop="unitName" label="规格" min-width="90"></el-table-column>
+            <el-table-column prop="batchNumber" label="批号" min-width="90"></el-table-column>
+            <el-table-column prop="jiType" label="剂型" min-width="60"></el-table-column>
+            <el-table-column prop="dwName" label="单位" min-width="50"></el-table-column>
+            <el-table-column prop="originAddress" label="产地" min-width="80"></el-table-column>
+            <el-table-column prop="manufacturer" label="生产厂商" min-width="80"></el-table-column>
+            <el-table-column prop="quantity" label="数量" min-width="80" align="right"></el-table-column>
+            <el-table-column prop="realPrice" label="单价" min-width="80" align="right">
+                <template slot-scope="scope">
+                    <span v-if="scope.row.realPrice">￥{{scope.row.realPrice}}</span>
+                    <span v-else>￥0</span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="totalAmount" label="金额" min-width="90" align="right">
+                 <template slot-scope="scope">
+                    <span v-if="scope.row.totalAmount">￥{{scope.row.totalAmount}}</span>
+                    <span v-else>￥0</span>
+                </template>
+            </el-table-column>
+        </el-table>
+        <!-- 信息表 -->
+
+        <!-- 分页 -->
+        <div class="block">
+            <el-pagination
+                @size-change="handleSizeChange"
+                @current-change="handleCurrentChange"
+                :current-page="currentPage"
+                :page-sizes="[10, 20, 30, 40]"
+                :page-size="size"
+                layout="total, sizes, prev, pager, next, jumper"
+                :total="total">
+            </el-pagination>
+        </div>
+        <!-- 分页 -->
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+    import Export from '@/components/export'
+    import  "@/style/selfCommon.less"
+    export default {
+        // name: "VideoManage",
+        data () {
+            return {
+                date:'',
+                loading:false,
+                total:0,
+                size:10,
+                currentPage:1,
+                tableData:[],
+                allData:[],
+                month:[31,'',31,30,31,30,31,31,30,31,30,31]
+            }
+        },
+         computed: {
+            /* 导出报表参数 tHeader,filterVal,tableData1*/
+            tHeader(){
+                return ['出库日期', '出库医院', '调往医院', '药品编号', '药品名称',  '规格','批号','剂型','单位','产地','生产厂商','数量','单价','金额']
+            },
+            filterVal(){
+                return ['drugOutDate', 'hospitalName', 'fromHospitalName', 'drugId', 'drugName','unitName','batchNumber','jiType','dwName','originAddress','manufacturer',
+                'quantity','realPrice','totalAmount']
+            },
+            tableData1(){
+                let data = JSON.parse(JSON.stringify(this.allData))
+                return data
+            },
+            name(){
+                return '调拨详情'
+            },
+            /*导出报表参数 tHeader,filterVal,tableData1*/
+        },
+        props:{
+            dialogData:Array,
+            propMonth:String,
+        },
+        mounted(){
+            this.allData = JSON.parse(JSON.stringify(this.dialogData))
+            this.total = this.dialogData.length
+            this.pageChange()
+            this.setDefaultDate()
+        },
+        methods:{
+            setDefaultDate(){
+                let year = new Date().getFullYear()
+                if(this.isLeapYear(year)){
+                    this.month[1] = 29
+                }else this.month[1] = 28
+                this.date = [new Date(year,Number(this.propMonth)-1,"01"),new Date(year,Number(this.propMonth)-1,this.month[Number(this.propMonth)-1])]
+                
+            },
+            isLeapYear(year) {  
+                return (year % 4 == 0) && (year % 100 != 0 || year % 400 == 0);  
+            },
+            dateChange(val){
+                
+               if(val){
+                    val = val.formatDates()
+                    this.startDate = val.substring(0,10)
+                    this.endDate = val.substring(13)
+               }else{
+                    this.startDate = ''
+                    this.endDate = ''
+               }
+                if(val){
+                    this.searchData(this.startDate,this.endDate)
+                }
+            },
+
+            searchData(startDate,endDate){
+                
+                this.allData = this.dialogData.filter(ele=>{
+                    let date = ele.drugOutDate.substring(0,10)
+                    
+                    if(date>=startDate&&date<=endDate){
+                        return ele
+                    }
+                })
+                this.currentPage = 1
+                this.total = this.allData.length
+                this.pageChange()
+            },
+            
+            handleSizeChange(val) {
+                this.size = val
+                this.pageChange()
+            },
+            handleCurrentChange(val) {
+                this.currentPage = val
+                this.pageChange()
+            },
+
+            pageChange(data){
+                this.tableData = this.allData.slice((this.currentPage-1)*this.size,this.currentPage*this.size)
+            },
+        },
+        components: {
+            Export
+        }
+    }
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+.block{
+    margin-bottom: 10px;
+}
+</style>

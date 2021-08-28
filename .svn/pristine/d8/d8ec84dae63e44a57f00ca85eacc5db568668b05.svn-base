@@ -1,0 +1,340 @@
+<template>
+    <div class="selCommon AgentManage">
+        <!-- 查询信息 -->
+        <el-form :inline="true" :model="formInline" class="demo-form-inline form_search" label-width="90px">
+            <el-form-item label="医院：" class="form_item_mt10">
+                <el-select v-model="formInline.hospital"  style='width:200px;' @change="onSubmit">
+                    <el-option v-for="(item,index) in hospitalList" :key="index" :label="item.supplierName" :value="item.code"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="关键字：" class="form_item_mt10">
+                <el-input v-model="formInline.branchName" placeholder="店家/咨询师/联系电话" style="width: 200px;" v-on:keyup.enter.native="onSubmit"></el-input>
+            </el-form-item>
+            <el-form-item label=" " class="form_item_mt10">
+                <el-button type="primary" @click="onSubmit"  class="searchBtn">查询</el-button>
+            </el-form-item>
+        </el-form>
+        <!-- 查询信息 -->
+
+        <!-- 信息表 -->
+        <el-table :data="tableData" border style="width: 100%;margin-top:15px;margin-bottom:10px;" ref="multipleTable" class="" v-loading="loading"  height="400"
+          @selection-change="handleSelectionChange" @select='selectCheck' @select-all="selectAll">
+            <el-table-column  type="selection" width="55" align="center"></el-table-column>
+            <!-- <el-table-column prop="code" label="店家编号" min-width="120"></el-table-column> -->
+            <el-table-column prop="branchName" label="店家名称" min-width="80"></el-table-column>
+            <el-table-column prop="shopName" label="店铺" min-width="100" show-overflow-tooltip></el-table-column>
+             <el-table-column prop="Code" label="地址" min-width="120" show-overflow-tooltip>
+                <template scope="scope">
+                    <span v-if="scope.row.province">{{scope.row.province}}</span>
+                    <span v-if="scope.row.city">{{scope.row.city}}</span>
+                    <span v-if="scope.row.area">{{scope.row.area}}</span>
+                    <span v-if="scope.row.address">{{scope.row.address}}</span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="registDate" label="注册日期" width="100" align="center">
+                <template scope="scope">
+                    <span v-if="scope.row.registDate">
+                         {{scope.row.registDate.substring(0,10)}}
+                    </span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="hospitalName" label="医院" min-width="140"></el-table-column>
+             <el-table-column prop="phoneNumber" label="联系电话" min-width="100"  align="center">
+                 <template scope="scope">
+                    <span v-if="scope.row.phoneNumber">{{scope.row.phoneNumber.substring(0,3)+'****'+scope.row.phoneNumber.substring(7)}}</span>
+                </template>
+            </el-table-column>
+            <!-- <el-table-column prop="hospitalName" label="操作" min-width="140">
+                <template scope="scope">
+                    <el-button type="primary" size="small" @click="selectShop(scope.row)">选择</el-button>
+                </template>
+            </el-table-column> -->
+        </el-table>
+        <!-- 信息表 -->
+        <!-- 分页 -->
+        <div class="block">
+            <el-pagination
+                @size-change="handleSizeChange"
+                @current-change="handleCurrentChange"
+                :current-page="currentPage"
+                :page-sizes="[10, 20, 30, 40]"
+                :page-size="size"
+                layout="total, sizes, prev, pager, next, jumper"
+                :total="total">
+            </el-pagination>
+        </div>
+        <!-- 分页 -->
+
+        <div style="width:980px;margin:20px 0;float:left;">
+             <span>已选店家：</span>
+                    <!-- <el-tag  v-for="tag in selectData" class="shopTag"  :close-transition="false" @close="handleClose(tag)"  :key="tag.branchName"  :closable="true"  :type="tag.type">
+                        {{tag.branchName}}
+                    </el-tag> -->
+        <el-table :data="selectData" border style="width: 100%;margin-top:15px;margin-bottom:10px;" class=""  height="300">
+            <el-table-column prop="branchName" label="店家名称" min-width="80"></el-table-column>
+            <el-table-column prop="shopName" label="店铺名称" min-width="100" show-overflow-tooltip></el-table-column>
+            <el-table-column prop="effectDate" label="生效时间" min-width="100">
+                <template scope="scope">
+                    <el-date-picker type="date" placeholder="选择日期" v-model="scope.row.effectDate" style="width: 200px;"></el-date-picker>
+                </template>
+            </el-table-column>
+            <el-table-column prop="shopName" label="操作" min-width="100" show-overflow-tooltip>
+                <template scope="scope">
+                    <el-button @click="handleClose(scope.row)" type="primary" size="small">删除</el-button>
+                    <el-button @click="editMemo(scope.row)" type="primary" size="small">修改备注</el-button>
+                </template>
+            </el-table-column>
+        </el-table>
+
+        </div>
+        <div style="width:880px;float:left;margin:0 0 20px 0;text-align:center">
+            <el-button type="primary" @click="shopSelectSure">确定</el-button>
+            <el-button @click="shopSelectCancel">取消</el-button>
+        </div>
+    </div>
+</template>
+
+<script type="text/ecmascript-6">
+    import "@/style/selfCommon.less"
+    import {GetDropDownPermission,GetServiceManList,GetBranchShopList,AddServiceShop,GetServiceShop,ModifyBranchMemo} from "@/api/myData"
+import { getCookie } from '../../../../config/mUtils';
+    export default {
+        data() {
+            return {
+                hospitalList:"",
+                loading:false,
+                editDialog:false,
+                currentPage: 1,
+                detailCode:"",
+
+                total: 0,
+                size: 10,
+                date:"",
+                formInline: {
+                    branchName:'',
+                    IsEnable:"",
+                    hospital:''
+                },
+                tableData: [],
+                selectData:[],
+                multipleSelection:[],
+            }
+        },
+
+        mounted: function () {
+            this.getBranchGradeAll()
+        },
+        watch:{
+            selectShopData(curVal,oldVal){
+                if(curVal.length!=0){
+                    curVal.forEach(ele=>{
+                        let row = JSON.parse(JSON.stringify(ele))
+                        row.code = ele.branchCode
+                        row.effectDate = row.effectDate? new Date(row.effectDate.substring(0,4),row.effectDate.substring(5,7)-1,row.effectDate.substring(8,10)):''
+                        this.selectData.push(row)
+                    })
+                }
+            },
+            deep:true
+        },
+        props:{
+            mes:{},
+            selectShopData:{
+                type:Array,
+                default:[],
+            },
+        },
+
+        methods: {
+            editMemo(data){
+                this.$prompt('备注', '提示', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                }).then(({ value }) => {
+                    ModifyBranchMemo({
+                        id:0,//必填
+                        branchCode:data.branchCode,
+                        memo:value
+                    }).then(res=>{
+                        if(res.status){
+                            this.$message({message: '修改成功', type: 'success'});
+                        }else{
+                            this.$message.error('修改失败'+res.errorMessage);
+                        }
+                    })
+                })
+            },
+            selectCheck(selection, row,ope){
+                let isIn = false,rowIndex = 0
+                this.selectData.forEach((ele,index)=>{
+                    if(ele.code == row.code){
+                        isIn=true
+                        rowIndex = index
+                    }
+                })
+                debugger
+                if(!isIn){
+                    let data = JSON.parse(JSON.stringify(row))
+                    data.effectDate = ''
+                    this.selectData.push(data)
+                    debugger
+                }else{
+                    if(ope){//如果来自全选选中操作 在selectData中不做删除处理
+                    }else{
+                        this.selectData.splice(rowIndex,1)
+                    }
+                    
+                }
+            },
+            selectAll(val){
+                if(val.length){//全选
+                    val.forEach(ele=>{
+                        this.selectCheck('',ele,1)
+                    })
+                }else{//全部取消
+                    this.tableData.forEach(ele=>{
+                        this.selectCheck('',ele)
+                    })
+                }
+            },
+            toggleSelection(row) {//复选框状态改变
+                this.tableData.forEach(ele=>{
+                    if(ele.code == row.code){
+                        this.$refs.multipleTable.toggleRowSelection(ele);
+                    }
+                })
+            },
+            handleSelectionChange(val) {
+                this.multipleSelection = val;
+            },
+            selectShop(data){
+                debugger
+                data.effectDate = ''
+                this.selectData.push(data)
+            },
+            handleClose(data){
+                debugger
+               this.selectData.splice(this.selectData.indexOf(data), 1);
+               this.toggleSelection(data)
+            },
+//            获取所有代理等级
+            async getBranchGradeAll(){
+                try{
+                    let [res1,con] = await Promise.all([GetDropDownPermission({typeId: 1}),GetServiceManList()])
+                    this.serviceList = con.data
+                    this.hospitalList = res1.data
+                    this.formInline.hospital = this.hospitalList[0].code
+                }catch(err){
+                    console.log(err)
+                }
+            },
+//            条件查询
+            async GetBranchShopList(params){
+                try{
+                    let res = await GetBranchShopList(params)
+                    this.tableData = res.data
+                    this.loading = false
+                    this.total = res.count
+                    setTimeout(()=>{
+                        this.selectData.forEach(ele=>{
+                            this.toggleSelection(ele)
+                        })
+                    },100)
+                }catch(err){
+                    console.log(err)
+                }
+            },
+
+
+            dateSelect(val){
+                if(val.length){
+                    this.formInline.date1 = val.substring(0,10)
+                    this.formInline.date2 = val.substring(13)
+                }else{
+                    this.formInline.date1 = ""
+                    this.formInline.date2 = ""
+                }
+                this.onSubmit()
+            },
+            // 条件查询
+            onSubmit() {
+                console.log('submit!');
+                this.currentPage = 1
+                this.getTableDate()
+            },
+
+            // 分页页面展示数据条数改变触发事件
+            handleSizeChange(val) {
+                console.log(`每页 ${val} 条`);
+                this.size = val
+                this.getTableDate()
+            },
+
+            // 分页当前页码改变触发事件
+            handleCurrentChange(val) {
+                console.log(`当前页: ${val}`);
+                this.currentPage = val
+                this.getTableDate()
+            },
+
+            getTableDate(index){
+                this.loading = true
+                this.GetBranchShopList({
+                    Keywords: this.formInline.branchName.removeSP(),
+                    pageIndex: this.currentPage,
+                    pageSize: this.size,
+                    IsEnabled:this.formInline.IsEnable,
+                    hospitalCode:this.formInline.hospital,
+                })
+            },
+            async shopSelectSure(){
+                let res = await AddServiceShop({
+                    "jsonStr": this.getjsongstr(this.selectData),
+                    "code": this.mes.code
+                })
+                if(res.status){
+                    this.$message({message: '绑定成功', type: 'success'})
+                    this.$emit('selectShopCallback',true)
+                }else{
+                    this.$message.error('绑定失败'+res.errorMessage)
+                }
+            },
+            getjsongstr(data){
+                let arr = []
+                data.forEach(ele=>{
+                    let effectDate = ele.effectDate?ele.effectDate.formatDate("yyyy-MM-dd"):''
+                    debugger
+                    arr.push({
+                        effectDate:effectDate,
+                        serviceCode:this.mes.code,
+                        serviceName:this.mes.serviceInfoName,
+                        branchCode:ele.code||ele.branchCode,
+                        branchName:ele.branchName||ele.branchName,
+                        shopName:ele.shopName,
+                        shopTag:ele.shopTag,
+                        createBy:getCookie("userName"),
+                        createUserId:getCookie("userId"),
+                    })
+                })
+                
+                return JSON.stringify(arr)
+            },
+            shopSelectCancel(){
+                this.$emit('selectShopCallback',false)
+            }
+        },
+        components: {
+
+        }
+    }
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+.form_footer{
+    margin-top: 10px;
+}
+.shopTag{
+    margin:0 10px 10px 0;
+}
+</style>
